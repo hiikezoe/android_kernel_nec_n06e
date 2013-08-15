@@ -9,6 +9,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 #include <linux/init.h>
@@ -472,7 +476,10 @@ static int __devinit pm8xxx_rtc_probe(struct platform_device *pdev)
 	}
 
 	rtc_dd->ctrl_reg = ctrl_reg;
-	if (rtc_write_enable == true)
+	
+	
+
+	
 		pm8xxx_rtc_ops.set_time = pm8xxx_rtc_set_time;
 
 	platform_set_drvdata(pdev, rtc_dd);

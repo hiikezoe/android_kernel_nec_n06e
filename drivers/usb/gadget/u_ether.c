@@ -10,6 +10,10 @@
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 /* #define VERBOSE_DEBUG */
 
@@ -21,6 +25,12 @@
 #include <linux/ethtool.h>
 
 #include "u_ether.h"
+
+#undef USB_ANDROID_NCM
+
+
+#define USB_ANDROID_NCM
+
 
 
 /*
@@ -48,6 +58,9 @@
 
 static struct workqueue_struct	*uether_wq;
 
+#if defined(USB_ANDROID_NCM)
+
+#else 
 struct eth_dev {
 	/* lock is held while accessing port_usb
 	 * or updating its backlink port_usb->ioport
@@ -85,6 +98,8 @@ struct eth_dev {
 	u8			host_mac[ETH_ALEN];
 };
 
+#endif 
+
 /*-------------------------------------------------------------------------*/
 
 #define RX_EXTRA	20	/* bytes guarding against rx overflows */
@@ -93,7 +108,13 @@ struct eth_dev {
 
 #ifdef CONFIG_USB_GADGET_DUALSPEED
 
-static unsigned qmult = 10;
+
+
+unsigned qmult = 10;
+
+
+
+
 module_param(qmult, uint, S_IRUGO|S_IWUSR);
 MODULE_PARM_DESC(qmult, "queue length multiplier at high/super speed");
 
@@ -447,7 +468,11 @@ static void process_rx_w(struct work_struct *work)
 	while ((skb = skb_dequeue(&dev->rx_frames))) {
 		if (status < 0
 				|| ETH_HLEN > skb->len
+#if !defined(USB_ANDROID_NCM)
 				|| skb->len > ETH_FRAME_LEN) {
+#else   
+				|| skb->len > (dev->net->mtu + ETH_HLEN)) {
+#endif	 
 			dev->net->stats.rx_errors++;
 			dev->net->stats.rx_length_errors++;
 			DBG(dev, "rx length %d\n", skb->len);
@@ -503,7 +528,12 @@ static void tx_complete(struct usb_ep *ep, struct usb_request *req)
 			dev->net->stats.tx_bytes += req->length;
 	}
 	dev->net->stats.tx_packets++;
+#if defined(USB_ANDROID_NCM)
 
+	
+	atomic_dec(&dev->port_usb->pending_writes);
+
+#endif 
 	spin_lock(&dev->req_lock);
 	list_add_tail(&req->list, &dev->tx_reqs);
 
@@ -605,11 +635,22 @@ static void alloc_tx_buffer(struct eth_dev *dev)
 	}
 }
 
+#if !defined(USE_ETHER_XMIT_FOR_NCM)
 static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 					struct net_device *net)
+#else
+netdev_tx_t eth_start_xmit(struct sk_buff *skb,
+					struct net_device *net)
+#endif
 {
 	struct eth_dev		*dev = netdev_priv(net);
+#if defined(USB_ANDROID_NCM)
+
+	int			length = 0;
+#else 
 	int			length = skb->len;
+
+#endif 
 	int			retval;
 	struct usb_request	*req = NULL;
 	unsigned long		flags;
@@ -639,9 +680,28 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 
 	/* apply outgoing CDC or RNDIS filters */
 	if (!is_promisc(cdc_filter)) {
+#if defined(USB_ANDROID_NCM)
+
+		u8		*dest = NULL;
+#else 
 		u8		*dest = skb->data;
 
+#endif 
+
+#if defined(USB_ANDROID_NCM)
+
+		if(skb)
+			dest = skb->data;
+
+#endif 
+
+#if defined(USB_ANDROID_NCM)
+
+		if (dest && is_multicast_ether_addr(dest)) {
+#else 
 		if (is_multicast_ether_addr(dest)) {
+
+#endif 
 			u16	type;
 
 			/* ignores USB_CDC_PACKET_TYPE_MULTICAST and host
@@ -652,7 +712,14 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 			else
 				type = USB_CDC_PACKET_TYPE_ALL_MULTICAST;
 			if (!(cdc_filter & type)) {
+#if defined(USB_ANDROID_NCM)
+
+				if(skb)
+					dev_kfree_skb_any(skb);
+#else 
 				dev_kfree_skb_any(skb);
+
+#endif 
 				return NETDEV_TX_OK;
 			}
 		}
@@ -765,6 +832,12 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 		DBG(dev, "tx queue err %d\n", retval);
 		break;
 	case 0:
+#if defined(USB_ANDROID_NCM)
+
+		
+		atomic_inc(&dev->port_usb->pending_writes);
+
+#endif 
 		net->trans_start = jiffies;
 	}
 
@@ -944,7 +1017,11 @@ static struct device_type gadget_type = {
  */
 int gether_setup(struct usb_gadget *g, u8 ethaddr[ETH_ALEN])
 {
+#if !defined(USB_ANDROID_NCM)
 	return gether_setup_name(g, ethaddr, "usb");
+#else  
+	return gether_setup_name_mtu(g, ethaddr, "usb", 0 );
+#endif	
 }
 
 /**
@@ -961,8 +1038,13 @@ int gether_setup(struct usb_gadget *g, u8 ethaddr[ETH_ALEN])
  *
  * Returns negative errno, or zero on success
  */
+#if !defined(USB_ANDROID_NCM)
 int gether_setup_name(struct usb_gadget *g, u8 ethaddr[ETH_ALEN],
 		const char *netname)
+#else 
+int gether_setup_name_mtu(struct usb_gadget *g, u8 ethaddr[ETH_ALEN],
+		const char *netname, unsigned int mtu)
+#endif	 
 {
 	struct eth_dev		*dev;
 	struct net_device	*net;
@@ -1008,7 +1090,10 @@ int gether_setup_name(struct usb_gadget *g, u8 ethaddr[ETH_ALEN],
 	dev->gadget = g;
 	SET_NETDEV_DEV(net, &g->dev);
 	SET_NETDEV_DEVTYPE(net, &gadget_type);
-
+#if defined(USB_ANDROID_NCM)
+	if (mtu)
+		net->mtu = mtu;
+#endif	
 	status = register_netdev(net);
 	if (status < 0) {
 		dev_dbg(&g->dev, "register_netdev failed, %d\n", status);
@@ -1071,7 +1156,12 @@ struct net_device *gether_connect(struct gether *link)
 
 	if (!dev)
 		return ERR_PTR(-EINVAL);
+	
+#if defined(USB_ANDROID_NCM)
 
+	link->net = dev->net;
+
+#endif 
 	link->in_ep->driver_data = dev;
 	result = usb_ep_enable(link->in_ep);
 	if (result != 0) {

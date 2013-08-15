@@ -9,6 +9,10 @@
  *		Changes to use preallocated sigqueue structures
  *		to allow signals to be sent reliably.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/slab.h>
 #include <linux/export.h>
@@ -482,6 +486,9 @@ flush_signal_handlers(struct task_struct *t, int force_default)
 		if (force_default || ka->sa.sa_handler != SIG_IGN)
 			ka->sa.sa_handler = SIG_DFL;
 		ka->sa.sa_flags = 0;
+
+		ka->sa.sa_restorer = NULL;
+
 		sigemptyset(&ka->sa.sa_mask);
 		ka++;
 	}
@@ -1157,10 +1164,64 @@ static int send_signal(int sig, struct siginfo *info, struct task_struct *t,
 {
 	int from_ancestor_ns = 0;
 
+
+
+	char bug_set = false;
+	char *signal = NULL;
+
+
+
 #ifdef CONFIG_PID_NS
 	from_ancestor_ns = si_fromuser(info) &&
 			   !task_pid_nr_ns(current, task_active_pid_ns(t));
 #endif
+
+
+
+    switch( sig )
+    {
+    case SIGKILL:
+        signal = "SIGKILL";
+        bug_set = true;
+        break;
+    case SIGILL:
+        signal = "SIGILL";
+        break;
+    case SIGABRT:
+        signal = "SIGABRT";
+        break;
+    case SIGBUS:
+        signal = "SIGBUS";
+        break;
+    case SIGFPE:
+        signal = "SIGFPE";
+        break;
+    case SIGSEGV:
+        signal = "SIGSEGV";
+        break;
+    case SIGSTKFLT:
+        signal = "SIGSTKFLT";
+        break;
+    default:
+        break;
+    }
+    if( signal != NULL )
+    {
+        
+        
+        if (strcmp(t->comm, "system_server") == 0 && strcmp(current->comm, "init")!=0)
+        
+        {
+            printk("kill %s: to %d(%s)[%lx] from %d(%s)[%lx]\n",
+                signal, (int)t->pid, t->comm, (unsigned long)t,
+                (int)current->pid, current->comm,(unsigned long)current );
+            if( bug_set == true ){
+                printk(KERN_ERR "[T][ARM]Event:0x30 Info:0x00\n"); 
+                BUG();
+            }
+        }
+    }
+
 
 	return __send_signal(sig, info, t, group, from_ancestor_ns);
 }

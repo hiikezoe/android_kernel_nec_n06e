@@ -29,6 +29,10 @@
  *		Also fixed a bug in BLOCKING mode where n_tty_write returns
  *		EAGAIN
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/types.h>
 #include <linux/major.h>
@@ -1727,7 +1731,8 @@ static ssize_t n_tty_read(struct tty_struct *tty, struct file *file,
 
 do_it_again:
 
-	BUG_ON(!tty->read_buf);
+	if (WARN_ON(!tty->read_buf))
+		return -EAGAIN;
 
 	c = job_control(tty, file);
 	if (c < 0)

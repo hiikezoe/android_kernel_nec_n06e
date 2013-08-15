@@ -13,6 +13,10 @@
  *  Do not include any C declarations in this file - it is included by
  *  assembler source.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #ifndef __ASM_ASSEMBLER_H__
 #define __ASM_ASSEMBLER_H__
 
@@ -318,6 +322,14 @@
 \name:
 	.asciz "\string"
 	.size \name , . - \name
+	.endm
+
+	.macro check_uaccess, addr:req, size:req, limit:req, tmp:req, bad:req
+
+	adds	\tmp, \addr, #\size - 1
+	sbcccs	\tmp, \tmp, \limit
+	bcs	\bad
+
 	.endm
 
 #endif /* __ASM_ASSEMBLER_H__ */

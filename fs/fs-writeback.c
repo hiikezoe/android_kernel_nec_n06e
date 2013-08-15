@@ -12,6 +12,10 @@
  *		Split out of fs/inode.c
  *		Additions for address_space-based writeback
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/kernel.h>
 #include <linux/export.h>
@@ -68,6 +72,7 @@ int writeback_in_progress(struct backing_dev_info *bdi)
 {
 	return test_bit(BDI_writeback_running, &bdi->state);
 }
+EXPORT_SYMBOL(writeback_in_progress);
 
 static inline struct backing_dev_info *inode_to_bdi(struct inode *inode)
 {

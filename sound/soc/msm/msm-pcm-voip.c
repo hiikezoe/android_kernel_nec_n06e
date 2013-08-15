@@ -9,6 +9,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/init.h>
 #include <linux/err.h>
@@ -255,8 +259,13 @@ static int msm_voip_fens_get(struct snd_kcontrol *kcontrol,
 static struct snd_kcontrol_new msm_voip_controls[] = {
 	SOC_SINGLE_EXT("Voip Tx Mute", SND_SOC_NOPM, 0, 1, 0,
 				msm_voip_mute_get, msm_voip_mute_put),
-	SOC_SINGLE_EXT("Voip Rx Volume", SND_SOC_NOPM, 0, 5, 0,
+
+	SOC_SINGLE_EXT("Voip Rx Volume", SND_SOC_NOPM, 0, 7, 0,
 				msm_voip_volume_get, msm_voip_volume_put),
+
+
+
+
 	SOC_SINGLE_MULTI_EXT("Voip Mode Rate Config", SND_SOC_NOPM, 0, 23850,
 				0, 2, msm_voip_mode_rate_config_get,
 				msm_voip_mode_rate_config_put),
@@ -347,7 +356,11 @@ static void voip_process_ul_pkt(uint8_t *voc_pkt,
 		snd_pcm_period_elapsed(prtd->capture_substream);
 	} else {
 		spin_unlock_irqrestore(&prtd->dsp_ul_lock, dsp_flags);
-		pr_err("UL data dropped\n");
+
+
+
+
+
 	}
 
 	wake_up(&prtd->out_wait);

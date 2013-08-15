@@ -10,11 +10,16 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #ifndef __LINUX_MSM_CAMERA_H
 #define __LINUX_MSM_CAMERA_H
 
 #ifdef MSM_CAMERA_BIONIC
 #include <sys/types.h>
+#include "camera_function.h" 
 #endif
 #include <linux/videodev2.h>
 #include <linux/types.h>
@@ -1018,7 +1023,64 @@ struct msm_snapshot_pp_status {
 #define CFG_SET_VISION_MODE           55
 #define CFG_SET_VISION_AE             56
 #define CFG_HDR_UPDATE                57
-#define CFG_MAX                       58
+
+
+#define CFG_SET_PICT_OUT_INFO_NOW 58
+#define CFG_AUTO_FOCUS_CANCEL   59
+#define CFG_SET_AF_MODE         60
+#define CFG_SET_AE              61
+#define CFG_SET_AE_SHIFT        62
+#define CFG_SET_PICT_FORMAT     63
+#define CFG_SET_SENSOR_MODE     64
+#define CFG_SET_SCENE_SELECT    65
+#define CFG_AUTO_FOCUS          66
+#define CFG_GET_EEPROM_READ     67
+#define CFG_SENSOR_PAT_CHG      68
+#define CFG_GET_AF_POS          69
+#define CFG_GET_MONI_GAIN       70
+#define CFG_GET_REGVER          71
+#define CFG_AUTO_FOCUS_AFTER    72
+#define CFG_SET_PICTURE_MODE    73
+#define CFG_SET_JPEG_QUALITY    74
+#define CFG_SET_MANUAL_STEP     75
+#define CFG_SET_PICTURE_SIZE    76
+#define CFG_SET_INITIALIZE      77
+#define CFG_SET_FORMAT_CHG      78
+#define CFG_SET_ANTISHAKE       79
+#define CFG_GET_ISP_ID          80
+#define CFG_ISP_PAT_CHG         81
+#define CFG_GET_MAKER_NOTE      82
+#define CFG_AFC_START           83
+#define CFG_AFC_STOP            84
+#define CFG_SET_FACE_MODE       85
+#define CFG_SET_PM_OBS          86
+#define CFG_SET_ISP_SENSOR_WRITE 87
+#define CFG_SET_ISP_SENSOR_READ 88
+#define CFG_GET_FACE_POS        89
+#define CFG_GET_PARAM_EXIF      90
+#define CFG_SET_ANGLE           91
+#define CFG_SET_SAVE_MIRROR_IMAGE 92
+#define CFG_POWER_OFF           93
+#define CFG_AUTO_FOCUS_SHORT    94
+#define CFG_AFC_START_SHORT     95
+#define CFG_AFC_STOP_SHORT      96
+#define CFG_SET_AF_SEARCH       97
+#define CFG_GET_AF_PEAK         98
+#define CFG_SET_INIT_POS        99
+#define CFG_SET_INIT_POS_SHORT  100
+#define CFG_SET_LIGHT_STATE     101
+#define CFG_SET_PICT_SIZE       102
+#define CFG_SET_EXP_COMPENSATION  103
+#define CFG_SET_FRAME_RATE_MODE   104
+#define CFG_GET_HDR_BRIGHTNESS    105
+#define CFG_SET_HDR_BRIGHTNESS    106
+#define CFG_SET_CAP_MODE_ENABLE   107
+#define CFG_GET_DEVICE_ID         108
+#define CFG_MAX			           109
+
+
+
+
 
 #define MOVE_NEAR	0
 #define MOVE_FAR	1
@@ -1034,6 +1096,28 @@ struct msm_snapshot_pp_status {
 #define SENSOR_FULL_SIZE		1
 #define SENSOR_QVGA_SIZE		2
 #define SENSOR_INVALID_SIZE		3
+
+
+#define CAMERA_EFFECT_OFF		0
+#define CAMERA_EFFECT_MONO		1
+#define CAMERA_EFFECT_NEGATIVE		2
+#define CAMERA_EFFECT_SOLARIZE		3
+#define CAMERA_EFFECT_SEPIA		4
+#define CAMERA_EFFECT_POSTERIZE		5
+#define CAMERA_EFFECT_WHITEBOARD	6
+#define CAMERA_EFFECT_BLACKBOARD	7
+#define CAMERA_EFFECT_AQUA		8
+#define CAMERA_EFFECT_EMBOSS		9
+#define CAMERA_EFFECT_SKETCH		10
+#define CAMERA_EFFECT_NEON		11
+#define CAMERA_EFFECT_USER_DEFINED1     12
+#define CAMERA_EFFECT_USER_DEFINED2     13
+#define CAMERA_EFFECT_USER_DEFINED3     14
+#define CAMERA_EFFECT_USER_DEFINED4     15
+#define CAMERA_EFFECT_USER_DEFINED5     16
+#define CAMERA_EFFECT_USER_DEFINED6     17
+#define CAMERA_EFFECT_MAX               18
+
 
 /* QRD */
 #define CAMERA_EFFECT_BW		10
@@ -1068,6 +1152,10 @@ struct msm_snapshot_pp_status {
 #define CAMERA_BRIGHTNESS_LV7			7
 #define CAMERA_BRIGHTNESS_LV8			8
 
+#define CAMERA_BRIGHTNESS_LV9			9
+#define CAMERA_BRIGHTNESS_LV10			10
+#define CAMERA_BRIGHTNESS_LV11			11
+#define CAMERA_BRIGHTNESS_LV12			12
 
 #define CAMERA_SATURATION_LV0			0
 #define CAMERA_SATURATION_LV1			1
@@ -1094,6 +1182,41 @@ struct msm_snapshot_pp_status {
 #define CAMERA_SETAE_AVERAGE		0
 #define CAMERA_SETAE_CENWEIGHT	1
 
+
+
+
+
+#define CAMERA_SCENE_MODE_OFF                   0
+#define CAMERA_SCENE_MODE_AUTO                  1
+#define CAMERA_SCENE_MODE_LANDSCAPE             2
+#define CAMERA_SCENE_MODE_SNOW                  3
+#define CAMERA_SCENE_MODE_BEACH                 4
+#define CAMERA_SCENE_MODE_SUNSET                5
+#define CAMERA_SCENE_MODE_NIGHT                 6
+#define CAMERA_SCENE_MODE_PORTRAIT              7
+#define CAMERA_SCENE_MODE_BACKLIGHT             8
+#define CAMERA_SCENE_MODE_SPORTS                9
+#define CAMERA_SCENE_MODE_ANTISHAKE             10
+#define CAMERA_SCENE_MODE_FLOWERS               11
+#define CAMERA_SCENE_MODE_CANDLELIGHT           12
+#define CAMERA_SCENE_MODE_FIREWORKS             13
+#define CAMERA_SCENE_MODE_PARTY                 14
+#define CAMERA_SCENE_MODE_NIGHT_PORTRAIT        15
+#define CAMERA_SCENE_MODE_THEATRE               16
+#define CAMERA_SCENE_MODE_ACTION                17
+#define CAMERA_SCENE_MODE_AR                    18
+#define CAMERA_SCENE_MODE_PORTRAIT_ILLUMI       19
+#define CAMERA_SCENE_MODE_PORTRAIT_LANDSCAPE    20
+#define CAMERA_SCENE_MODE_PET                   21
+#define CAMERA_SCENE_MODE_FOOD                  22
+#define CAMERA_SCENE_MODE_UNDERWATER            23
+#define CAMERA_SCENE_MODE_AUTO_DETECT           24
+
+
+#define CAMERA_SCENE_MODE_PORTRAIT_BACKLIGHT    25
+#define CAMERA_SCENE_MODE_AUCTION               26
+
+
 #define  CAMERA_WB_AUTO               1 /* This list must match aeecamera.h */
 #define  CAMERA_WB_CUSTOM             2
 #define  CAMERA_WB_INCANDESCENT       3
@@ -1102,12 +1225,54 @@ struct msm_snapshot_pp_status {
 #define  CAMERA_WB_CLOUDY_DAYLIGHT    6
 #define  CAMERA_WB_TWILIGHT           7
 #define  CAMERA_WB_SHADE              8
+#define  CAMERA_WB_FLUORESCENT_H      9
+#define  CAMERA_WB_FLUORESCENT_L      10
 
 #define CAMERA_EXPOSURE_COMPENSATION_LV0			12
 #define CAMERA_EXPOSURE_COMPENSATION_LV1			6
 #define CAMERA_EXPOSURE_COMPENSATION_LV2			0
 #define CAMERA_EXPOSURE_COMPENSATION_LV3			-6
 #define CAMERA_EXPOSURE_COMPENSATION_LV4			-12
+
+
+
+#define CAMERA_AE_MODE_AUTO     (0)  
+#define CAMERA_AE_MODE_MANUAL   (1)  
+
+
+
+
+#define CAMERA_DVE018_MODE    0    
+#define CAMERA_REC_MODE         1    
+
+#define CAMERA_REC_MODE_MAX     2
+
+
+
+#define CAMERA_FPS_MODE_QUICK_SCENE_OFF_SHAKE_AUTO      0
+#define CAMERA_FPS_MODE_QUICK_SCENE_OFF_SHAKE_OFF       1
+#define CAMERA_FPS_MODE_STD_SCENE_OFF_SHAKE_AUTO        2
+#define CAMERA_FPS_MODE_STD_SCENE_OFF_SHAKE_OFF         3
+#define CAMERA_FPS_MODE_STD_SCENE_PORT_SHAKE_AUTO       4
+#define CAMERA_FPS_MODE_STD_SCENE_PORT_SHAKE_OFF        5
+#define CAMERA_FPS_MODE_STD_SCENE_PORTILLUMI_SHAKE_AUTO 6
+#define CAMERA_FPS_MODE_STD_SCENE_PORTILLUMI_SHAKE_OFF  7
+#define CAMERA_FPS_MODE_STD_SCENE_AUTO_SHAKE_AUTO       8
+#define CAMERA_FPS_MODE_STD_SCENE_AUTO_SHAKE_OFF        9
+#define CAMERA_FPS_MODE_BEST_SCENE_OFF_SHAKE_OFF        10
+#define CAMERA_FPS_MODE_BEST_SCENE_PORT_SHAKE_OFF       11
+#define CAMERA_FPS_MODE_BEST_SCENE_AUTO_SHAKE_OFF       12
+#define CAMERA_FPS_MODE_HDR_SCENE_OFF_SHAKE_OFF         13
+#define CAMERA_FPS_MODE_MOVIE_SCENE_OFF                 14
+
+#define CAMERA_HDR_BRIGHTNESS_M2    0
+#define CAMERA_HDR_BRIGHTNESS_M1    1
+#define CAMERA_HDR_BRIGHTNESS_Z0    2
+#define CAMERA_HDR_BRIGHTNESS_P1    3
+#define CAMERA_HDR_BRIGHTNESS_P2    4
+
+#define CAMERA_CAP_MODE_ENABLE_OFF  0
+#define CAMERA_CAP_MODE_ENABLE_ON   1
 
 enum msm_v4l2_saturation_level {
 	MSM_V4L2_SATURATION_L0,
@@ -1220,9 +1385,17 @@ struct sensor_pict_fps {
 
 struct exp_gain_cfg {
 	uint16_t gain;
+
+	uint16_t digital_gain_num;
+	uint16_t digital_gain_dec;
+
 	uint32_t line;
 	int32_t luma_avg;
 	uint16_t fgain;
+
+	uint8_t current_luma;
+	uint8_t luma_target;
+
 };
 
 struct focus_cfg {
@@ -1235,6 +1408,44 @@ struct fps_cfg {
 	uint16_t fps_div;
 	uint32_t pict_fps_div;
 };
+
+struct ae_cfg {
+	uint8_t ae_scene;			
+	uint8_t ae_mode;			
+	uint8_t sht_premode_type;		
+	uint8_t iso_type;			
+	uint8_t op_mode;			
+	struct exp_gain_cfg user_preset;	
+};
+
+struct af_mode_cfg {
+	uint8_t af_mode;		
+	uint8_t af_ends;		
+	uint8_t face;			 
+	uint8_t af_log_mode;	
+	uint8_t af_result;		
+	uint8_t af_data_num;	
+	uint8_t *af_data;	    
+};
+
+
+struct set_manual_step_cfg{
+ uint8_t   direct;                  
+ uint8_t   step_h;                  
+ uint8_t   step_l;                  
+ uint8_t   af_fv_max_h;             
+ uint8_t   af_fv_max_l;             
+ uint8_t   af_fv_min_h;             
+ uint8_t   af_fv_min_l;             
+ uint8_t   af_fv_now_h;             
+ uint8_t   af_fv_now_l;             
+ uint8_t   af_lens_pos_fv_max_h;    
+ uint8_t   af_lens_pos_fv_max_l;    
+ uint8_t   af_lens_pos_now_h;       
+ uint8_t   af_lens_pos_now_l;       
+};
+
+
 struct wb_info_cfg {
 	uint16_t red_gain;
 	uint16_t green_gain;
@@ -1372,6 +1583,146 @@ struct msm_eeprom_data_t {
 	void *eeprom_data;
 	uint16_t index;
 };
+
+
+
+typedef struct {
+  int mode;
+  int sw;
+} DVE022_pm_obs_data_t;
+
+
+struct get_exif_param_inf{
+    uint16_t coarse_integration_time;      
+    uint16_t line_length_DVE046;              
+    uint16_t fine_integration_time;        
+    uint16_t analog_gain_code_global;      
+    uint16_t digital_gain_greenr;          
+};
+
+
+struct get_exif_param_mm{
+    
+    uint32_t  cur_line_count;         
+    uint32_t  line_count;             
+    uint16_t  line_length_pclk;       
+    uint32_t  vt_pixel_clk;           
+    
+    float     cur_real_gain;          
+    float     real_gain;              
+    float     iso100_gain;            
+};
+
+struct get_exif_param_t{
+  struct get_exif_param_inf   exif_param;
+  struct get_exif_param_mm    exif_param_mm;
+};
+
+
+struct get_exif_maker_note_cfg{
+    uint32_t fd_freq;              
+    uint16_t device_id;            
+    uint16_t awb_temp;             
+    uint16_t awb_gain_r;           
+    uint16_t awb_gain_g;           
+    uint16_t awb_gain_b;           
+    uint16_t awb_saturation;       
+    uint16_t calib_rg;             
+    uint16_t calib_bg;             
+    uint16_t calib_grgb;           
+    uint16_t af_inf_position;      
+    uint16_t af_1m_position;       
+    uint16_t af_macro_position;    
+    uint16_t start_current;        
+    uint16_t op_sensitivity;       
+    uint16_t trial_ver;            
+    uint16_t lot_code_date;        
+    uint16_t lot_code_date1;       
+    uint16_t lot_code_date2;       
+    uint32_t lot_code_num;         
+
+
+
+
+
+
+
+
+
+
+
+
+
+};
+
+
+
+struct get_exif_maker_note_mm{
+  
+  float     awb_gain_r;             
+  float     awb_gain_g;             
+  float     awb_gain_b;             
+  
+  float     white_average_rg;       
+  float     white_average_bg;       
+  
+  float     regular_average_rg;     
+  float     regular_average_bg;     
+  
+  int cur_focus_val;                
+  int cur_pos;                      
+  
+  uint32_t  fd_freq;                
+
+  float lux_idx;                    
+
+};
+
+struct get_exif_maker_note{
+  struct get_exif_maker_note_mm     get_maker_note_mm;
+  struct get_exif_maker_note_cfg    get_maker_note_cfg;
+};
+
+
+struct eeprom_otp_info_t{
+    uint64_t    otp_bank00; 
+    uint64_t    otp_bank01; 
+    uint64_t    otp_bank02; 
+    uint64_t    otp_bank03; 
+    uint64_t    otp_bank04; 
+    uint64_t    otp_bank05; 
+    uint64_t    otp_bank06; 
+    uint64_t    otp_bank07; 
+    uint64_t    otp_bank08; 
+    uint64_t    otp_bank09; 
+    uint64_t    otp_bank10; 
+    uint64_t    otp_bank11; 
+    uint64_t    otp_bank12; 
+    uint64_t    otp_bank13; 
+    uint64_t    otp_bank14; 
+    uint64_t    otp_bank15; 
+};
+
+struct hdr_brightness_t{
+    int8_t   set_pattern;
+
+    uint16_t coarse_integration_time;
+    uint16_t line_length_DVE046;
+    uint16_t fine_integration_time;
+    uint16_t analogue_gain_code_greenr;
+    uint16_t analogue_gain_code_greenb;
+    uint16_t analogue_gain_code_red;
+    uint16_t analogue_gain_code_blue;
+};
+
+
+
+
+
+
+
+
+
 
 struct msm_camera_csid_vc_cfg {
 	uint8_t cid;
@@ -1637,6 +1988,11 @@ struct sensor_cfg_data {
 	int cfgtype;
 	int mode;
 	int rs;
+
+
+	uint32_t preview_width;
+	uint32_t preview_height;
+
 	uint8_t max_steps;
 
 	union {
@@ -1661,6 +2017,10 @@ struct sensor_cfg_data {
 		struct msm_eeprom_data_t eeprom_data;
 		struct csi_lane_params_t csi_lane_params;
 		struct sensor_hdr_update_parm_t hdr_update_parm;
+
+
+		DVE022_pm_obs_data_t pm_obs;
+
 		/* QRD */
 		uint16_t antibanding;
 		uint8_t contrast;
@@ -1677,6 +2037,22 @@ struct sensor_cfg_data {
 		void *setting;
 		int32_t vision_mode_enable;
 		int32_t vision_ae;
+		uint8_t pict_size;
+		uint8_t scene;
+
+		struct ae_cfg ae;				
+		struct af_mode_cfg af_mode;		
+
+        struct get_exif_param_inf get_exif_param;           
+        struct get_exif_maker_note_cfg get_exif_maker_note; 
+		struct eeprom_otp_info_t eeprom_otp_info; 
+
+        struct set_manual_step_cfg set_manual_step;
+
+		uint8_t frame_rate_mode;
+        struct hdr_brightness_t hdr_brightness;
+        uint8_t cap_mode_enable;
+        uint16_t device_id;
 	} cfg;
 };
 
@@ -1774,6 +2150,10 @@ struct msm_actuator_params_t {
 struct msm_actuator_set_info_t {
 	struct msm_actuator_params_t actuator_params;
 	struct msm_actuator_tuning_params_t af_tuning_params;
+
+	uint8_t is_af_calib;
+	uint16_t af_calib_data[4];
+
 };
 
 struct msm_actuator_get_info_t {
@@ -1798,9 +2178,22 @@ enum af_camera_name {
 	ACTUATOR_MAIN_CAM_3,
 	ACTUATOR_MAIN_CAM_4,
 	ACTUATOR_MAIN_CAM_5,
-	ACTUATOR_WEB_CAM_0,
-	ACTUATOR_WEB_CAM_1,
-	ACTUATOR_WEB_CAM_2,
+
+
+
+
+
+
+
+	ACTUATOR_IU091_NORMAL,
+	ACTUATOR_IU091_ZSL,
+	ACTUATOR_IU091_VIDEO,
+	ACTUATOR_IU091_FHD_VIDEO,
+	ACTUATOR_IMX135_NORMAL,
+	ACTUATOR_IMX135_ZSL,
+	ACTUATOR_IMX135_VIDEO,
+	ACTUATOR_IMX135_FHD_VIDEO,
+
 };
 
 struct msm_actuator_cfg_data {
@@ -1829,6 +2222,9 @@ struct msm_calib_wb {
 
 struct msm_calib_af {
 	uint16_t macro_dac;
+
+	uint16_t onem_dac;
+
 	uint16_t inf_dac;
 	uint16_t start_dac;
 };
@@ -1980,6 +2376,19 @@ struct img_plane_info {
 	uint32_t sp_y_offset;
 	uint32_t inst_handle;
 };
+
+
+
+
+enum msm_sensor_onoff {
+  SENSOR_OFF = 0,  
+  SENSOR_ON  = 1   
+
+  ,SENSOR_ONOFF_MAX
+
+};
+
+
 
 #define QCAMERA_NAME "qcamera"
 #define QCAMERA_SERVER_NAME "qcamera_server"
@@ -2290,5 +2699,13 @@ struct intf_mctl_mapping_cfg {
 	((handle & 0x80) ? (handle & 0x7F) : 0xFF)
 #define SET_VIDEO_INST_IDX(handle, data)	\
 	(handle |= (0x1 << 7) | (data & 0x7F))
+
+
+typedef struct {
+  int mirror;
+  float relative_pos_x;
+  float relative_pos_y;
+} adjust_zoom_info_t;
+
 
 #endif /* __LINUX_MSM_CAMERA_H */

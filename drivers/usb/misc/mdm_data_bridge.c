@@ -9,6 +9,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/kernel.h>
 #include <linux/errno.h>
@@ -34,8 +38,13 @@
 
 /*for xport : HSIC*/
 static const char * const serial_hsic_bridge_names[] = {
-	"serial_hsic_data",
-	"serial_hsic_ctrl",
+
+
+
+
+        "hsic_data",
+        "hsic_ctrl",
+
 };
 
 static const char * const rmnet_hsic_bridge_names[] = {

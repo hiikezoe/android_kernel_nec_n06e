@@ -10,12 +10,20 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifndef MIPI_DSI_H
 #define MIPI_DSI_H
 
 #include <mach/scm-io.h>
 #include <linux/list.h>
+
+
+#include <linux/msm_mdp.h>
+
 
 #ifdef BIT
 #undef BIT
@@ -192,7 +200,13 @@ struct dsi_clk_desc {
 #define DSI_BUF_SIZE	64
 #define MIPI_DSI_MRPS	0x04	/* Maximum Return Packet Size */
 
-#define MIPI_DSI_LEN 8 /* 4 x 4 - 6 - 2, bytes dcs header+crc-align  */
+
+
+
+
+#define MIPI_DSI_LEN 12
+
+
 
 struct dsi_buf {
 	uint32 *hdr;	/* dsi host header */
@@ -385,5 +399,11 @@ void mipi_dsi_wait4video_done(void);
 #ifdef CONFIG_FB_MSM_MDP303
 void update_lane_config(struct msm_panel_info *pinfo);
 #endif
+
+
+#if defined (LCD_DEVICE_S6E8AA0X01)
+void mipi_dsi_cmds_tx_lp_mode(struct msm_fb_data_type *mfd);
+#endif
+
 
 #endif /* MIPI_DSI_H */

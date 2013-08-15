@@ -9,6 +9,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/delay.h>
 #include <linux/module.h>
@@ -25,10 +29,11 @@
 #define CSID_VERSION_V2                      0x02000011
 #define CSID_VERSION_V3                      0x30000000
 
-#define DBG_CSID 0
+#define DBG_CSID 1
 
 #define TRUE   1
 #define FALSE  0
+
 
 static int msm_csid_cid_lut(
 	struct msm_camera_csid_lut_params *csid_lut_params,

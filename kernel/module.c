@@ -16,6 +16,10 @@
     along with this program; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #include <linux/export.h>
 #include <linux/moduleloader.h>
 #include <linux/ftrace_event.h>
@@ -2727,6 +2731,10 @@ static int check_module_license_and_versions(struct module *mod)
 
 	/* driverloader was caught wrongly pretending to be under GPL */
 	if (strcmp(mod->name, "driverloader") == 0)
+		add_taint_module(mod, TAINT_PROPRIETARY_MODULE);
+
+	
+	if (strcmp(mod->name, "lve") == 0)
 		add_taint_module(mod, TAINT_PROPRIETARY_MODULE);
 
 #ifdef CONFIG_MODVERSIONS

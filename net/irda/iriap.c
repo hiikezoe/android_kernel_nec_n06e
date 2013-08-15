@@ -23,6 +23,10 @@
  *     provided "AS-IS" and at no charge.
  *
  ********************************************************************/
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 #include <linux/types.h>
@@ -122,7 +126,16 @@ int __init iriap_init(void)
 	/*
 	 *  Register some default services for IrLMP
 	 */
-	hints  = irlmp_service_to_hint(S_COMPUTER);
+
+
+
+	hints  = irlmp_service_to_hint(S_OBEX);
+
+
+
+
+
+
 	service_handle = irlmp_register_service(hints);
 
 	/* Register the Device object with LM-IAS */
@@ -579,13 +592,38 @@ static void iriap_getvaluebyclass_response(struct iriap_cb *self,
 
 	/* Reserve space for MUX and LAP header */
 	skb_reserve(tx_skb, self->max_header_size);
-	skb_put(tx_skb, 6);
+
+
+
+
+    if( ret_code == IAS_SUCCESS )
+    {
+        skb_put(tx_skb, 6);
+    }
+    else 
+    {
+        skb_put(tx_skb, 2);
+    }
+
+
+
+
+
 
 	fp = tx_skb->data;
 
 	/* Build frame */
 	fp[n++] = GET_VALUE_BY_CLASS | IAP_LST;
 	fp[n++] = ret_code;
+
+
+
+
+    if( ret_code == IAS_SUCCESS )
+    {
+
+
+
 
 	/* Insert list length (MSB first) */
 	tmp_be16 = htons(0x0001);
@@ -627,6 +665,14 @@ static void iriap_getvaluebyclass_response(struct iriap_cb *self,
 		IRDA_DEBUG(0, "%s(), type not implemented!\n", __func__);
 		break;
 	}
+
+
+
+	}
+
+
+
+
 	iriap_do_r_connect_event(self, IAP_CALL_RESPONSE, tx_skb);
 
 	/* Drop reference count - see state_r_execute(). */

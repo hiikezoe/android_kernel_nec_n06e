@@ -25,6 +25,10 @@
  * Software Foundation; either version 2 of the License, or (at your option)
  * any later version.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/device.h>
 #include <linux/hid.h>
@@ -759,6 +763,10 @@ static const struct hid_device_id mt_devices[] = {
 		HID_USB_DEVICE(USB_VENDOR_ID_ATMEL,
 			USB_DEVICE_ID_ATMEL_MXT_DIGITIZER) },
 
+	
+	{ .driver_data = MT_CLS_DEFAULT,
+		HID_USB_DEVICE(USB_VENDOR_ID_BAANTO,
+			USB_DEVICE_ID_BAANTO_MT_190W2) },
 	/* Cando panels */
 	{ .driver_data = MT_CLS_DUAL_INRANGE_CONTACTNUMBER,
 		HID_USB_DEVICE(USB_VENDOR_ID_CANDO,

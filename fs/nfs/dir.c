@@ -16,6 +16,10 @@
  *              layer (iput() and friends).
  *  6 Jun 1999	Cache readdir lookups in the page cache. -DaveM
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/time.h>
 #include <linux/errno.h>
@@ -1103,7 +1107,7 @@ static int nfs_lookup_revalidate(struct dentry *dentry, struct nameidata *nd)
 	struct nfs_fattr *fattr = NULL;
 	int error;
 
-	if (nd->flags & LOOKUP_RCU)
+	if (nd && (nd->flags & LOOKUP_RCU))
 		return -ECHILD;
 
 	parent = dget_parent(dentry);
@@ -1502,7 +1506,7 @@ static int nfs_open_revalidate(struct dentry *dentry, struct nameidata *nd)
 	struct iattr attr;
 	int openflags, ret = 0;
 
-	if (nd->flags & LOOKUP_RCU)
+	if (nd && (nd->flags & LOOKUP_RCU))
 		return -ECHILD;
 
 	inode = dentry->d_inode;

@@ -9,6 +9,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 #include <linux/types.h>
@@ -221,11 +225,15 @@ int msm_ipc_router_bind(struct socket *sock, struct sockaddr *uaddr,
 	if (!sk)
 		return -EINVAL;
 
-	if (!check_permissions()) {
-		pr_err("%s: %s Do not have permissions\n",
-			__func__, current->comm);
-		return -EPERM;
-	}
+
+
+
+
+
+
+
+
+
 
 	if (!uaddr_len) {
 		pr_err("%s: Invalid address length\n", __func__);
@@ -398,6 +406,14 @@ static int msm_ipc_router_ioctl(struct socket *sock,
 		if (server_arg.num_entries_in_array) {
 			srv_info_sz = server_arg.num_entries_in_array *
 					sizeof(*srv_info);
+			 if ((srv_info_sz / sizeof(*srv_info)) !=
+				server_arg.num_entries_in_array) {
+				 pr_err("%s: Integer Overflow %d * %d\n",
+						 __func__, sizeof(*srv_info),
+						 server_arg.num_entries_in_array);
+				 ret = -EINVAL;
+				 break;
+			 }
 			srv_info = kmalloc(srv_info_sz, GFP_KERNEL);
 			if (!srv_info) {
 				ret = -ENOMEM;

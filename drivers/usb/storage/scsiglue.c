@@ -42,6 +42,10 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 675 Mass Ave, Cambridge, MA 02139, USA.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 #include <linux/mutex.h>
@@ -201,6 +205,12 @@ static int slave_configure(struct scsi_device *sdev)
 		/* Some devices cannot handle READ_CAPACITY_16 */
 		if (us->fflags & US_FL_NO_READ_CAPACITY_16)
 			sdev->no_read_capacity_16 = 1;
+
+		
+
+
+
+		sdev->try_rc_10_first = 1;
 
 		/* assume SPC3 or latter devices support sense size > 18 */
 		if (sdev->scsi_level > SCSI_SPC_2)

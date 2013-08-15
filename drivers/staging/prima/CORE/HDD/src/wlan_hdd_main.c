@@ -30,6 +30,10 @@
    Qualcomm Confidential and Proprietary.
 
   ========================================================================*/
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 /**=========================================================================
 
@@ -303,6 +307,14 @@ static int con_mode = 0;
  */
 static int curr_con_mode = 0;
 #endif
+
+
+char * fcc_country = NULL;
+extern char FCC_givenContryCode[];
+
+extern int is_send_counrtycode;
+
+
 
 #ifdef FEATURE_WLAN_INTEGRATED_SOC
 /**---------------------------------------------------------------------------
@@ -727,6 +739,16 @@ VOS_STATUS hdd_release_firmware(char *pFileName,v_VOID_t *pCtx)
           status = VOS_STATUS_E_FAILURE;
 
    }
+   
+   else if (!strcmp(WLAN_DVE021_NV_FILE,pFileName)) {
+       if(pHddCtx->DVE022_nv) {
+          release_firmware(pHddCtx->DVE022_nv);
+          pHddCtx->DVE022_nv = NULL;
+       }
+       else
+          status = VOS_STATUS_E_FAILURE;
+   }
+      
 
    EXIT();
    return status;
@@ -774,12 +796,61 @@ VOS_STATUS hdd_request_firmware(char *pfileName,v_VOID_t *pCtx,v_VOID_t **ppfw_d
        }
    }
    else if(!strcmp(WLAN_NV_FILE, pfileName)) {
+      
+      
+      char * nvfile_nomal = WLAN_NV_FILE;
+      char * nvfile_powdown = WLAN_NV_FILE_PWRDOWN;
+      char * nvfile = NULL;
 
-       status = request_firmware(&pHddCtx->nv, pfileName, pHddCtx->parent_dev);
+      if(FCC_givenContryCode[0] == '\0')
+      {
+           nvfile = nvfile_powdown;
+      }
+      else
+      {
+          v_REGDOMAIN_t RegDomain;
+          if(vos_nv_getRegDomainFromCountryCode(&RegDomain, FCC_givenContryCode) != VOS_STATUS_SUCCESS)
+          {
+              nvfile = nvfile_powdown;
+          }
+
+
+
+
+
+          else if(RegDomain == REGDOMAIN_FCC || RegDomain == REGDOMAIN_ETSI)
+          {
+             nvfile = nvfile_powdown;
+          }
+          else
+          {
+             nvfile = nvfile_nomal;
+          }
+
+
+
+
+
+
+
+
+
+
+
+
+      }
+
+      hddLog(VOS_TRACE_LEVEL_INFO, "%s: nv %s download ",__func__, nvfile);
+      status = request_firmware(&pHddCtx->nv, nvfile, pHddCtx->parent_dev);
+      
 
        if(status || !pHddCtx->nv || !pHddCtx->nv->data) {
+           
+           
+           
            hddLog(VOS_TRACE_LEVEL_FATAL, "%s: nv %s download failed",
-                  __func__, pfileName);
+                  __func__, nvfile);
+           
            retval = VOS_STATUS_E_FAILURE;
        }
 
@@ -790,6 +861,25 @@ VOS_STATUS hdd_request_firmware(char *pfileName,v_VOID_t *pCtx,v_VOID_t **ppfw_d
                  __func__, *pSize);
        }
    }
+   
+   else if(!strcmp(WLAN_DVE021_NV_FILE, pfileName)) {
+
+       status = request_firmware(&pHddCtx->DVE022_nv, pfileName, pHddCtx->parent_dev);
+
+       if(status || !pHddCtx->DVE022_nv || !pHddCtx->DVE022_nv->data) {
+           hddLog(VOS_TRACE_LEVEL_FATAL, "%s: DVE022_nv %s download failed",
+                  __func__, pfileName);
+           retval = VOS_STATUS_E_FAILURE;
+       }
+
+       else {
+         *ppfw_data = (v_VOID_t *)pHddCtx->DVE022_nv->data;
+         *pSize = pHddCtx->DVE022_nv->size;
+          hddLog(VOS_TRACE_LEVEL_INFO, "%s:  DVE022_nv file size = %d",
+                 __func__, *pSize);
+       }
+   }
+   
 
    EXIT();
    return retval;
@@ -1128,7 +1218,17 @@ hdd_adapter_t* hdd_alloc_station_adapter( hdd_context_t *pHddCtx, tSirMacAddr ma
       init_completion(&pAdapter->scan_info.scan_req_completion_event);
 
       pAdapter->isLinkUpSvcNeeded = FALSE; 
+
+
       pAdapter->higherDtimTransition = eANI_BOOLEAN_TRUE;
+
+
+
+
+
+
+
+
       //Init the net_device structure
       strlcpy(pWlanDev->name, name, IFNAMSIZ);
 
@@ -3053,7 +3153,7 @@ static VOS_STATUS hdd_update_config_from_nv(hdd_context_t* pHddCtx)
 #endif /* FEATURE_WLAN_INTEGRATED_SOC */
 
 #ifndef FEATURE_WLAN_INTEGRATED_SOC
-#if 1 /* need to fix for concurrency */
+
    // Set the MAC Address
    // Currently this is used by HAL to add self sta. Remove this once self sta is added as part of session open.
    halStatus = ccmCfgSetStr( pHddCtx->hHal, WNI_CFG_STA_ID,
@@ -3067,7 +3167,7 @@ static VOS_STATUS hdd_update_config_from_nv(hdd_context_t* pHddCtx)
           "HALStatus is %08d [x%08x]",__func__, halStatus, halStatus );
       return VOS_STATUS_E_FAILURE;
    }
-#endif
+
 #endif
 
    return VOS_STATUS_SUCCESS;
@@ -4124,6 +4224,17 @@ static int hdd_driver_init( void)
        */
       hdd_set_conparam((v_UINT_t)con_mode);
 #endif
+
+
+      if(fcc_country != NULL && *fcc_country != '\0')
+      {
+          FCC_givenContryCode[0] = *fcc_country;
+          FCC_givenContryCode[1] = *(fcc_country + 1);
+
+          is_send_counrtycode = TRUE;
+
+      }
+      
 
       // Call our main init function
       if(hdd_wlan_startup(dev)) {

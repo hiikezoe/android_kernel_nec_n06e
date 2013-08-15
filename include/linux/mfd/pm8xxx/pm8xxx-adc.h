@@ -10,10 +10,25 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 /*
  * Qualcomm PMIC 8921/8018 ADC driver header file
  *
  */
+
+
+
+
+
+
+
+
+
+
+
 
 #ifndef __PM8XXX_ADC_H
 #define __PM8XXX_ADC_H
@@ -95,6 +110,13 @@ enum pm8xxx_adc_channels {
 	ADC_MPP_2_ATEST_5,
 	ADC_MPP_2_ATEST_6,
 	ADC_MPP_2_ATEST_7,
+	
+	CHANNEL_BATT_THERM_UV = 60,
+	CHANNEL_MUXOFF_UV,
+	
+	
+	ADC_MPP_1_AMUX3_UV,
+	
 	ADC_CHANNEL_MAX_NUM,
 };
 
@@ -305,8 +327,8 @@ struct pm8xxx_adc_chan_result {
 	int64_t		physical;
 };
 
-#if defined(CONFIG_SENSORS_PM8XXX_ADC)					\
-			|| defined(CONFIG_SENSORS_PM8XXX_ADC_MODULE)
+#if defined(CONFIG_SENSORS_PM8XXX_ADC)								|| defined(CONFIG_SENSORS_PM8XXX_ADC_MODULE)
+
 /**
  * pm8xxx_adc_scale_default() - Scales the pre-calibrated digital output
  *		of an ADC to the ADC reference and compensates for the
@@ -511,8 +533,8 @@ struct pm8xxx_adc_platform_data {
 };
 
 /* Public API */
-#if defined(CONFIG_SENSORS_PM8XXX_ADC)				\
-			|| defined(CONFIG_SENSORS_PM8XXX_ADC_MODULE)
+#if defined(CONFIG_SENSORS_PM8XXX_ADC)							|| defined(CONFIG_SENSORS_PM8XXX_ADC_MODULE)
+
 /**
  * pm8xxx_adc_read() - Performs ADC read on the channel.
  * @channel:	Input channel to perform the ADC read.

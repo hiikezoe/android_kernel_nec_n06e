@@ -12,6 +12,10 @@
  *     Documentation/filesystems/nfs/Exporting
  *     fs/exportfs/expfs.c.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include "isofs.h"
 
@@ -179,7 +183,7 @@ static struct dentry *isofs_fh_to_parent(struct super_block *sb,
 {
 	struct isofs_fid *ifid = (struct isofs_fid *)fid;
 
-	if (fh_type != 2)
+	if (fh_len < 2 || fh_type != 2)
 		return NULL;
 
 	return isofs_export_iget(sb,

@@ -19,6 +19,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 #include <linux/pci.h>
@@ -684,7 +688,9 @@ static int ehci_init(struct usb_hcd *hcd)
 	hw = ehci->async->hw;
 	hw->hw_next = QH_NEXT(ehci, ehci->async->qh_dma);
 	hw->hw_info1 = cpu_to_hc32(ehci, QH_HEAD);
-	hw->hw_info1 |= cpu_to_hc32(ehci, (1 << 7));	/* I = 1 */
+
+
+
 	hw->hw_token = cpu_to_hc32(ehci, QTD_STS_HALT);
 	hw->hw_qtd_next = EHCI_LIST_END(ehci);
 	ehci->async->qh_state = QH_STATE_LINKED;
@@ -769,11 +775,11 @@ static int __maybe_unused ehci_run (struct usb_hcd *hcd)
 	hcc_params = ehci_readl(ehci, &ehci->caps->hcc_params);
 	if (HCC_64BIT_ADDR(hcc_params)) {
 		ehci_writel(ehci, 0, &ehci->regs->segment);
-#if 0
-// this is deeply broken on almost all architectures
-		if (!dma_set_mask(hcd->self.controller, DMA_BIT_MASK(64)))
-			ehci_info(ehci, "enabled 64bit DMA\n");
-#endif
+
+
+
+
+
 	}
 
 
@@ -1428,9 +1434,9 @@ MODULE_LICENSE ("GPL");
 #define PLATFORM_DRIVER_PRESENT
 #endif
 
-#if !defined(PCI_DRIVER) && !defined(PLATFORM_DRIVER_PRESENT) && \
-    !defined(PS3_SYSTEM_BUS_DRIVER) && !defined(OF_PLATFORM_DRIVER) && \
-    !defined(XILINX_OF_PLATFORM_DRIVER)
+#if !defined(PCI_DRIVER) && !defined(PLATFORM_DRIVER_PRESENT) &&     !defined(PS3_SYSTEM_BUS_DRIVER) && !defined(OF_PLATFORM_DRIVER) &&     !defined(XILINX_OF_PLATFORM_DRIVER)
+
+
 #error "missing bus glue for ehci-hcd"
 #endif
 

@@ -8,6 +8,10 @@
  * (C) 2007 SGI, Christoph Lameter
  * (C) 2011 Linux Foundation, Christoph Lameter
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/mm.h>
 #include <linux/swap.h> /* struct reclaim_state */
@@ -372,15 +376,15 @@ static inline bool __cmpxchg_double_slab(struct kmem_cache *s, struct page *page
 		const char *n)
 {
 	VM_BUG_ON(!irqs_disabled());
-#if defined(CONFIG_HAVE_CMPXCHG_DOUBLE) && \
-    defined(CONFIG_HAVE_ALIGNED_STRUCT_PAGE)
-	if (s->flags & __CMPXCHG_DOUBLE) {
-		if (cmpxchg_double(&page->freelist, &page->counters,
-			freelist_old, counters_old,
-			freelist_new, counters_new))
-		return 1;
-	} else
-#endif
+
+
+
+
+
+
+
+
+
 	{
 		slab_lock(page);
 		if (page->freelist == freelist_old && page->counters == counters_old) {
@@ -407,15 +411,15 @@ static inline bool cmpxchg_double_slab(struct kmem_cache *s, struct page *page,
 		void *freelist_new, unsigned long counters_new,
 		const char *n)
 {
-#if defined(CONFIG_HAVE_CMPXCHG_DOUBLE) && \
-    defined(CONFIG_HAVE_ALIGNED_STRUCT_PAGE)
-	if (s->flags & __CMPXCHG_DOUBLE) {
-		if (cmpxchg_double(&page->freelist, &page->counters,
-			freelist_old, counters_old,
-			freelist_new, counters_new))
-		return 1;
-	} else
-#endif
+
+
+
+
+
+
+
+
+
 	{
 		unsigned long flags;
 
@@ -1514,15 +1518,19 @@ static inline void *acquire_slab(struct kmem_cache *s,
 		freelist = page->freelist;
 		counters = page->counters;
 		new.counters = counters;
-		if (mode)
+		if (mode) {
 			new.inuse = page->objects;
+			new.freelist = NULL;
+		} else {
+			new.freelist = freelist;
+		}
 
 		VM_BUG_ON(new.frozen);
 		new.frozen = 1;
 
 	} while (!__cmpxchg_double_slab(s, page,
 			freelist, counters,
-			NULL, new.counters,
+			new.freelist, new.counters,
 			"lock and freeze"));
 
 	remove_partial(n, page);
@@ -1564,7 +1572,6 @@ static void *get_partial_node(struct kmem_cache *s,
 			object = t;
 			available =  page->objects - page->inuse;
 		} else {
-			page->freelist = t;
 			available = put_cpu_partial(s, page, 0);
 			stat(s, CPU_PARTIAL_NODE);
 		}
@@ -3045,12 +3052,12 @@ static int kmem_cache_open(struct kmem_cache *s,
 		}
 	}
 
-#if defined(CONFIG_HAVE_CMPXCHG_DOUBLE) && \
-    defined(CONFIG_HAVE_ALIGNED_STRUCT_PAGE)
-	if (system_has_cmpxchg_double() && (s->flags & SLAB_DEBUG_FLAGS) == 0)
-		/* Enable fast mode */
-		s->flags |= __CMPXCHG_DOUBLE;
-#endif
+
+
+
+
+
+
 
 	/*
 	 * The larger the object size is, the more pages we want on the partial

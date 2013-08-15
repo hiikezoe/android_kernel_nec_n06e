@@ -11,6 +11,10 @@
  *
  * For licencing details see kernel-base/COPYING
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #ifndef _LINUX_PERF_EVENT_H
 #define _LINUX_PERF_EVENT_H
 
@@ -925,7 +929,7 @@ struct perf_event {
 	struct hw_perf_event		hw;
 
 	struct perf_event_context	*ctx;
-	struct file			*filp;
+	atomic_long_t			refcount;
 
 	/*
 	 * These accumulate total time (in nanoseconds) that children

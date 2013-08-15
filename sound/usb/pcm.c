@@ -13,6 +13,10 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/init.h>
 #include <linux/slab.h>
@@ -325,14 +329,14 @@ static int set_format(struct snd_usb_substream *subs, struct audioformat *fmt)
 
 	snd_usb_set_format_quirk(subs, fmt);
 
-#if 0
-	printk(KERN_DEBUG
-	       "setting done: format = %d, rate = %d..%d, channels = %d\n",
-	       fmt->format, fmt->rate_min, fmt->rate_max, fmt->channels);
-	printk(KERN_DEBUG
-	       "  datapipe = 0x%0x, syncpipe = 0x%0x\n",
-	       subs->datapipe, subs->syncpipe);
-#endif
+
+
+
+
+
+
+
+
 
 	return 0;
 }
@@ -698,6 +702,9 @@ static int snd_usb_pcm_check_knot(struct snd_pcm_runtime *runtime,
 	int *rate_list;
 	int count = 0, needs_knot = 0;
 	int err;
+
+	kfree(subs->rate_list.list);
+	subs->rate_list.list = NULL;
 
 	list_for_each_entry(fp, &subs->fmt_list, list) {
 		if (fp->rates & SNDRV_PCM_RATE_CONTINUOUS)

@@ -3,6 +3,10 @@
  *
  *  Copyright (C) 1991, 1992  Linus Torvalds
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 /*
  * #!-checking implemented by tytso.
@@ -823,10 +827,10 @@ static int exec_mmap(struct mm_struct *mm)
 	/* Notify parent that we're no longer interested in the old VM */
 	tsk = current;
 	old_mm = current->mm;
-	sync_mm_rss(old_mm);
 	mm_release(tsk, old_mm);
 
 	if (old_mm) {
+		sync_mm_rss(old_mm);
 		/*
 		 * Make sure that if there is a core dump in progress
 		 * for the old mm, we get out and die instead of going
@@ -2221,8 +2225,9 @@ void do_coredump(long signr, int exit_code, struct pt_regs *regs)
 		/*
 		 * Dont allow local users get cute and trick others to coredump
 		 * into their pre-created files.
-		 */
-		if (inode->i_uid != current_fsuid())
+		 * Note, this is not relevant for pipes
+		*/
+		if (!ispipe && (inode->i_uid != current_fsuid()))
 			goto close_fail;
 		if (!cprm.file->f_op || !cprm.file->f_op->write)
 			goto close_fail;

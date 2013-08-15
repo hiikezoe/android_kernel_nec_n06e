@@ -13,6 +13,10 @@
  *	minor cleanups.
  *	September 30, 2002 Mike Anderson (andmike@us.ibm.com)
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 #include <linux/sched.h>
@@ -41,6 +45,8 @@
 #include "scsi_transport_api.h"
 
 #include <trace/events/scsi.h>
+
+static void scsi_eh_done(struct scsi_cmnd *scmd);
 
 #define SENSE_TIMEOUT		(10*HZ)
 
@@ -240,6 +246,14 @@ static int scsi_check_sense(struct scsi_cmnd *scmd)
 
 	if (! scsi_command_normalize_sense(scmd, &sshdr))
 		return FAILED;	/* no valid sense data */
+
+	if (scmd->cmnd[0] == TEST_UNIT_READY && scmd->scsi_done != scsi_eh_done)
+		
+
+
+
+
+		return SUCCESS;
 
 	if (scsi_sense_is_deferred(&sshdr))
 		return NEEDS_RETRY;
@@ -1687,6 +1701,20 @@ static void scsi_restart_operations(struct Scsi_Host *shost)
 	 * requests are started.
 	 */
 	scsi_run_host_queues(shost);
+
+	
+
+
+
+
+
+
+
+	spin_lock_irqsave(shost->host_lock, flags);
+	if (shost->host_eh_scheduled)
+		if (scsi_host_set_state(shost, SHOST_RECOVERY))
+			WARN_ON(scsi_host_set_state(shost, SHOST_CANCEL_RECOVERY));
+	spin_unlock_irqrestore(shost->host_lock, flags);
 }
 
 /**

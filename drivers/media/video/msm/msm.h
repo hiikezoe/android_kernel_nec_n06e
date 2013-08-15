@@ -10,6 +10,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifndef _MSM_H
 #define _MSM_H
@@ -736,6 +740,12 @@ int msm_mctl_pp_get_vpe_buf_info(struct msm_mctl_pp_frame_info *zoom);
 void msm_queue_init(struct msm_device_queue *queue, const char *name);
 void msm_enqueue(struct msm_device_queue *queue, struct list_head *entry);
 void msm_drain_eventq(struct msm_device_queue *queue);
+
+
+
+extern int i2c_error_flag;
+
+
 #endif /* __KERNEL__ */
 
 #endif /* _MSM_H */

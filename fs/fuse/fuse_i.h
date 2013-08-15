@@ -5,6 +5,10 @@
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
 */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifndef _FS_FUSE_I_H
 #define _FS_FUSE_I_H
@@ -81,6 +85,9 @@ struct fuse_inode {
 	/** The sticky bit in inode->i_mode may have been removed, so
 	    preserve the original mode */
 	umode_t orig_i_mode;
+
+	
+	u64 orig_ino;
 
 	/** Version of last attribute change */
 	u64 attr_version;

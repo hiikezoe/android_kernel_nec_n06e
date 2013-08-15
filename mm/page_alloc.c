@@ -13,6 +13,10 @@
  *  Per cpu hot/cold page lists, bulk allocation, Martin J. Bligh, Sept 2002
  *          (lots of bits borrowed from Ingo Molnar & Andrew Morton)
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/stddef.h>
 #include <linux/mm.h>
@@ -588,7 +592,7 @@ static inline void __free_one_page(struct page *page,
 		combined_idx = buddy_idx & page_idx;
 		higher_page = page + (combined_idx - page_idx);
 		buddy_idx = __find_buddy_index(combined_idx, order + 1);
-		higher_buddy = page + (buddy_idx - combined_idx);
+		higher_buddy = higher_page + (buddy_idx - combined_idx);
 		if (page_is_buddy(higher_page, higher_buddy, order + 1)) {
 			list_add_tail(&page->lru,
 				&zone->free_area[order].free_list[migratetype]);
@@ -1128,7 +1132,7 @@ static struct page *__rmqueue_cma(struct zone *zone, unsigned int order,
 #ifdef CONFIG_CMA
 	if (migratetype == MIGRATE_MOVABLE && !zone->cma_alloc)
 		page = __rmqueue_smallest(zone, order, MIGRATE_CMA);
-	else
+	if (!page)
 #endif
 retry_reserve :
 		page = __rmqueue_smallest(zone, order, migratetype);

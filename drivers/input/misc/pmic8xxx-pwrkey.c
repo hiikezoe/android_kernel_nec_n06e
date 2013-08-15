@@ -9,6 +9,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 #include <linux/init.h>
@@ -19,9 +23,12 @@
 #include <linux/interrupt.h>
 #include <linux/platform_device.h>
 #include <linux/log2.h>
+#include <linux/proc_fs.h>  
+#include <linux/uaccess.h>  
 
 #include <linux/mfd/pm8xxx/core.h>
 #include <linux/input/pmic8xxx-pwrkey.h>
+#include <linux/keypad_cmd.h>
 
 #define PON_CNTL_1 0x1C
 #define PON_CNTL_PULL_UP BIT(7)
@@ -40,15 +47,30 @@ struct pmic8xxx_pwrkey {
 	const struct pm8xxx_pwrkey_platform_data *pdata;
 };
 
+static struct input_dev *pwr_key_cmd_pwr;
+
 static irqreturn_t pwrkey_press_irq(int irq, void *_pwrkey)
 {
 	struct pmic8xxx_pwrkey *pwrkey = _pwrkey;
 
-	if (pwrkey->press == true) {
-		pwrkey->press = false;
+
+
+
+
+
+
+
+
+
+	int key_mask;
+	key_mask = keypad_mask_get();
+	if( key_mask )
+	{
 		return IRQ_HANDLED;
-	} else {
-		pwrkey->press = true;
+	}
+	else
+	{
+		
 	}
 
 	input_report_key(pwrkey->pwr, KEY_POWER, 1);
@@ -61,12 +83,36 @@ static irqreturn_t pwrkey_release_irq(int irq, void *_pwrkey)
 {
 	struct pmic8xxx_pwrkey *pwrkey = _pwrkey;
 
-	if (pwrkey->press == false) {
-		input_report_key(pwrkey->pwr, KEY_POWER, 1);
-		input_sync(pwrkey->pwr);
-		pwrkey->press = true;
-	} else {
-		pwrkey->press = false;
+
+
+
+
+
+
+
+
+
+
+	int key_mask, key;
+	key_mask = keypad_mask_get();
+	if( key_mask )
+	{
+		printk(KERN_DEBUG "[pmic8xxx-pwrkey]%s: (key_mask:0x%02X) \n", __func__, key_mask);
+		if( key_mask & KEY_DIAG_FLG_RAND_IN )
+		{
+			key = KEY_POWER;
+			printk(KERN_DEBUG "[pmic8xxx-pwrkey]%s: (key_mask:0x%02X) (key:0x%02X)\n", __func__, key_mask, key);
+			keypad_diag_func( key );
+		}
+		else
+		{
+			
+		}
+		return IRQ_HANDLED;
+	}
+	else
+	{
+		
 	}
 
 	input_report_key(pwrkey->pwr, KEY_POWER, 0);
@@ -74,6 +120,14 @@ static irqreturn_t pwrkey_release_irq(int irq, void *_pwrkey)
 
 	return IRQ_HANDLED;
 }
+
+unsigned char pwr_key_cmd(int *val)
+{
+	input_report_key(pwr_key_cmd_pwr,val[1],val[2]);
+	input_sync(pwr_key_cmd_pwr);
+	return 1;
+}
+EXPORT_SYMBOL(pwr_key_cmd);
 
 #ifdef CONFIG_PM_SLEEP
 static int pmic8xxx_pwrkey_suspend(struct device *dev)
@@ -101,6 +155,78 @@ static int pmic8xxx_pwrkey_resume(struct device *dev)
 }
 #endif
 
+
+static int long_press_mode = 0;
+static struct platform_device *long_press_pdev;
+static unsigned int orig_delay;
+
+static void long_press_delay(int mode)
+{
+	const struct pm8xxx_pwrkey_platform_data *pdata =
+					dev_get_platdata(&long_press_pdev->dev);
+	unsigned int new_delay = (mode ? 2000000 : orig_delay);
+	unsigned int delay;
+	u8 pon_cntl;
+	int err;
+
+	delay = (new_delay << 6) / USEC_PER_SEC;
+	delay = ilog2(delay);
+
+	err = pm8xxx_readb(long_press_pdev->dev.parent, PON_CNTL_1, &pon_cntl);
+	if (err < 0) {
+		dev_err(&long_press_pdev->dev, "failed reading PON_CNTL_1 err=%d\n", err);
+		return;
+	}
+
+	pon_cntl &= ~PON_CNTL_TRIG_DELAY_MASK;
+	pon_cntl |= (delay & PON_CNTL_TRIG_DELAY_MASK);
+	if (pdata->pull_up)
+		pon_cntl |= PON_CNTL_PULL_UP;
+	else
+		pon_cntl &= ~PON_CNTL_PULL_UP;
+
+	err = pm8xxx_writeb(long_press_pdev->dev.parent, PON_CNTL_1, pon_cntl);
+	if (err < 0) {
+		dev_err(&long_press_pdev->dev, "failed writing PON_CNTL_1 err=%d\n", err);
+		return;
+	}
+
+	return;
+}
+
+static int long_press_read(char *buffer, char **start, off_t offset,
+                           int count, int *peof, void *dat)
+{
+	if (long_press_mode) {
+		buffer[0]='1';
+	} else {
+		buffer[0]='0';
+	}
+	buffer[1]=(char)0;
+	*start= &buffer[0];
+
+	return sizeof(char);
+}
+
+static int long_press_write(struct file* filp, const char* buffer, unsigned long count, void* data )
+{
+	char buf[1];
+	if (count > 0) {
+		if (copy_from_user(buf, buffer, 1)) {
+			return -EFAULT;
+		}
+		if (buf[0] == '0') {
+			long_press_mode = 0;
+			long_press_delay(0);
+		} else if (buf[0] == '1') {
+			long_press_mode = 1;
+			long_press_delay(1);
+		}
+	}
+	return count;
+}
+
+
 static SIMPLE_DEV_PM_OPS(pm8xxx_pwr_key_pm_ops,
 		pmic8xxx_pwrkey_suspend, pmic8xxx_pwrkey_resume);
 
@@ -115,6 +241,9 @@ static int __devinit pmic8xxx_pwrkey_probe(struct platform_device *pdev)
 	struct pmic8xxx_pwrkey *pwrkey;
 	const struct pm8xxx_pwrkey_platform_data *pdata =
 					dev_get_platdata(&pdev->dev);
+
+	struct proc_dir_entry *dirp;
+
 
 	if (!pdata) {
 		dev_err(&pdev->dev, "power key platform data not supplied\n");
@@ -181,6 +310,8 @@ static int __devinit pmic8xxx_pwrkey_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, pwrkey);
 
+	pwr_key_cmd_pwr = pwr;
+
 	/* check power key status during boot */
 	err = pm8xxx_read_irq_stat(pdev->dev.parent, key_press_irq);
 	if (err < 0) {
@@ -211,6 +342,19 @@ static int __devinit pmic8xxx_pwrkey_probe(struct platform_device *pdev)
 		goto free_press_irq;
 	}
 
+
+	dirp = create_proc_entry("long_press", 0666, 0);
+	if (dirp == NULL) {
+		dev_dbg(&pdev->dev, "Can't create proc entry for pwrkey\n");
+		goto free_press_irq;
+	}
+
+	long_press_pdev = pdev;
+	orig_delay = pdata->kpd_trigger_delay_us;
+	dirp->read_proc = (read_proc_t *)long_press_read;
+	dirp->write_proc = (write_proc_t *)long_press_write;
+
+
 	device_init_wakeup(&pdev->dev, pdata->wakeup);
 
 	return 0;
@@ -235,6 +379,9 @@ static int __devexit pmic8xxx_pwrkey_remove(struct platform_device *pdev)
 	int key_press_irq = platform_get_irq(pdev, 1);
 
 	device_init_wakeup(&pdev->dev, 0);
+
+
+	remove_proc_entry("long_press", NULL);
 
 	free_irq(key_press_irq, pwrkey);
 	free_irq(key_release_irq, pwrkey);

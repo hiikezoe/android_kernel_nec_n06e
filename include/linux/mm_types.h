@@ -1,3 +1,7 @@
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #ifndef _LINUX_MM_TYPES_H
 #define _LINUX_MM_TYPES_H
 
@@ -56,8 +60,18 @@ struct page {
 		};
 
 		union {
-			/* Used for cmpxchg_double in slub */
-			unsigned long counters;
+
+
+
+
+
+			
+
+
+
+
+			unsigned counters;
+
 
 			struct {
 

@@ -1,3 +1,7 @@
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #ifndef ISCSI_TARGET_CORE_H
 #define ISCSI_TARGET_CORE_H
 
@@ -25,10 +29,10 @@
 #define NA_DATAOUT_TIMEOUT_RETRIES	5
 #define NA_DATAOUT_TIMEOUT_RETRIES_MAX	15
 #define NA_DATAOUT_TIMEOUT_RETRIES_MIN	1
-#define NA_NOPIN_TIMEOUT		5
+#define NA_NOPIN_TIMEOUT		15
 #define NA_NOPIN_TIMEOUT_MAX		60
 #define NA_NOPIN_TIMEOUT_MIN		3
-#define NA_NOPIN_RESPONSE_TIMEOUT	5
+#define NA_NOPIN_RESPONSE_TIMEOUT	30
 #define NA_NOPIN_RESPONSE_TIMEOUT_MAX	60
 #define NA_NOPIN_RESPONSE_TIMEOUT_MIN	3
 #define NA_RANDOM_DATAIN_PDU_OFFSETS	0

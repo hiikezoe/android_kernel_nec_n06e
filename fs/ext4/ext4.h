@@ -12,6 +12,10 @@
  *
  *  Copyright (C) 1991, 1992  Linus Torvalds
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifndef _EXT4_H
 #define _EXT4_H
@@ -1783,7 +1787,7 @@ struct mmpd_data {
 # define NORET_AND	noreturn,
 
 /* bitmap.c */
-extern unsigned int ext4_count_free(struct buffer_head *, unsigned);
+extern unsigned int ext4_count_free(char *bitmap, unsigned numchars);
 
 /* balloc.c */
 extern unsigned int ext4_block_group(struct super_block *sb,

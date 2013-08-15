@@ -9,6 +9,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/slab.h>
 #include <linux/init.h>
@@ -35,6 +39,9 @@
 
 #define READ_HSIC_BUF_SIZE 2048
 struct diag_hsic_dev *diag_hsic;
+
+#define	D_DIAG_B_MODE		0
+extern int	g_b_mode;
 
 static void diag_read_hsic_work_fn(struct work_struct *work)
 {
@@ -151,8 +158,8 @@ static void diag_hsic_read_complete_callback(void *ctxt, char *buf,
 	 * Note that zero length is valid and still needs to be sent to
 	 * the USB only when we are logging data to the USB
 	 */
-	if ((actual_size > 0) ||
-		((actual_size == 0) && (driver->logging_mode == USB_MODE))) {
+	if (((g_b_mode != D_DIAG_B_MODE) && (actual_size > 0)) ||
+		((g_b_mode != D_DIAG_B_MODE) && (actual_size == 0) && (driver->logging_mode == USB_MODE))) {
 		if (!buf) {
 			pr_err("diag: Out of diagmem for HSIC\n");
 		} else {

@@ -1,3 +1,8 @@
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
 #ifndef __MSM_HDMI_MODES_H__
 #define __MSM_HDMI_MODES_H__
 #include <linux/types.h>
@@ -130,6 +135,9 @@ struct msm_hdmi_mode_timing_info {
 #define VFRMT_NOT_SUPPORTED(VFRMT) \
 	{VFRMT, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, false}
 
+#define HDMI_VFRMT_UNKNOWN_TIMING \
+	{HDMI_VFRMT_UNKNOWN, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, false}
+
 #define HDMI_VFRMT_640x480p60_4_3_TIMING				\
 	{HDMI_VFRMT_640x480p60_4_3, 640, 16, 96, 48, true,		\
 	 480, 10, 2, 33, true, 25200, 60000, false, true}
@@ -227,13 +235,21 @@ static inline void MSM_HDMI_MODES_SET_SUPP_TIMINGS(
 		MSM_HDMI_MODES_SET_TIMING(lut, HDMI_VFRMT_1920x1080i60_16_9);
 		MSM_HDMI_MODES_SET_TIMING(lut, HDMI_VFRMT_1440x480i60_4_3);
 		MSM_HDMI_MODES_SET_TIMING(lut, HDMI_VFRMT_1440x480i60_16_9);
-		MSM_HDMI_MODES_SET_TIMING(lut, HDMI_VFRMT_1920x1080p60_16_9);
+
+
+
+
+
 		MSM_HDMI_MODES_SET_TIMING(lut, HDMI_VFRMT_720x576p50_4_3);
 		MSM_HDMI_MODES_SET_TIMING(lut, HDMI_VFRMT_720x576p50_16_9);
 		MSM_HDMI_MODES_SET_TIMING(lut, HDMI_VFRMT_1280x720p50_16_9);
 		MSM_HDMI_MODES_SET_TIMING(lut, HDMI_VFRMT_1440x576i50_4_3);
 		MSM_HDMI_MODES_SET_TIMING(lut, HDMI_VFRMT_1440x576i50_16_9);
-		MSM_HDMI_MODES_SET_TIMING(lut, HDMI_VFRMT_1920x1080p50_16_9);
+
+
+
+
+
 		MSM_HDMI_MODES_SET_TIMING(lut, HDMI_VFRMT_1920x1080p24_16_9);
 		MSM_HDMI_MODES_SET_TIMING(lut, HDMI_VFRMT_1920x1080p25_16_9);
 		MSM_HDMI_MODES_SET_TIMING(lut, HDMI_VFRMT_1920x1080p30_16_9);

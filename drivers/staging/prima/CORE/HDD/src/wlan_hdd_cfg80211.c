@@ -30,6 +30,10 @@
   Qualcomm Confidential and Proprietary.
 
   ========================================================================*/
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 /**========================================================================= 
 
@@ -1937,6 +1941,9 @@ int wlan_hdd_cfg80211_change_iface( struct wiphy *wiphy,
     struct wireless_dev *wdev;
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR( ndev );
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
+    
+    hdd_adapter_t  *pP2pAdapter = NULL;
+    
     tCsrRoamProfile *pRoamProfile = NULL;
     eCsrRoamBssType LastBSSType;
     hdd_config_t *pConfig = pHddCtx->cfg_ini;
@@ -2028,6 +2035,28 @@ int wlan_hdd_cfg80211_change_iface( struct wiphy *wiphy,
                 hddLog(VOS_TRACE_LEVEL_INFO_HIGH,
                       "%s: setting interface Type to %s", __func__,
                       (type == NL80211_IFTYPE_AP) ? "SoftAP" : "P2pGo");
+
+                
+                if (NL80211_IFTYPE_AP == type)
+                {
+                     
+
+
+
+
+
+
+                    
+                    pP2pAdapter = hdd_get_adapter(pHddCtx, WLAN_HDD_P2P_DEVICE);
+
+                    if (pP2pAdapter)
+                    {
+                        hdd_stop_adapter(pHddCtx, pP2pAdapter);
+                        hdd_deinit_adapter(pHddCtx, pP2pAdapter);
+                        hdd_close_adapter(pHddCtx, pP2pAdapter, VOS_TRUE);
+                    }
+                }
+                
 
                 //De-init the adapter.
                 hdd_stop_adapter( pHddCtx, pAdapter );
@@ -2765,89 +2794,89 @@ static int wlan_hdd_cfg80211_del_key( struct wiphy *wiphy,
     //it is observed that this is invalidating peer
     //key index whenever re-key is done. This is affecting data link.
     //It should be ok to ignore del_key.
-#if 0
-    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR( ndev ); 
-    v_CONTEXT_t pVosContext = (WLAN_HDD_GET_CTX(pAdapter))->pvosContext;  
-    u8 groupmacaddr[WNI_CFG_BSSID_LEN] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
-    tCsrRoamSetKey  setKey;
-    v_U32_t roamId= 0xFF;
-    
-    ENTER();
 
-    hddLog(VOS_TRACE_LEVEL_INFO_HIGH, "%s: device_mode = %d\n",
-                                     __func__,pAdapter->device_mode);
 
-    if (CSR_MAX_NUM_KEY <= key_index)
-    {
-        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Invalid key index %d", __func__, 
-                key_index);
 
-        return -EINVAL;
-    }
 
-    vos_mem_zero(&setKey,sizeof(tCsrRoamSetKey));
-    setKey.keyId = key_index;
 
-    if (mac_addr)
-        vos_mem_copy(setKey.peerMac, mac_addr,WNI_CFG_BSSID_LEN);
-    else
-        vos_mem_copy(setKey.peerMac, groupmacaddr, WNI_CFG_BSSID_LEN);
 
-    setKey.encType = eCSR_ENCRYPT_TYPE_NONE;
 
-    if ((pAdapter->device_mode == WLAN_HDD_SOFTAP)
-#ifdef WLAN_FEATURE_P2P
-      || (pAdapter->device_mode == WLAN_HDD_P2P_GO)
-#endif
-       ) 
-    { 
-       
-        hdd_hostapd_state_t *pHostapdState =  
-                                  WLAN_HDD_GET_HOSTAP_STATE_PTR(pAdapter);
-        if( pHostapdState->bssState == BSS_START)
-        {
-            status = WLANSAP_SetKeySta( pVosContext, &setKey);
-    
-            if ( status != eHAL_STATUS_SUCCESS )
-            {
-                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                     "[%4d] WLANSAP_SetKeySta returned ERROR status= %d",
-                     __LINE__, status );
-            }
-        }
-    }
-    else if ( (pAdapter->device_mode == WLAN_HDD_INFRA_STATION)
-#ifdef WLAN_FEATURE_P2P
-           || (pAdapter->device_mode == WLAN_HDD_P2P_CLIENT) 
-#endif
-            )
-    {
-        hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
 
-        pHddStaCtx->roam_info.roamingState = HDD_ROAM_STATE_SETTING_KEY;   
-    
-        hddLog(VOS_TRACE_LEVEL_INFO_MED, 
-                "%s: delete key for peerMac %2x:%2x:%2x:%2x:%2x:%2x",
-                __func__, setKey.peerMac[0], setKey.peerMac[1], 
-                setKey.peerMac[2], setKey.peerMac[3], 
-                setKey.peerMac[4], setKey.peerMac[5]);
-        if(pAdapter->sessionCtx.station.conn_info.connState == 
-                                       eConnectionState_Associated) 
-        {
-            status = sme_RoamSetKey( WLAN_HDD_GET_HAL_CTX(pAdapter), 
-                                   pAdapter->sessionId, &setKey, &roamId );
-        
-            if ( 0 != status )
-            {
-                hddLog(VOS_TRACE_LEVEL_ERROR, 
-                        "%s: sme_RoamSetKey failure, returned %d",
-                                                     __func__, status);
-                pHddStaCtx->roam_info.roamingState = HDD_ROAM_STATE_NONE;
-                return -EINVAL;
-            }
-        }
-    }
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     EXIT();
     return status;
 }
@@ -3660,6 +3689,14 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy, struct net_device *dev,
 
     if (NULL != request)
     {
+        
+        if (NULL == request->ssids)
+        {
+            hddLog(VOS_TRACE_LEVEL_ERROR, "%s: ssids is NULL", __func__);
+            return -EINVAL;
+        }
+        
+
         hddLog(VOS_TRACE_LEVEL_INFO, "scan request for ssid = %d",
                (int)request->n_ssids);  
 

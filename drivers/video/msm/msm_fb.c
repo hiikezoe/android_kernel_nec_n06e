@@ -15,6 +15,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 #include <linux/moduleparam.h>
@@ -52,6 +56,17 @@
 #include "tvenc.h"
 #include "mdp.h"
 #include "mdp4.h"
+
+#if defined (LCD_DEVICE_S6E8AA0X01)
+#include <linux/reboot.h>
+#include <../../../arch/arm/mach-msm/include/mach/msm_smsm.h>
+#include "mipi_smd_oled_hd.h"
+#endif
+
+
+
+
+
 
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
 #define MSM_FB_NUM	3
@@ -116,6 +131,37 @@ static int mdp_bl_scale_config(struct msm_fb_data_type *mfd,
 static void msm_fb_scale_bl(__u32 *bl_lvl);
 static void msm_fb_commit_wq_handler(struct work_struct *work);
 static int msm_fb_pan_idle(struct msm_fb_data_type *mfd);
+
+
+static int msm_fb_ioctl_DVE022(struct fb_info *info, unsigned int cmd,
+                             unsigned long arg);
+
+
+
+#if defined (LCD_DEVICE_S6E8AA0X01)
+
+#if defined (CONFIG_FEATURE_DVE021_ONLY_FOR_PRODUCTION_PROCESS_DVE082)
+boolean msm_fb_disable_sleep = TRUE;
+#else
+boolean msm_fb_disable_sleep = FALSE;
+#endif
+
+spinlock_t msm_fb_disable_sleep_lock;
+boolean msm_fb_oled_reg_read = FALSE;
+
+
+boolean msm_fb_oled_esd_command_locked = FALSE;
+
+
+
+static boolean msm_fb_notify_reboot_flg = FALSE;
+
+
+
+boolean msm_fb_oled_force_off = FALSE;
+
+#endif
+
 
 #ifdef MSM_FB_ENABLE_DBGFS
 
@@ -191,10 +237,14 @@ static void msm_fb_set_bl_brightness(struct led_classdev *led_cdev,
 	else if (value >= MAX_BACKLIGHT_BRIGHTNESS)
 		bl_lvl = mfd->panel_info.bl_max;
 	else
+#if defined (LCD_DEVICE_S6E8AA0X01)
+		bl_lvl = (int)value;
+#else
 		bl_lvl = mfd->panel_info.bl_min + ((value - 1) * 2 *
 			(mfd->panel_info.bl_max - mfd->panel_info.bl_min) +
 			MAX_BACKLIGHT_BRIGHTNESS - 1) /
 			(MAX_BACKLIGHT_BRIGHTNESS - 1) / 2;
+#endif
 
         down(&mfd->sem);
 	msm_fb_set_backlight(mfd, bl_lvl);
@@ -215,13 +265,19 @@ unsigned char hdmi_prim_resolution;
 int msm_fb_detect_client(const char *name)
 {
 	int ret = 0;
-	u32 len;
+
 #ifdef CONFIG_FB_MSM_MDDI_AUTO_DETECT
 	u32 id;
 #endif
 	if (!msm_fb_pdata)
 		return -EPERM;
 
+#if defined (LCD_DEVICE_S6E8AA0X01)
+
+	if ( !strcmp("mipi_smd_video_hd_pt", name) )
+		return 0;
+
+#else
 	len = strnlen(name, PANEL_NAME_MAX_LEN);
 	if (strnlen(msm_fb_pdata->prim_panel_name, PANEL_NAME_MAX_LEN)) {
 		pr_err("\n name = %s, prim_display = %s",
@@ -250,6 +306,7 @@ int msm_fb_detect_client(const char *name)
 
 	if (ret)
 		return ret;
+#endif
 
 	ret = -EPERM;
 	if (msm_fb_pdata && msm_fb_pdata->detect_client) {
@@ -344,8 +401,13 @@ static ssize_t msm_fb_msm_fb_type(struct device *dev,
 }
 
 static DEVICE_ATTR(msm_fb_type, S_IRUGO, msm_fb_msm_fb_type, NULL);
-static DEVICE_ATTR(msm_fb_fps_level, S_IRUGO | S_IWUGO, NULL, \
+
+
+
+
+static DEVICE_ATTR(msm_fb_fps_level, S_IRUGO | S_IWUSR, NULL, \
 				msm_fb_fps_level_change);
+
 static struct attribute *msm_fb_attrs[] = {
 	&dev_attr_msm_fb_type.attr,
 	&dev_attr_msm_fb_fps_level.attr,
@@ -547,6 +609,19 @@ static int msm_fb_suspend(struct platform_device *pdev, pm_message_t state)
 
 	MSM_FB_DEBUG("msm_fb_suspend\n");
 
+#if defined (LCD_DEVICE_S6E8AA0X01)
+
+
+    
+        if (msm_fb_disable_sleep == TRUE && mfd->panel_info.type != DTV_PANEL)
+	{
+		printk(KERN_DEBUG "%s. Disable Sleep!!\n", __func__ );
+		return;
+	}
+
+
+#endif
+
 	mfd = (struct msm_fb_data_type *)platform_get_drvdata(pdev);
 
 	if ((!mfd) || (mfd->key != MFD_KEY))
@@ -681,6 +756,19 @@ static int msm_fb_resume(struct platform_device *pdev)
 
 	MSM_FB_DEBUG("msm_fb_resume\n");
 
+#if defined (LCD_DEVICE_S6E8AA0X01)
+
+
+    
+        if (msm_fb_disable_sleep == TRUE && mfd->panel_info.type != DTV_PANEL)
+	{
+		printk(KERN_DEBUG "%s. Disable Sleep!!\n", __func__ );
+		return;
+	}
+
+
+#endif
+
 	mfd = (struct msm_fb_data_type *)platform_get_drvdata(pdev);
 
 	if ((!mfd) || (mfd->key != MFD_KEY))
@@ -787,8 +875,8 @@ static struct dev_pm_ops msm_fb_dev_pm_ops = {
 	.runtime_suspend = msm_fb_runtime_suspend,
 	.runtime_resume = msm_fb_runtime_resume,
 	.runtime_idle = msm_fb_runtime_idle,
-#if (defined(CONFIG_SUSPEND) && defined(CONFIG_FB_MSM_HDMI_MSM_PANEL) && \
-	!defined(CONFIG_FB_MSM_HDMI_AS_PRIMARY))
+#if (defined(CONFIG_SUSPEND) && defined(CONFIG_FB_MSM_HDMI_MSM_PANEL) && 	!defined(CONFIG_FB_MSM_HDMI_AS_PRIMARY))
+
 	.suspend = msm_fb_ext_suspend,
 	.resume = msm_fb_ext_resume,
 #endif
@@ -845,6 +933,21 @@ static void msmfb_early_suspend(struct early_suspend *h)
 		break;
 	}
 #endif
+	printk(KERN_DEBUG "[In]%s.\n", __func__);
+
+#if defined (LCD_DEVICE_S6E8AA0X01)
+
+
+    
+        if (msm_fb_disable_sleep == TRUE && mfd->panel_info.type != DTV_PANEL)
+	{
+		printk(KERN_DEBUG "%s. Disable Sleep!!\n", __func__ );
+		return;
+	}
+
+
+#endif
+
 	msm_fb_suspend_sub(mfd);
 
 	pdata = (struct msm_fb_panel_data *)mfd->pdev->dev.platform_data;
@@ -858,6 +961,7 @@ static void msmfb_early_suspend(struct early_suspend *h)
 			pdata->power_ctrl(FALSE);
 		}
 	}
+	printk(KERN_DEBUG "[Out]%s.\n", __func__);
 }
 
 static void msmfb_early_resume(struct early_suspend *h)
@@ -865,6 +969,8 @@ static void msmfb_early_resume(struct early_suspend *h)
 	struct msm_fb_data_type *mfd = container_of(h, struct msm_fb_data_type,
 						early_suspend);
 	struct msm_fb_panel_data *pdata = NULL;
+
+	printk(KERN_DEBUG "[In]%s.\n", __func__);
 
 	msm_fb_pan_idle(mfd);
 	pdata = (struct msm_fb_panel_data *)mfd->pdev->dev.platform_data;
@@ -878,7 +984,21 @@ static void msmfb_early_resume(struct early_suspend *h)
 		}
 	}
 
+#if defined (LCD_DEVICE_S6E8AA0X01)
+
+
+    
+        if (msm_fb_disable_sleep == TRUE && mfd->panel_info.type != DTV_PANEL)
+	{
+		printk(KERN_DEBUG "%s. Disable Sleep!!\n", __func__ );
+		return;
+	}
+
+
+#endif
+
 	msm_fb_resume_sub(mfd);
+	printk(KERN_DEBUG "[Out]%s.\n", __func__);
 }
 #endif
 
@@ -936,14 +1056,34 @@ void msm_fb_set_backlight(struct msm_fb_data_type *mfd, __u32 bkl_lvl)
 
 	pdata = (struct msm_fb_panel_data *)mfd->pdev->dev.platform_data;
 
+#if defined (LCD_DEVICE_S6E8AA0X01)
+
+
+    if ( (msm_fb_disable_sleep == TRUE && mfd->panel_info.type != DTV_PANEL) || (msm_fb_oled_reg_read == TRUE) )
+	{
+        return ;
+	}
+
+
+#endif
+
 	if ((pdata) && (pdata->set_backlight)) {
 		msm_fb_scale_bl(&temp);
 		if (bl_level_old == temp) {
 			return;
 		}
 		mfd->bl_level = temp;
+#if defined (LCD_DEVICE_S6E8AA0X01)
+        
+        mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
+#endif
 		pdata->set_backlight(mfd);
 		mfd->bl_level = bkl_lvl;
+
+#if defined (LCD_DEVICE_S6E8AA0X01)
+        
+        mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
+#endif
 		bl_level_old = temp;
 	}
 }
@@ -970,6 +1110,13 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 			ret = pdata->on(mfd->pdev);
 			if (ret == 0) {
 				mfd->panel_power_on = TRUE;
+
+
+#if defined (LCD_DEVICE_S6E8AA0X01)
+				msm_fb_oled_esd_command_locked = FALSE;
+#endif
+
+
 				mfd->panel_driver_on = mfd->op_enable;
 			}
 		}
@@ -987,6 +1134,11 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 			curr_pwr_state = mfd->panel_power_on;
 			mfd->panel_power_on = FALSE;
 
+#if defined (LCD_DEVICE_S6E8AA0X01)
+			msm_fb_oled_esd_command_locked = TRUE;
+#endif
+
+
 			if (mfd->msmfb_no_update_notify_timer.function)
 				del_timer(&mfd->msmfb_no_update_notify_timer);
 			complete(&mfd->msmfb_no_update_notify);
@@ -1003,6 +1155,12 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 				mfd->panel_power_on = curr_pwr_state;
 
 			msm_fb_release_timeline(mfd);
+
+#if defined (LCD_DEVICE_S6E8AA0X01)
+            if (msm_fb_oled_force_off)
+                msm_fb_oled_force_off = FALSE;
+#endif
+
 			mfd->op_enable = TRUE;
 		}
 		break;
@@ -1106,6 +1264,16 @@ static int msm_fb_blank(int blank_mode, struct fb_info *info)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 
+
+#if defined (LCD_DEVICE_S6E8AA0X01)
+
+    
+    if (msm_fb_disable_sleep == TRUE && mfd->panel_info.type != DTV_PANEL)
+        return 0;
+
+#endif
+
+
 	if (blank_mode == FB_BLANK_POWERDOWN) {
 		struct fb_event event;
 		event.info = info;
@@ -1125,6 +1293,17 @@ static int msm_fb_blank(int blank_mode, struct fb_info *info)
 		else
 			mfd->suspend.panel_power_on = FALSE;
 	}
+
+
+#if defined (LCD_DEVICE_S6E8AA0X01)
+	if (msm_fb_notify_reboot_flg)
+	{
+		printk(KERN_INFO "%s. Backlight Off Request.\n", __func__);
+		msm_fb_set_backlight(mfd, 0);
+	}
+#endif
+
+
 	return msm_fb_blank_sub(blank_mode, info, mfd->op_enable);
 }
 
@@ -1264,8 +1443,15 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	var->grayscale = 0,	/* No graylevels */
 	var->nonstd = 0,	/* standard pixel format */
 	var->activate = FB_ACTIVATE_VBL,	/* activate it at vsync */
+
+#if defined(LCD_DEVICE_S6E8AA0X01)
+	var->height = 104,	
+	var->width  = 59,	
+#else
 	var->height = -1,	/* height of picture in mm */
 	var->width = -1,	/* width of picture in mm */
+#endif
+
 	var->accel_flags = 0,	/* acceleration flags */
 	var->sync = 0,	/* see FB_SYNC_* */
 	var->rotate = 0,	/* angle we rotate counter clockwise */
@@ -1797,10 +1983,24 @@ static int msm_fb_open(struct fb_info *info, int user)
 	return 0;
 }
 
+#if defined (LCD_DEVICE_S6E8AA0X01)
+static int fb_release_cnt = 0;
+#endif
+
 static int msm_fb_release(struct fb_info *info, int user)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 	int ret = 0;
+
+
+#if defined (LCD_DEVICE_S6E8AA0X01)
+
+    
+    if (msm_fb_disable_sleep == TRUE && mfd->panel_info.type != DTV_PANEL)
+        return 0;
+
+#endif
+
 
 	if (!mfd->ref_cnt) {
 		MSM_FB_INFO("msm_fb_release: try to close unopened fb %d!\n",
@@ -1809,6 +2009,15 @@ static int msm_fb_release(struct fb_info *info, int user)
 	}
 	msm_fb_pan_idle(mfd);
 	mfd->ref_cnt--;
+
+#if defined (LCD_DEVICE_S6E8AA0X01)
+	if (fb_release_cnt < 2)
+	{
+		printk(KERN_INFO "%s. fb_release_cnt is %d.\n", __func__, fb_release_cnt);
+		fb_release_cnt++;
+		return 0;
+	}
+#endif
 
 	if ((!mfd->ref_cnt) && (mfd->op_enable)) {
 		if ((ret =
@@ -2077,7 +2286,11 @@ static int msm_fb_pan_display_sub(struct fb_var_screeninfo *var,
 
 	up(&msm_fb_pan_sem);
 
+#if defined (LCD_DEVICE_S6E8AA0X01)
+	if (unset_bl_level && !bl_updated && mfd->panel_power_on) {
+#else
 	if (unset_bl_level && !bl_updated) {
+#endif
 		pdata = (struct msm_fb_panel_data *)mfd->pdev->
 			dev.platform_data;
 		if ((pdata) && (pdata->set_backlight)) {
@@ -3296,7 +3509,11 @@ static int msmfb_overlay_play(struct fb_info *info, unsigned long *argp)
 
 	ret = mdp4_overlay_play(info, &req);
 
+#if defined (LCD_DEVICE_S6E8AA0X01)
+	if (unset_bl_level && !bl_updated && mfd->panel_power_on) {
+#else
 	if (unset_bl_level && !bl_updated) {
+#endif
 		pdata = (struct msm_fb_panel_data *)mfd->pdev->
 			dev.platform_data;
 		if ((pdata) && (pdata->set_backlight)) {
@@ -4141,13 +4358,294 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		break;
 
 	default:
+
+#if defined (LCD_DEVICE_S6E8AA0X01)
+		ret = msm_fb_ioctl_DVE022(info, cmd, arg);
+#else
 		MSM_FB_INFO("MDP: unknown ioctl (cmd=%x) received!\n", cmd);
 		ret = -EINVAL;
+#endif
+
 		break;
 	}
 
 	return ret;
 }
+
+#if defined (LCD_DEVICE_S6E8AA0X01)
+static int gamma_nv_loop_cnt = 0;
+
+
+static int msm_fb_ioctl_DVE022( struct fb_info *info, unsigned int cmd, unsigned long arg )
+{
+    struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
+    void __user *argp = (void __user *)arg;
+    int ret = 0;
+
+    struct msmfb_request_parame user_req;
+    struct msmfb_register_write reg_write;
+    struct msmfb_register_read reg_read;
+
+    unsigned int *power_on_status_p = NULL;
+    unsigned int status_len = sizeof(unsigned int);
+    unsigned int status = 0;
+    int acl_ctr;
+
+    uint8 gammma_data[24] = {0};
+
+    
+    struct fb_var_screeninfo *var = &info->var;
+    
+
+    switch (cmd) 
+    {
+        case MSMFB_CUSTOM_1 :
+            
+            mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
+
+            
+            mipi_smd_oled_hd_set_idle_state(mfd);
+
+            
+            mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
+            break;
+
+        case MSMFB_CUSTOM_2 :
+            
+            mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
+
+            
+            ret = mipi_smd_oled_hd_power_seq(1, mfd);
+            if (ret)
+                MSM_FB_ERR("%s(%d): ret=%d.\n", __func__, __LINE__, ret);
+
+            
+            mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
+            break;
+
+        case MSMFB_CUSTOM_3 :
+            
+            mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
+
+            
+            ret = mipi_smd_oled_hd_power_seq(0, mfd);
+            if (ret)
+                MSM_FB_ERR("%s(%d): ret=%d.\n", __func__, __LINE__, ret);
+
+            
+            mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
+            break;
+
+
+        case MSMFB_CUSTOM_4 :
+            
+            mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
+
+            
+            msm_fb_oled_force_off = TRUE;
+            ret = mipi_smd_oled_hd_power_ctl_custom(0, mfd);
+            if (ret)
+                MSM_FB_ERR("%s(%d): ret=%d.\n", __func__, __LINE__, ret);
+
+            
+            mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
+            break;
+
+        case MSMFB_CUSTOM_5 :
+            
+            mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
+
+            
+            ret = mipi_smd_oled_hd_power_ctl_custom(1, mfd);
+            if (ret)
+                MSM_FB_ERR("%s(%d): ret=%d.\n", __func__, __LINE__, ret);
+
+            msm_fb_oled_force_off = FALSE;
+
+            
+            mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
+            break;
+
+
+        
+        case MSMFB_CUSTOM_8 :
+            
+            msm_fb_pan_display(var, info);
+
+            break;
+        
+
+        case MSMFB_CUSTOM_9:
+            ret = copy_from_user(&user_req, argp, sizeof(user_req));
+            if (ret)
+            {
+                printk(KERN_ERR "%s. Error - %d\n",__func__, __LINE__);
+                break;
+            }
+
+            ret = mipi_smd_oled_hd_user_request_ctrl(&user_req);
+            if (ret)
+            {
+                printk(KERN_ERR "%s. Error - %d\n",__func__, __LINE__);
+                break;
+            }
+            
+            ret = copy_to_user(argp, &user_req, sizeof(user_req));
+            break;
+
+        case MSMFB_CUSTOM_20 :
+            ret = copy_from_user(&reg_write, argp, sizeof(reg_write));
+            if (ret) {
+                printk(KERN_ERR "%s. Error - %d\n",__func__, __LINE__);
+                return ret;
+            }
+
+            
+            mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
+
+            
+            ret = mipi_smd_oled_hd_register_write_cmd(mfd, &reg_write);
+
+            
+            mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
+
+            if (ret) {
+                printk(KERN_ERR "%s. Error - %d\n",__func__, __LINE__);
+                return ret;
+            }
+            break;
+
+        case MSMFB_CUSTOM_21 :
+            
+            spin_lock( &msm_fb_disable_sleep_lock);
+            msm_fb_oled_reg_read = TRUE;
+            spin_unlock( &msm_fb_disable_sleep_lock);
+            
+
+            ret = copy_from_user(&reg_read, argp, sizeof(reg_read));
+            if (ret) {
+                printk(KERN_ERR "%s. Error - %d\n",__func__, __LINE__);
+                msm_fb_oled_reg_read = FALSE;
+                return ret;
+            }
+
+            
+            mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
+
+            ret = mipi_smd_oled_hd_register_read_cmd(mfd, &reg_read);
+
+            
+            mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
+
+            if (ret) {
+                printk(KERN_ERR "%s. Error - %d\n",__func__, __LINE__);
+                msm_fb_oled_reg_read = FALSE;
+                return ret;
+            }
+
+            
+            ret = copy_to_user(argp, &reg_read, sizeof(reg_read));
+
+            
+            spin_lock( &msm_fb_disable_sleep_lock);
+            msm_fb_oled_reg_read = FALSE;
+            spin_unlock( &msm_fb_disable_sleep_lock);
+            
+            break;
+
+        case MSMFB_CUSTOM_30 :
+            spin_lock( &msm_fb_disable_sleep_lock);
+
+            
+            msm_fb_disable_sleep = FALSE;
+
+            spin_unlock( &msm_fb_disable_sleep_lock);
+
+            ret = 0;
+            break;
+
+        case MSMFB_CUSTOM_31 :
+            spin_lock( &msm_fb_disable_sleep_lock);
+
+            
+            msm_fb_disable_sleep = TRUE;
+
+            spin_unlock( &msm_fb_disable_sleep_lock);
+
+            ret = 0;
+            break;
+
+        case MSMFB_CUSTOM_100 :
+            ret = copy_from_user(&acl_ctr, argp, sizeof(int));
+            if (ret)
+                return ret;
+
+            if (mfd->panel_power_on) {
+                
+                mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
+
+                
+                ret = mipi_smd_oled_hd_acl_ctl(mfd, acl_ctr);
+                if (ret != 0)
+                    printk(KERN_ERR "%s. ACL-Setting Failed. Req:%d Result:%d.\n",__func__, acl_ctr, ret);
+
+                
+                mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
+            } else {
+                
+                ret = -1;
+                printk(KERN_INFO "%s. ACL-Setting Failed. Framebuffer is not Active.\n", __func__);
+            }
+            break;
+
+        case MSMFB_CUSTOM_110 :
+            ret = copy_from_user(&gammma_data, argp, sizeof(gammma_data));
+            if (ret)
+            {
+                MSM_FB_ERR("%s(%d): ret=%d.\n", __func__, __LINE__, ret);
+                break;
+            }
+
+            spin_lock( &msm_fb_disable_sleep_lock);
+            mipi_smd_oled_hd_pt_gamma_setting(gammma_data, gamma_nv_loop_cnt);
+            gamma_nv_loop_cnt++;
+
+            if (gamma_nv_loop_cnt > 29)
+                gamma_nv_loop_cnt = 0;
+
+            spin_unlock( &msm_fb_disable_sleep_lock);
+            break;
+
+        case MSMFB_CUSTOM_156 :
+            mdp_mddi_dma_s_stop(1);
+            break;
+
+        case MSMFB_CUSTOM_157 :
+            mdp_mddi_dma_s_stop(0);
+            break;
+
+        case MSMFB_CUSTOM_220 :
+            power_on_status_p = smem_find(SMEM_POWER_ON_STATUS_INFO, status_len);
+            if (power_on_status_p == NULL)
+            {
+                printk(KERN_ERR "%s. Error - %d\n",__func__, __LINE__);
+                return -1; 
+            }
+            
+            status = *power_on_status_p;
+            ret = copy_to_user(argp, &status, sizeof(status));
+            break;
+
+        default:
+            MSM_FB_INFO("MDP: unknown ioctl (cmd=%x) received!\n", cmd);
+            ret = -EINVAL;
+            break;
+    }
+
+    return ret;
+}
+
+#endif
 
 static int msm_fb_register_driver(void)
 {
@@ -4342,6 +4840,39 @@ int get_fb_phys_info(unsigned long *start, unsigned long *len, int fb_num,
 }
 EXPORT_SYMBOL(get_fb_phys_info);
 
+
+#if defined (LCD_DEVICE_S6E8AA0X01)
+static int msm_fb_notify_reboot(struct notifier_block *this, unsigned long code, void *x)
+{
+	struct fb_info *fbi;
+	fbi = registered_fb[0];
+
+	printk(KERN_INFO "[In]%s.\n",__func__);
+
+	if ((code == SYS_DOWN) || (code == SYS_HALT) || (code == SYS_POWER_OFF))
+	{
+		
+
+#if defined (LCD_DEVICE_S6E8AA0X01)
+		msm_fb_notify_reboot_flg = TRUE;
+#endif
+
+	    fb_blank(fbi, FB_BLANK_POWERDOWN);
+	    mdp_pipe_ctrl(MDP_MASTER_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
+	}
+
+	printk(KERN_INFO "[Out]%s.\n",__func__);
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block msm_fb_notifier = {
+    .notifier_call  = msm_fb_notify_reboot,
+    .next           = NULL,
+    .priority       = INT_MAX,
+};
+#endif
+
+
 int __init msm_fb_init(void)
 {
 	int rc = -ENODEV;
@@ -4364,6 +4895,15 @@ int __init msm_fb_init(void)
 						   (u32 *) &msm_fb_debug_enabled);
 		}
 	}
+#endif
+
+#if defined (LCD_DEVICE_S6E8AA0X01)
+
+    spin_lock_init(&msm_fb_disable_sleep_lock);
+
+
+    register_reboot_notifier(&msm_fb_notifier);
+
 #endif
 
 	return 0;

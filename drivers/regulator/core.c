@@ -12,6 +12,17 @@
  *  option) any later version.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
+
+
+
+
+
+
 
 #include <linux/kernel.h>
 #include <linux/init.h>
@@ -1560,6 +1571,7 @@ int regulator_enable(struct regulator *regulator)
 	struct regulator_dev *rdev = regulator->rdev;
 	int ret = 0;
 
+	rdev_dbg(rdev, "[PM] enabled.\n");  
 	if (rdev->supply) {
 		ret = regulator_enable(rdev->supply);
 		if (ret != 0)
@@ -1642,6 +1654,7 @@ int regulator_disable(struct regulator *regulator)
 	struct regulator_dev *rdev = regulator->rdev;
 	int ret = 0;
 
+	rdev_dbg(rdev, "[PM] enabled.\n");  
 	mutex_lock(&rdev->mutex);
 	ret = _regulator_disable(rdev);
 	if (ret == 0)
@@ -3393,6 +3406,8 @@ unset_supplies:
 	unset_regulator_supplies(rdev);
 
 scrub:
+	if (rdev->supply)
+		regulator_put(rdev->supply);
 	kfree(rdev->constraints);
 	device_unregister(&rdev->dev);
 	/* device core frees rdev */
@@ -3652,6 +3667,115 @@ static const struct file_operations supply_map_fops = {
 	.llseek = default_llseek,
 #endif
 };
+
+
+
+int oem_set_pulldown(struct regulator *regulator, unsigned int enable)
+{
+    struct regulator_dev *rdev = regulator->rdev;
+    int ret = 0;
+
+    rdev_dbg(rdev, "[PM] start.\n");
+
+    if (!rdev->desc->ops->set_pull_down)
+    {
+        rdev_err(rdev, "[PM] set_pull_down is NULL.");
+        return -ENOSYS;
+    }
+
+    ret = rdev->desc->ops->set_pull_down(rdev, enable);
+
+    return ret;
+}
+EXPORT_SYMBOL(oem_set_pulldown);
+
+int oem_regulator_mode(struct regulator *regulator, unsigned int mode)
+{
+    struct regulator_dev *rdev = regulator->rdev;
+    int ret = 0;
+
+    rdev_dbg(rdev, "[PM] start.\n");
+
+    if (!rdev->desc->ops->set_mode)
+    {
+        rdev_err(rdev, "[PM] set_mode is NULL.");
+        return -ENOSYS;
+    }
+
+    ret = rdev->desc->ops->set_mode(rdev, mode);
+
+    return ret;
+}
+EXPORT_SYMBOL(oem_regulator_mode);
+
+int oem_update_voltage(struct regulator *regulator, u32 min_uV, u32 max_uV)
+{
+    unsigned int selector;
+    struct regulator_dev *rdev = regulator->rdev;
+    int ret = 0;
+
+    rdev_dbg(rdev, "[PM] start.\n");
+
+    if (!rdev->desc->ops->set_voltage)
+    {
+        rdev_err(rdev, "[PM] set_voltage is NULL.");
+        return -ENOSYS;
+    }
+
+    ret = rdev->desc->ops->set_voltage(rdev, min_uV, max_uV, &selector);
+    if (ret)
+    {
+        rdev_err(rdev, "[PM] set_voltage Failed:%d\n", ret);
+        return -EINVAL;
+    }
+
+    if (rdev->desc->ops->list_voltage)
+        selector = rdev->desc->ops->list_voltage(rdev, selector);
+
+    return ret;
+}
+EXPORT_SYMBOL(oem_update_voltage);
+
+int oem_regulator_enable(struct regulator *regulator)
+{
+    struct regulator_dev *rdev = regulator->rdev;
+    int ret = 0;
+
+    rdev_dbg(rdev, "[PM] start.\n");
+
+    if (!rdev->desc->ops->enable)
+    {
+        rdev_err(rdev, "[PM] enable is NULL.");
+        return -ENOSYS;
+    }
+
+    ret = rdev->desc->ops->enable(rdev);
+
+    return ret;
+}
+EXPORT_SYMBOL(oem_regulator_enable);
+
+int oem_regulator_disable(struct regulator *regulator)
+{
+    struct regulator_dev *rdev = regulator->rdev;
+    int ret = 0;
+
+    rdev_dbg(rdev, "[PM] start.\n");
+
+    if (!rdev->desc->ops->disable)
+    {
+        rdev_err(rdev, "[PM] disable is NULL.");
+        return -ENOSYS;
+    }
+
+    ret = rdev->desc->ops->disable(rdev);
+
+    return ret;
+}
+EXPORT_SYMBOL(oem_regulator_disable);
+
+
+
 
 static int __init regulator_init(void)
 {

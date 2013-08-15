@@ -9,6 +9,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifndef MSM_SENSOR_COMMON_H
 #define MSM_SENSOR_COMMON_H
@@ -35,6 +39,7 @@
 #define MSM_SENSOR_MCLK_8HZ 8000000
 #define MSM_SENSOR_MCLK_16HZ 16000000
 #define MSM_SENSOR_MCLK_24HZ 24000000
+#define MSM_SENSOR_MCLK_25HZ 25600000
 
 #define DEFINE_MSM_MUTEX(mutexname) \
 	static struct mutex mutexname = __MUTEX_INITIALIZER(mutexname)
@@ -138,6 +143,12 @@ struct msm_sensor_fn_t {
 			uint16_t, uint32_t, int32_t, uint16_t);
 	int32_t (*sensor_write_snapshot_exp_gain) (struct msm_sensor_ctrl_t *,
 			uint16_t, uint32_t, int32_t, uint16_t);
+
+	int32_t (*sensor_write_exp_gain2) (struct msm_sensor_ctrl_t *,
+			uint16_t, uint16_t, uint16_t, uint32_t);
+	int32_t (*sensor_write_snapshot_exp_gain2) (struct msm_sensor_ctrl_t *,
+			uint16_t, uint16_t, uint16_t, uint32_t);
+
 	int32_t (*sensor_setting) (struct msm_sensor_ctrl_t *,
 			int update_type, int rt);
 	int32_t (*sensor_csi_setting) (struct msm_sensor_ctrl_t *,
@@ -163,6 +174,23 @@ struct msm_sensor_fn_t {
 	int32_t (*sensor_read_eeprom)(struct msm_sensor_ctrl_t *);
 	int32_t (*sensor_hdr_update)(struct msm_sensor_ctrl_t *,
 		 struct sensor_hdr_update_parm_t *);
+    
+    int (*sensor_set_parm_pm_obs) (DVE022_pm_obs_data_t pm_obs);
+    int32_t (*sensor_set_scene) (struct msm_sensor_ctrl_t *, int);
+    int32_t (*sensor_set_wb) (struct msm_sensor_ctrl_t *, uint8_t);
+    int32_t (*sensor_set_effect) (struct msm_sensor_ctrl_t *, int8_t);
+    int32_t (*sensor_set_antibanding) (struct msm_sensor_ctrl_t *, uint16_t);
+    int32_t (*sensor_set_exp_compensation) (struct msm_sensor_ctrl_t *, int8_t);
+    int32_t (*sensor_get_maker_note) (struct msm_sensor_ctrl_t *, struct get_exif_maker_note_cfg *get_exif_maker_note);
+    int32_t (*sensor_get_exif_param) (struct msm_sensor_ctrl_t *, struct get_exif_param_inf *get_exif_param);
+    int32_t (*sensor_get_eeprom_otp_info) (struct msm_sensor_ctrl_t *, struct eeprom_otp_info_t *eeprom_otp_info);
+    int32_t (*sensor_set_frame_rate_mode) (struct msm_sensor_ctrl_t *, int);
+    int32_t (*sensor_get_hdr_brightness) (struct msm_sensor_ctrl_t *, struct hdr_brightness_t *);
+    int32_t (*sensor_set_hdr_brightness) (struct msm_sensor_ctrl_t *, struct hdr_brightness_t);
+    int32_t (*sensor_set_cap_mode_enable) (struct msm_sensor_ctrl_t *, int);
+    int32_t (*sensor_otp_read) (struct msm_sensor_ctrl_t *);
+    int32_t (*sensor_get_device_id) (struct msm_sensor_ctrl_t *, uint16_t *);
+    
 };
 
 struct msm_sensor_csi_info {
@@ -203,6 +231,10 @@ struct msm_sensor_ctrl_t {
 
 	uint16_t curr_line_length_pclk;
 	uint16_t curr_frame_length_lines;
+
+	uint16_t prev_digital_gain_num;
+	uint16_t prev_digital_gain_dec;
+
 
 	uint32_t fps_divider;
 	enum msm_sensor_resolution_t curr_res;

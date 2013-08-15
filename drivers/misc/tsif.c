@@ -13,6 +13,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #include <linux/module.h>       /* Needed by all modules */
 #include <linux/kernel.h>       /* Needed for KERN_INFO */
 #include <linux/init.h>         /* Needed for the macros */
@@ -84,8 +88,17 @@
  * One chunk processed at a time by the data mover
  *
  */
-#define TSIF_PKTS_IN_CHUNK_DEFAULT  (16)  /**< packets in one DM chunk */
-#define TSIF_CHUNKS_IN_BUF_DEFAULT   (8)
+
+
+
+
+
+
+
+#define TSIF_PKTS_IN_CHUNK_DEFAULT  (192)  
+#define TSIF_CHUNKS_IN_BUF_DEFAULT  (10)
+
+
 #define TSIF_PKTS_IN_CHUNK        (tsif_device->pkts_per_chunk)
 #define TSIF_CHUNKS_IN_BUF        (tsif_device->chunks_per_buf)
 #define TSIF_PKTS_IN_BUF          (TSIF_PKTS_IN_CHUNK * TSIF_CHUNKS_IN_BUF)
@@ -285,7 +298,7 @@ static int tsif_gpios_disable(const struct msm_gpio *table, int size)
 		int tmp;
 		g = table + i;
 		tmp = gpio_tlmm_config(GPIO_CFG(GPIO_PIN(g->gpio_cfg),
-			0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+			0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
 			GPIO_CFG_DISABLE);
 		if (tmp) {
 			pr_err("gpio_tlmm_config(0x%08x, GPIO_CFG_DISABLE)"
@@ -694,10 +707,18 @@ static void tsif_dma_exit(struct msm_tsif_device *tsif_device)
 	if (tsif_device->data_buffer) {
 		tsif_device->blob_wrapper_databuf.data = NULL;
 		tsif_device->blob_wrapper_databuf.size = 0;
-		dma_free_coherent(NULL, TSIF_BUF_SIZE,
-				  tsif_device->data_buffer,
-				  tsif_device->data_buffer_dma);
-		tsif_device->data_buffer = NULL;
+		
+
+
+
+
+
+
+
+
+
+
+
 	}
 }
 
@@ -707,10 +728,16 @@ static int tsif_dma_init(struct msm_tsif_device *tsif_device)
 	/* TODO: allocate all DMA memory in one buffer */
 	/* Note: don't pass device,
 	   it require coherent_dma_mask id device definition */
-	tsif_device->data_buffer = dma_alloc_coherent(NULL, TSIF_BUF_SIZE,
-				&tsif_device->data_buffer_dma, GFP_KERNEL);
-	if (!tsif_device->data_buffer)
-		goto err;
+
+
+
+
+
+
+
+
+
+
 	dev_info(&tsif_device->pdev->dev, "data_buffer: %p phys 0x%08x\n",
 		 tsif_device->data_buffer, tsif_device->data_buffer_dma);
 	tsif_device->blob_wrapper_databuf.data = tsif_device->data_buffer;
@@ -776,7 +803,9 @@ static irqreturn_t tsif_irq(int irq, void *dev_id)
 		tsif_device->stat_rx++;
 	}
 	if (sts_ctl & TSIF_STS_CTL_OVERFLOW) {
-		dev_info(&tsif_device->pdev->dev, "TSIF IRQ: OVERFLOW\n");
+
+
+
 		tsif_device->stat_overflow++;
 	}
 	if (sts_ctl & TSIF_STS_CTL_LOST_SYNC) {
@@ -1480,10 +1509,28 @@ static int __devinit msm_tsif_probe(struct platform_device *pdev)
 	}
 	wake_lock_init(&tsif_device->wake_lock, WAKE_LOCK_SUSPEND,
 		       dev_name(&pdev->dev));
-	dev_info(&pdev->dev, "Configured irq %d memory 0x%08x DMA %d CRCI %d\n",
-		 tsif_device->irq, tsif_device->memres->start,
-		 tsif_device->dma, tsif_device->crci);
+
+
+
+
+
 	list_add(&tsif_device->devlist, &tsif_devices);
+	
+
+
+
+
+	tsif_device->data_buffer = dma_alloc_coherent(NULL, TSIF_BUF_SIZE,
+				&tsif_device->data_buffer_dma, GFP_KERNEL);
+	if (!tsif_device->data_buffer)
+	{
+		dev_err(&tsif_device->pdev->dev, "Failed to allocate DMA buffers\n");
+		rc = -ENOMEM;
+		goto err_alloc;
+	}
+
+
+	
 	return 0;
 /* error path */
 	sysfs_remove_group(&pdev->dev.kobj, &dev_attr_grp);
@@ -1497,6 +1544,13 @@ err_rgn:
 	tsif_put_clocks(tsif_device);
 err_clocks:
 	kfree(tsif_device);
+
+
+
+
+err_alloc:
+
+
 out:
 	return rc;
 }
@@ -1505,6 +1559,17 @@ static int __devexit msm_tsif_remove(struct platform_device *pdev)
 {
 	struct msm_tsif_device *tsif_device = platform_get_drvdata(pdev);
 	dev_info(&pdev->dev, "Unload\n");
+
+
+
+
+
+	dma_free_coherent(NULL, TSIF_BUF_SIZE,
+			  tsif_device->data_buffer,
+			  tsif_device->data_buffer_dma);
+
+
+
 	list_del(&tsif_device->devlist);
 	wake_lock_destroy(&tsif_device->wake_lock);
 	sysfs_remove_group(&pdev->dev.kobj, &dev_attr_grp);
@@ -1651,14 +1716,23 @@ EXPORT_SYMBOL(tsif_set_time_limit);
 int tsif_set_buf_config(void *cookie, u32 pkts_in_chunk, u32 chunks_in_buf)
 {
 	struct msm_tsif_device *tsif_device = cookie;
-	if (tsif_device->data_buffer) {
-		dev_err(&tsif_device->pdev->dev,
-			"Data buffer already allocated: %p\n",
-			tsif_device->data_buffer);
-		return -EBUSY;
-	}
-	/* check for crazy user */
-	if (pkts_in_chunk * chunks_in_buf > 10240) {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	if (pkts_in_chunk * chunks_in_buf > TSIF_PKTS_IN_CHUNK_DEFAULT * TSIF_CHUNKS_IN_BUF_DEFAULT) {
+
+
 		dev_err(&tsif_device->pdev->dev,
 			"Buffer requested is too large: %d * %d\n",
 			pkts_in_chunk,

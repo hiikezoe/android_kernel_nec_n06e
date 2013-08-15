@@ -10,6 +10,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/init.h>
 #include <linux/ioport.h>
@@ -90,6 +94,11 @@ static struct msm_mmc_reg_data mmc_vdd_io_reg_data[MAX_SDCC_CONTROLLER] = {
 		 * during sleep.
 		 */
 		.lpm_uA = 2000,
+
+
+		.is_enabled = 1,
+
+
 	},
 	/* SDCC4 : SDIO slot connected */
 	[SDCC4] = {
@@ -164,24 +173,38 @@ static struct msm_mmc_pad_drv sdc3_pad_drv_off_cfg[] = {
 
 static struct msm_mmc_pad_pull sdc3_pad_pull_on_cfg[] = {
 	{TLMM_PULL_SDC3_CLK, GPIO_CFG_NO_PULL},
-	{TLMM_PULL_SDC3_CMD, GPIO_CFG_PULL_UP},
-	{TLMM_PULL_SDC3_DATA, GPIO_CFG_PULL_UP}
+
+
+	{TLMM_PULL_SDC3_CMD, GPIO_CFG_NO_PULL},
+	{TLMM_PULL_SDC3_DATA, GPIO_CFG_NO_PULL}
+
+
+
+
+
 };
 
 static struct msm_mmc_pad_pull sdc3_pad_pull_off_cfg[] = {
 	{TLMM_PULL_SDC3_CLK, GPIO_CFG_NO_PULL},
-	/*
-	 * SDC3 CMD line should be PULLed UP otherwise fluid platform will
-	 * see transitions (1 -> 0 and 0 -> 1) on card detection line,
-	 * which would result in false card detection interrupts.
-	 */
-	{TLMM_PULL_SDC3_CMD, GPIO_CFG_PULL_UP},
-	/*
-	 * Keeping DATA lines status to PULL UP will make sure that
-	 * there is no current leak during sleep if external pull up
-	 * is connected to DATA lines.
-	 */
-	{TLMM_PULL_SDC3_DATA, GPIO_CFG_PULL_UP}
+
+
+	{TLMM_PULL_SDC3_CMD, GPIO_CFG_PULL_DOWN},
+	{TLMM_PULL_SDC3_DATA, GPIO_CFG_PULL_DOWN}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 };
 
 static struct msm_mmc_pad_pull_data mmc_pad_pull_data[MAX_SDCC_CONTROLLER] = {
@@ -260,6 +283,11 @@ static struct msm_mmc_pin_data mmc_slot_pin_data[MAX_SDCC_CONTROLLER] = {
 	},
 	[SDCC3] = {
 		.pad_data = &mmc_pad_data[SDCC3],
+
+
+		.cfg_sts = true,
+
+
 	},
 	[SDCC4] = {
 		.is_gpio = 1,
@@ -334,10 +362,14 @@ static struct mmc_platform_data msm8960_sdc3_data = {
 	.irq_flags	= IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
 #endif
 	.is_status_gpio_active_low = true,
-	.xpc_cap	= 1,
-	.uhs_caps	= (MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 |
-			MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_DDR50 |
-			MMC_CAP_UHS_SDR104 | MMC_CAP_MAX_CURRENT_600),
+
+
+
+
+
+
+
+
 	.mpm_sdiowakeup_int = MSM_MPM_PIN_SDC3_DAT1,
 	.msm_bus_voting_data = &sps_to_ddr_bus_voting_data,
 };

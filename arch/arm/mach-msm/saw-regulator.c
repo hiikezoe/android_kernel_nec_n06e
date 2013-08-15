@@ -9,6 +9,16 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
+
+
+
+
+
 
 #define pr_fmt(fmt) "%s: " fmt, __func__
 
@@ -77,6 +87,8 @@ static int saw_set_voltage(struct regulator_dev *rdev, int min_uV, int max_uV,
 	int rc;
 	u8 vprog, band;
 
+	pr_debug("[PM] %s\n", vreg->desc.name); 
+
 	if (uV < FTSMPS_BAND1_UV_MIN && max_uV >= FTSMPS_BAND1_UV_MIN)
 		uV = FTSMPS_BAND1_UV_MIN;
 
@@ -133,9 +145,42 @@ static int saw_set_voltage(struct regulator_dev *rdev, int min_uV, int max_uV,
 	return rc;
 }
 
+
+static int nc_saw_enable(struct regulator_dev *rdev)
+{
+	struct saw_vreg *vreg = rdev_get_drvdata(rdev);
+	pr_info("[PM] %s\n", vreg->desc.name);
+
+	
+	return -1;
+}
+
+static int nc_saw_disable(struct regulator_dev *rdev)
+{
+	struct saw_vreg *vreg = rdev_get_drvdata(rdev);
+	pr_info("[PM] %s\n", vreg->desc.name);
+
+	
+	return -1;
+}
+static int nc_saw_set_vreg_pull_down(struct regulator_dev *rdev, unsigned int enable)
+{
+	struct saw_vreg *vreg = rdev_get_drvdata(rdev);
+	pr_info("[PM] %s\n", vreg->desc.name);
+
+	
+	return -1;
+}
+
+
 static struct regulator_ops saw_ops = {
 	.get_voltage = saw_get_voltage,
 	.set_voltage = saw_set_voltage,
+	
+	.enable        = nc_saw_enable,
+	.disable       = nc_saw_disable,
+	.set_pull_down = nc_saw_set_vreg_pull_down,
+	
 };
 
 static int __devinit saw_probe(struct platform_device *pdev)

@@ -17,6 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifndef CONFIG_PCI
 #error "This file is PCI bus glue.  CONFIG_PCI must be defined."
@@ -143,14 +147,6 @@ static int ehci_pci_setup(struct usb_hcd *hcd)
 		if (pdev->device == PCI_DEVICE_ID_INTEL_CE4100_USB) {
 			hcd->has_tt = 1;
 			tdi_reset(ehci);
-		}
-		if (pdev->subsystem_vendor == PCI_VENDOR_ID_ASUSTEK) {
-			/* EHCI #1 or #2 on 6 Series/C200 Series chipset */
-			if (pdev->device == 0x1c26 || pdev->device == 0x1c2d) {
-				ehci_info(ehci, "broken D3 during system sleep on ASUS\n");
-				hcd->broken_pci_sleep = 1;
-				device_set_wakeup_capable(&pdev->dev, false);
-			}
 		}
 		break;
 	case PCI_VENDOR_ID_TDI:
@@ -368,7 +364,9 @@ static bool usb_is_intel_switchable_ehci(struct pci_dev *pdev)
 {
 	return pdev->class == PCI_CLASS_SERIAL_USB_EHCI &&
 		pdev->vendor == PCI_VENDOR_ID_INTEL &&
-		pdev->device == 0x1E26;
+		(pdev->device == 0x1E26 ||
+		 pdev->device == 0x8C2D ||
+		 pdev->device == 0x8C26);
 }
 
 static void ehci_enable_xhci_companion(void)

@@ -7,6 +7,10 @@
  *  Some code moved for less code duplication - Andi Kleen - Mar 1997
  *  Check put/get_user, cleanups - acme@conectiva.com.br - Jun 2001
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/types.h>
 #include <linux/errno.h>
@@ -29,6 +33,10 @@
 
 #include <asm/io.h>
 #include <asm/uaccess.h>
+
+
+#include <linux/delay.h>
+
 
 #include <linux/kbd_kern.h>
 #include <linux/vt_kern.h>
@@ -192,20 +200,36 @@ static int vt_event_wait_ioctl(struct vt_event __user *event)
 
 int vt_waitactive(int n)
 {
-	struct vt_event_wait vw;
-	do {
-		vw.event.event = VT_EVENT_SWITCH;
-		__vt_event_queue(&vw);
-		if (n == fg_console + 1) {
-			__vt_event_dequeue(&vw);
-			break;
-		}
-		__vt_event_wait(&vw);
-		__vt_event_dequeue(&vw);
-		if (vw.done == 0)
-			return -EINTR;
-	} while (vw.event.newev != n);
-	return 0;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	int i;
+	for( i=0; i<1000;i ++)
+	{
+		if(n == fg_console + 1)
+			return 0;
+		msleep(1);
+	}
+	return -EINTR;
+
+
 }
 
 /*

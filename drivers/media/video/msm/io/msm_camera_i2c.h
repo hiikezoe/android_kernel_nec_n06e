@@ -9,6 +9,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifndef MSM_CAMERA_I2C_H
 #define MSM_CAMERA_I2C_H
@@ -18,6 +22,7 @@
 #include <mach/camera.h>
 #include <media/v4l2-subdev.h>
 #include <media/msm_camera.h>
+
 
 #define CONFIG_MSM_CAMERA_I2C_DBG 0
 

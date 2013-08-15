@@ -44,6 +44,10 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 675 Mass Ave, Cambridge, MA 02139, USA.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifdef CONFIG_USB_STORAGE_DEBUG
 #define DEBUG
@@ -919,6 +923,9 @@ int usb_stor_probe1(struct us_data **pus,
 	/*
 	 * Allow 16-byte CDBs and thus > 2TB
 	 */
+
+	host->by_usb = 1;
+
 	host->max_cmd_len = 16;
 	host->sg_tablesize = usb_stor_sg_tablesize(intf);
 	*pus = us = host_to_us(host);

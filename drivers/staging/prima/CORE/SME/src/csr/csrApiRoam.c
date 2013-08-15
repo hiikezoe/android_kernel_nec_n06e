@@ -31,6 +31,10 @@
   
  
    ========================================================================== */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 /*===========================================================================
                       EDIT HISTORY FOR FILE
 
@@ -263,6 +267,10 @@ extern void btampEstablishLogLinkHdlr(void* pMsg);
 static void csrSerDesUnpackDiassocRsp(tANI_U8 *pBuf, tSirSmeDisassocRsp *pRsp);
 void csrReinitPreauthCmd(tpAniSirGlobal pMac, tSmeCmd *pCommand);
 
+
+extern char FCC_givenContryCode[];
+
+
 //Initialize global variables
 static void csrRoamInitGlobals(tpAniSirGlobal pMac)
 {
@@ -312,22 +320,34 @@ eHalStatus csrOpen(tpAniSirGlobal pMac)
            break;
         if(!HAL_STATUS_SUCCESS(csrLLOpen(pMac->hHdd, &pMac->roam.roamCmdPendingList)))
            break;
-        vosStatus = vos_nv_readDefaultCountryTable( &nvTables );
-        if ( VOS_IS_STATUS_SUCCESS(vosStatus) )
+ 
+        if(FCC_givenContryCode[0] != '\0')
         {
-            palCopyMemory( pMac->hHdd, pMac->scan.countryCodeDefault, 
-                    nvTables.defaultCountryTable.countryCode, WNI_CFG_COUNTRY_CODE_LEN );
-            status = eHAL_STATUS_SUCCESS;
+            pMac->scan.countryCodeDefault[0] = FCC_givenContryCode[0];
+            pMac->scan.countryCodeDefault[1] = FCC_givenContryCode[1];
+            pMac->scan.countryCodeDefault[2] = '\0';
         }
         else
         {
-            smsLog( pMac, LOGE, FL("  fail to get NV_FIELD_IMAGE\n") );
-            //hardcoded for now
-            pMac->scan.countryCodeDefault[0] = 'U';
-            pMac->scan.countryCodeDefault[1] = 'S';
-            pMac->scan.countryCodeDefault[2] = 'I';
-            //status = eHAL_STATUS_SUCCESS;
-        }        
+            vosStatus = vos_nv_readDefaultCountryTable( &nvTables );
+            if ( VOS_IS_STATUS_SUCCESS(vosStatus) )
+            {
+                palCopyMemory( pMac->hHdd, pMac->scan.countryCodeDefault,
+                        nvTables.defaultCountryTable.countryCode, WNI_CFG_COUNTRY_CODE_LEN );
+                status = eHAL_STATUS_SUCCESS;
+            }
+            else
+            {
+                smsLog( pMac, LOGE, FL("  fail to get NV_FIELD_IMAGE\n") );
+                
+                pMac->scan.countryCodeDefault[0] = 'U';
+                pMac->scan.countryCodeDefault[1] = 'S';
+                pMac->scan.countryCodeDefault[2] = 'I';
+                
+            }
+        }
+
+
         smsLog( pMac, LOGE, FL(" country Code from nvRam %s\n"), pMac->scan.countryCodeDefault );
         csrGetRegulatoryDomainForCountry(pMac, pMac->scan.countryCodeDefault, &regId);
         WDA_SetRegDomain(pMac, regId);
@@ -3881,11 +3901,11 @@ eHalStatus csrRoamProcessCommand( tpAniSirGlobal pMac, tSmeCmd *pCommand )
         break;
      case eCsrSmeIssuedDisassocForHandoff:
         //Not to free pMac->roam.pCurRoamProfile (via csrFreeRoamProfile) because it is needed after disconnect
-#if 0 // TODO : Confirm this change
-        status = csrRoamProcessDisassociate( pMac, pCommand, FALSE );
-#else
+
+
+
         status = csrRoamProcessDisassocDeauth( pMac, pCommand, TRUE, FALSE );
-#endif
+
 
         break;
     case eCsrForcedDisassocMICFailure:
@@ -3956,14 +3976,14 @@ eHalStatus csrRoamProcessCommand( tpAniSirGlobal pMac, tSmeCmd *pCommand )
        status = csrSendMBDeauthReqMsg( pMac, sessionId, pCommand->u.roamCmd.peerMac, 
                      pCommand->u.roamCmd.reason);
        break;
-#if 1
+
        /*Varun*/
     case eCsrPerformPreauth:
         smsLog(pMac, LOGE, FL("Attempting FT PreAuth Req \n"));
         status = csrRoamIssueFTPreauthReq(pMac, sessionId, 
                 pCommand->u.roamCmd.pLastRoamBss);
        break;
-#endif
+
 
     default:
         csrRoamStateChange( pMac, eCSR_ROAMING_STATE_JOINING, sessionId );
@@ -12462,28 +12482,28 @@ eHalStatus csrSendMBStopBssReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId )
        msgLen = sizeof(tANI_U16) + sizeof(tANI_U16) + 1 + sizeof(tANI_U16) + sizeof(tSirResultCodes) + sizeof(tSirMacAddr);
        pMsg->length =  pal_cpu_to_be16(msgLen);
        status =  palSendMBMessage( pMac->hHdd, pMsg );
-#if 0            
-        status = palAllocateMemory(pMac, (void **)&pMsg, sizeof(tSirSmeStopBssReq));
-        if ( !HAL_STATUS_SUCCESS(status) ) break;
-        palZeroMemory(pMac->hHdd, pMsg, sizeof( tSirSmeStopBssReq ));
-                pMsg->messageType = pal_cpu_to_be16((tANI_U16)eWNI_SME_STOP_BSS_REQ);
-                pMsg->reasonCode = 0;
-        // bssid
-        // if BSSType is WDS sta, use selfmacAddr as bssid, else use bssid in connectedProfile
-        if( CSR_IS_CONN_WDS_STA(&pSession->connectedProfile) )
-        {
-            pbBssid = (tANI_U8 *)&pSession->selfMacAddr;
-        }
-        else
-        {
-            pbBssid = (tANI_U8 *)&pSession->connectedProfile.bssid;
-        }
-        palCopyMemory( pMac->hHdd, &pMsg->bssId, pbBssid, sizeof(tSirMacAddr) );
-        pMsg->transactionId = 0;
-        pMsg->sessionId = (tANI_U8)sessionId;
-                pMsg->length = pal_cpu_to_be16((tANI_U16)sizeof( tSirSmeStopBssReq ));
-                status = palSendMBMessage( pMac->hHdd, pMsg );
-#endif                
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         } while( 0 );
     return( status );
 }
@@ -13060,19 +13080,19 @@ void csrRoamTlStatsTimerHandler(void *pv)
 
    smsLog(pMac, LOG1, FL(" TL stat timer is no-op. It needs to support multiple stations"));
 
-#if 0
-   // TODO Persession .???
-   //req TL for stats
-   if(WLANTL_GetStatistics(pMac->roam.gVosContext, &tlStats, pMac->roam.connectedInfo.staId))
-   {
-      smsLog(pMac, LOGE, FL("csrRoamTlStatsTimerHandler:couldn't get the stats from TL\n"));
-   }
-   else
-   {
-      //save in SME
-      csrRoamSaveStatsFromTl(pMac, tlStats);
-   }
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
    if(!pMac->roam.tlStatsReqInfo.timerRunning)
    {
       if(pMac->roam.tlStatsReqInfo.periodicity)
@@ -13166,22 +13186,22 @@ void csrRoamStatsClientTimerHandler(void *pv)
    tCsrStatsClientReqInfo *pStaEntry = (tCsrStatsClientReqInfo *)pv;
    if(VOS_TIMER_STATE_STOPPED == vos_timer_getCurrentState(&pStaEntry->timer))
    {
-#if 0
-       // TODO Stats fix for multisession
-       //start the timer
-       vosStatus = vos_timer_start( &pStaEntry->timer, pStaEntry->periodicity );
-   
-       if ( !VOS_IS_STATUS_SUCCESS( vosStatus ) ) 
-       {
-          smsLog(pStaEntry->pMac, LOGE, FL("csrGetStatistics:cannot start StatsClient timer\n"));
-       }
-#endif       
+
+
+
+
+
+
+
+
+
+
    }
-#if 0
-   //send up the stats report
-   csrRoamReportStatistics(pStaEntry->pMac, pStaEntry->statsMask, pStaEntry->callback, 
-                           pStaEntry->staId, pStaEntry->pContext);
-#endif
+
+
+
+
+
 }
 
 
@@ -14384,30 +14404,30 @@ eHalStatus csrIsFullPowerNeeded( tpAniSirGlobal pMac, tSmeCmd *pCommand,
                     if( pEntry )
                     {
                         pScanResult = GET_BASE_ADDR(pEntry, tCsrScanResult, Link);
-#if 0
-                                                // TODO : Session Specific info pConnectBssDesc
-                        if( csrIsBssIdEqual( pMac, &pScanResult->Result.BssDescriptor, pMac->roam.pConnectBssDesc ) &&
-                            csrIsSsidEqual( pMac, pMac->roam.pConnectBssDesc, 
-                                            &pScanResult->Result.BssDescriptor, (tDot11fBeaconIEs *)( pScanResult->Result.pvIes ) ) )
-                        {
-                            // Check to see if the Auth type has changed in the Profile.  If so, we don't want to Reassociate
-                            // with Authenticating first.  To force this, stop the current association (Disassociate) and 
-                            // then re 'Join' the AP, wihch will force an Authentication (with the new Auth type) followed by 
-                            // a new Association.
-                            if(csrIsSameProfile(pMac, &pMac->roam.connectedProfile, pProfile))
-                            {
-                                if(csrRoamIsSameProfileKeys(pMac, &pMac->roam.connectedProfile, pProfile))
-                                {
-                                    //Done, eventually, the command reaches eCsrReassocToSelfNoCapChange;
-                                    //No need for full power
-                                    //Set the flag so the code later can avoid to do the above
-                                    //check again.
-                                    pCommand->u.roamCmd.fReassocToSelfNoCapChange = eANI_BOOLEAN_TRUE;
-                                    break;
-                                }
-                            }
-                        }
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                     }
                 }
                 //If we are here, full power is needed

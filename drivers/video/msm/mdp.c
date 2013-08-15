@@ -14,6 +14,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -39,10 +43,21 @@
 #include <mach/clk.h>
 #include "mdp.h"
 #include "msm_fb.h"
+
+
+#include <linux/pm_qos.h>
+
+
 #ifdef CONFIG_FB_MSM_MDP40
 #include "mdp4.h"
 #endif
 #include "mipi_dsi.h"
+
+
+#define MDP_LATENCY	1300
+
+
+struct msm_fb_data_type *mfd_g;
 
 uint32 mdp4_extn_disp;
 
@@ -71,6 +86,10 @@ static struct platform_device *mdp_init_pdev;
 static struct regulator *footswitch, *dsi_pll_vdda, *dsi_pll_vddio;
 static unsigned int mdp_footswitch_on;
 
+
+struct pm_qos_request mdp_pm_qos_req_dma;
+
+
 struct completion mdp_ppp_comp;
 struct semaphore mdp_ppp_mutex;
 struct semaphore mdp_pipe_ctrl_mutex;
@@ -85,6 +104,12 @@ boolean mdp_current_clk_on = FALSE;
 boolean mdp_is_in_isr = FALSE;
 
 struct vsync vsync_cntrl;
+
+#if defined (LCD_DEVICE_S6E8AA0X01)
+
+extern boolean msm_fb_disable_sleep;
+
+#endif
 
 /*
  * legacy mdp_in_processing is only for DMA2-MDDI
@@ -2727,6 +2752,7 @@ static int mdp_irq_clk_setup(struct platform_device *pdev,
 
 static int mdp_probe(struct platform_device *pdev)
 {
+
 	struct platform_device *msm_fb_dev = NULL;
 	struct msm_fb_data_type *mfd;
 	struct msm_fb_panel_data *pdata = NULL;
@@ -2740,6 +2766,8 @@ static int mdp_probe(struct platform_device *pdev)
 #if defined(CONFIG_FB_MSM_MIPI_DSI) && defined(CONFIG_FB_MSM_MDP40)
 	struct mipi_panel_info *mipi;
 #endif
+
+	mfd_g = platform_get_drvdata(pdev);
 
 	if ((pdev->id == 0) && (pdev->num_resources > 0)) {
 		mdp_init_pdev = pdev;
@@ -2768,6 +2796,11 @@ static int mdp_probe(struct platform_device *pdev)
 			mdp_bw_ib_factor = mdp_pdata->mdp_bw_ib_factor;
 
 		mdp_rev = mdp_pdata->mdp_rev;
+
+
+		pm_qos_add_request(&mdp_pm_qos_req_dma, PM_QOS_CPU_DMA_LATENCY, PM_QOS_DEFAULT_VALUE);
+        pm_qos_update_request(&mdp_pm_qos_req_dma, MDP_LATENCY + 1);
+
 
 		mdp_iommu_split_domain = mdp_pdata->mdp_iommu_split_domain;
 
@@ -2983,7 +3016,11 @@ static int mdp_probe(struct platform_device *pdev)
 		mfd->vsync_show = mdp4_dsi_video_show_event;
 		mfd->hw_refresh = TRUE;
 		mfd->dma_fnc = mdp4_dsi_video_overlay;
+
+#if !defined (LCD_DEVICE_S6E8AA0X01)
 		mfd->lut_update = mdp_lut_update_lcdc;
+#endif
+
 		mfd->do_histogram = mdp_do_histogram;
 		mfd->start_histogram = mdp_histogram_start;
 		mfd->stop_histogram = mdp_histogram_stop;
@@ -3321,6 +3358,22 @@ static void mdp_suspend_sub(void)
 #if defined(CONFIG_PM) && !defined(CONFIG_HAS_EARLYSUSPEND)
 static int mdp_suspend(struct platform_device *pdev, pm_message_t state)
 {
+	struct msm_fb_data_type *mfd;
+
+	mfd = platform_get_drvdata(pdev);
+#if defined (LCD_DEVICE_S6E8AA0X01)
+
+
+
+	if (msm_fb_disable_sleep == TRUE && mfd->panel_info.type != DTV_PANEL)
+	{
+		printk(KERN_DEBUG "%s. Disable Sleep!!\n", __func__);
+		return 0;
+	}
+
+
+#endif
+
 	if (pdev->id == 0) {
 		mdp_suspend_sub();
 		if (mdp_current_clk_on) {
@@ -3336,6 +3389,19 @@ static int mdp_suspend(struct platform_device *pdev, pm_message_t state)
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void mdp_early_suspend(struct early_suspend *h)
 {
+#if defined (LCD_DEVICE_S6E8AA0X01)
+
+
+
+	if (msm_fb_disable_sleep == TRUE && mfd_g->panel_info.type != DTV_PANEL)
+	{
+		printk(KERN_DEBUG "%s. Disable Sleep!!\n", __func__);
+		return ;
+	}
+
+
+#endif
+
 	mdp_suspend_sub();
 #ifdef CONFIG_FB_MSM_DTV
 	mdp4_dtv_set_black_screen();
@@ -3370,6 +3436,11 @@ static int mdp_remove(struct platform_device *pdev)
 		mdp_bus_scale_handle = 0;
 	}
 #endif
+
+
+	pm_qos_update_request(&mdp_pm_qos_req_dma, PM_QOS_DEFAULT_VALUE);
+
+
 	return 0;
 }
 

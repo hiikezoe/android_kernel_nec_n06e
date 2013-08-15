@@ -22,6 +22,10 @@
  *
  *		Moved to /usr/include/linux for NET3
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #ifndef _LINUX_NETDEVICE_H
 #define _LINUX_NETDEVICE_H
 
@@ -157,8 +161,8 @@ static inline bool dev_xmit_complete(int rc)
 # define LL_MAX_HEADER 32
 #endif
 
-#if !IS_ENABLED(CONFIG_NET_IPIP) && !IS_ENABLED(CONFIG_NET_IPGRE) && \
-    !IS_ENABLED(CONFIG_IPV6_SIT) && !IS_ENABLED(CONFIG_IPV6_TUNNEL)
+#if !IS_ENABLED(CONFIG_NET_IPIP) && !IS_ENABLED(CONFIG_NET_IPGRE) &&     !IS_ENABLED(CONFIG_IPV6_SIT) && !IS_ENABLED(CONFIG_IPV6_TUNNEL)
+
 #define MAX_HEADER LL_MAX_HEADER
 #else
 #define MAX_HEADER (LL_MAX_HEADER + 48)
@@ -1279,6 +1283,8 @@ struct net_device {
 	/* for setting kernel sock attribute on TCP connection setup */
 #define GSO_MAX_SIZE		65536
 	unsigned int		gso_max_size;
+#define GSO_MAX_SEGS		65535
+	u16			gso_max_segs;
 
 #ifdef CONFIG_DCB
 	/* Data Center Bridging netlink ops */
@@ -1494,6 +1500,8 @@ struct packet_type {
 	struct sk_buff		**(*gro_receive)(struct sk_buff **head,
 					       struct sk_buff *skb);
 	int			(*gro_complete)(struct sk_buff *skb);
+	bool			(*id_match)(struct packet_type *ptype,
+					    struct sock *sk);
 	void			*af_packet_priv;
 	struct list_head	list;
 };

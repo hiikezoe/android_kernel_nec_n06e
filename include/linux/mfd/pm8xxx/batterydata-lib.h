@@ -9,6 +9,21 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
+
+
+
+
+
+
+
+
+
+
 
 #ifndef __PM8XXX_BMS_BATTERYDATA_H
 #define __PM8XXX_BMS_BATTERYDATA_H
@@ -69,11 +84,18 @@ struct pc_temp_ocv_lut {
 	int ocv[PC_TEMP_ROWS][PC_TEMP_COLS];
 };
 
+
+ 
 enum battery_type {
 	BATT_UNKNOWN = 0,
 	BATT_PALLADIUM,
 	BATT_DESAY,
+	BATT_NCM_Nxx_1980,
+	BATT_NCM_Nxx_DVE903,	
+	BATT_NCM_Nxx_DVE905		
 };
+ 
+
 
 /**
  * struct bms_battery_data -
@@ -104,10 +126,24 @@ struct bms_battery_data {
 	int			rbatt_capacitive_mohm;
 };
 
-#if defined(CONFIG_PM8921_BMS) || \
-	defined(CONFIG_PM8921_BMS_MODULE)
+#if defined(CONFIG_PM8921_BMS) || 	defined(CONFIG_PM8921_BMS_MODULE)
+
 extern struct bms_battery_data  palladium_1500_data;
 extern struct bms_battery_data  desay_5200_data;
+
+
+extern struct bms_battery_data  ncm_Nxx_DVE906_data;
+
+
+
+
+extern struct bms_battery_data  ncm_Nxx_DVE904_data;
+
+
+ 
+extern struct bms_battery_data  ncm_Nxx_1980_data;
+ 
+
 
 int interpolate_fcc(struct single_row_lut *fcc_temp_lut, int batt_temp);
 int interpolate_scalingfactor(struct sf_lut *sf_lut, int row_entry, int pc);

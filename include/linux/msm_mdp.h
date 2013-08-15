@@ -12,11 +12,20 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #ifndef _MSM_MDP_H_
 #define _MSM_MDP_H_
 
 #include <linux/types.h>
 #include <linux/fb.h>
+
+
+
+  #define LCD_DEVICE_S6E8AA0X01
+
 
 #define MSMFB_IOCTL_MAGIC 'm'
 #define MSMFB_GRP_DISP          _IOW(MSMFB_IOCTL_MAGIC, 1, unsigned int)
@@ -81,6 +90,50 @@
 #define MDP_IMGTYPE2_START 0x10000
 #define MSMFB_DRIVER_VERSION	0xF9E8D701
 
+
+
+
+
+
+
+#define MSMFB_CUSTOM_1    _IO(MSMFB_IOCTL_MAGIC, 167)
+#define MSMFB_CUSTOM_2    _IO(MSMFB_IOCTL_MAGIC, 168)
+#define MSMFB_CUSTOM_3    _IO(MSMFB_IOCTL_MAGIC, 169)
+
+
+#define MSMFB_CUSTOM_4    _IO(MSMFB_IOCTL_MAGIC, 170)
+#define MSMFB_CUSTOM_5    _IO(MSMFB_IOCTL_MAGIC, 171)
+
+
+
+#define MSMFB_CUSTOM_8    _IO(MSMFB_IOCTL_MAGIC, 172)
+
+
+#define MSMFB_CUSTOM_9    _IOW(MSMFB_IOCTL_MAGIC, 173, struct msmfb_request_parame *)
+
+
+#define MSMFB_CUSTOM_30   _IO(MSMFB_IOCTL_MAGIC, 174)
+#define MSMFB_CUSTOM_31   _IO(MSMFB_IOCTL_MAGIC, 175)
+
+
+
+#define MSMFB_CUSTOM_20  _IOW(MSMFB_IOCTL_MAGIC,  180, struct msmfb_register_write *)
+#define MSMFB_CUSTOM_21  _IOWR(MSMFB_IOCTL_MAGIC, 181, struct msmfb_register_read )
+
+
+#define MSMFB_CUSTOM_156  _IO(MSMFB_IOCTL_MAGIC, 191)
+#define MSMFB_CUSTOM_157  _IO(MSMFB_IOCTL_MAGIC, 192)
+
+
+#define MSMFB_CUSTOM_100  _IOW(MSMFB_IOCTL_MAGIC, 200, unsigned int)
+
+
+#define MSMFB_CUSTOM_110  _IO(MSMFB_IOCTL_MAGIC, 201)
+
+
+#define MSMFB_CUSTOM_220  _IOR(MSMFB_IOCTL_MAGIC, 220, unsigned int *)
+
+
 enum {
 	NOTIFY_UPDATE_START,
 	NOTIFY_UPDATE_STOP,
@@ -133,6 +186,18 @@ enum {
 
 #define MDSS_MDP_ROT_ONLY		0x80
 #define MDSS_MDP_RIGHT_MIXER		0x100
+
+
+enum {
+	MSM_FB_REQUEST_OVERLAY_ALPHA,
+	MSM_FB_REQUEST_MAX
+};
+
+typedef enum {
+	MSM_FB_REQUEST_DISABLE,
+	MSM_FB_REQUEST_ENABLE
+} MSM_FB_REQUEST_FLAG;
+
 
 /* mdp_blit_req flag values */
 #define MDP_ROT_NOP 0
@@ -629,5 +694,24 @@ int msm_fb_writeback_dequeue_buffer(struct fb_info *info,
 int msm_fb_writeback_stop(struct fb_info *info);
 int msm_fb_writeback_terminate(struct fb_info *info);
 #endif
+
+
+struct msmfb_request_parame {
+    uint32_t  request;    
+    void*     data;   
+};
+
+struct msmfb_register_write {
+    unsigned char di;      
+    unsigned char len;     
+    unsigned char data[255];  
+};
+struct msmfb_register_read {
+    unsigned char di;          
+    unsigned char len;         
+    unsigned char w_data[2];   
+    unsigned char r_data[255]; 
+};
+
 
 #endif /*_MSM_MDP_H_*/

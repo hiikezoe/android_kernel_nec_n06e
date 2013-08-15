@@ -1,3 +1,7 @@
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 /* ld script to make s390 Linux kernel
  * Written by Martin Schwidefsky (schwidefsky@de.ibm.com)
  */
@@ -8,7 +12,7 @@
 
 #ifndef CONFIG_64BIT
 OUTPUT_FORMAT("elf32-s390", "elf32-s390", "elf32-s390")
-OUTPUT_ARCH(s390)
+OUTPUT_ARCH(s390:31-bit)
 ENTRY(startup)
 jiffies = jiffies_64 + 4;
 #else

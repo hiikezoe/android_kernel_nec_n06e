@@ -9,6 +9,10 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/err.h>
 #include <linux/slab.h>
@@ -24,6 +28,12 @@
 #include "mmc_ops.h"
 #include "sd.h"
 #include "sd_ops.h"
+
+
+
+#include "../card/block.h"
+
+
 
 static const unsigned int tran_exp[] = {
 	10000,		100000,		1000000,	10000000,
@@ -65,6 +75,13 @@ void mmc_decode_cid(struct mmc_card *card)
 {
 	u32 *resp = card->raw_cid;
 
+
+
+	pr_info("%s: CID=%08X%08X%08X%08X\n", mmc_hostname(card->host),
+		card->raw_cid[0], card->raw_cid[1], card->raw_cid[2], card->raw_cid[3]);
+
+
+
 	memset(&card->cid, 0, sizeof(struct mmc_cid));
 
 	/*
@@ -95,6 +112,13 @@ static int mmc_decode_csd(struct mmc_card *card)
 	struct mmc_csd *csd = &card->csd;
 	unsigned int e, m, csd_struct;
 	u32 *resp = card->raw_csd;
+
+
+
+	pr_info("%s: CSD=%08X%08X%08X%08X\n", mmc_hostname(card->host),
+		card->raw_csd[0], card->raw_csd[1], card->raw_csd[2], card->raw_csd[3]);
+
+
 
 	csd_struct = UNSTUFF_BITS(resp, 126, 2);
 
@@ -630,15 +654,19 @@ static int mmc_sd_init_uhs_card(struct mmc_card *card)
 		return -ENOMEM;
 	}
 
-	/* Set 4-bit bus width */
-	if ((card->host->caps & MMC_CAP_4_BIT_DATA) &&
-	    (card->scr.bus_widths & SD_SCR_BUS_WIDTH_4)) {
-		err = mmc_app_set_bus_width(card, MMC_BUS_WIDTH_4);
-		if (err)
-			goto out;
 
-		mmc_set_bus_width(card->host, MMC_BUS_WIDTH_4);
-	}
+
+
+
+
+
+
+
+
+
+
+
+
 
 	/*
 	 * Select the bus speed mode depending on host
@@ -822,6 +850,25 @@ int mmc_sd_setup_card(struct mmc_host *host, struct mmc_card *card,
 		if (err)
 			return err;
 
+
+	}
+
+	
+
+
+	if ((host->caps & MMC_CAP_4_BIT_DATA) &&
+		(card->scr.bus_widths & SD_SCR_BUS_WIDTH_4)) {
+		err = mmc_app_set_bus_width(card, MMC_BUS_WIDTH_4);
+		if (err)
+			return err;
+
+		mmc_set_bus_width(host, MMC_BUS_WIDTH_4);
+	}
+
+	if (!reinit) {
+
+
+
 		/*
 		 * Fetch and process SD Status register.
 		 */
@@ -922,8 +969,15 @@ void mmc_sd_go_highspeed(struct mmc_card *card)
  * In the case of a resume, "oldcard" will contain the card
  * we're trying to reinitialise.
  */
-static int mmc_sd_init_card(struct mmc_host *host, u32 ocr,
+
+
+int mmc_sd_init_card(struct mmc_host *host, u32 ocr,
 	struct mmc_card *oldcard)
+
+
+
+
+
 {
 	struct mmc_card *card;
 	int err;
@@ -1020,17 +1074,21 @@ static int mmc_sd_init_card(struct mmc_host *host, u32 ocr,
 		 */
 		mmc_set_clock(host, mmc_sd_get_max_clock(card));
 
-		/*
-		 * Switch to wider bus (if supported).
-		 */
-		if ((host->caps & MMC_CAP_4_BIT_DATA) &&
-			(card->scr.bus_widths & SD_SCR_BUS_WIDTH_4)) {
-			err = mmc_app_set_bus_width(card, MMC_BUS_WIDTH_4);
-			if (err)
-				goto free_card;
 
-			mmc_set_bus_width(host, MMC_BUS_WIDTH_4);
-		}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	}
 
 	host->card = card;
@@ -1039,6 +1097,11 @@ static int mmc_sd_init_card(struct mmc_host *host, u32 ocr,
 free_card:
 	if (!oldcard)
 		mmc_remove_card(card);
+
+
+
+    pr_err("%s: Error card!!\n", __func__);
+
 
 	return err;
 }
@@ -1149,6 +1212,7 @@ static int mmc_sd_resume(struct mmc_host *host)
 	mmc_claim_host(host);
 #ifdef CONFIG_MMC_PARANOID_SD_INIT
 	retries = 5;
+
 	while (retries) {
 		err = mmc_sd_init_card(host, host->ocr, host->card);
 
@@ -1167,6 +1231,14 @@ static int mmc_sd_resume(struct mmc_host *host)
 #else
 	err = mmc_sd_init_card(host, host->ocr, host->card);
 #endif
+
+
+	if (err) {
+		pr_err("%s: failed!!\n", __func__);
+		mmc_power_off(host);
+	}
+
+
 	mmc_release_host(host);
 
 	return err;
@@ -1179,6 +1251,14 @@ static int mmc_sd_power_restore(struct mmc_host *host)
 	host->card->state &= ~MMC_STATE_HIGHSPEED;
 	mmc_claim_host(host);
 	ret = mmc_sd_init_card(host, host->ocr, host->card);
+
+
+	if (ret) {
+		pr_err("%s: failed!!\n", __func__);
+		mmc_power_off(host);
+	}
+
+
 	mmc_release_host(host);
 
 	return ret;
@@ -1287,6 +1367,7 @@ int mmc_attach_sd(struct mmc_host *host)
 	 */
 #ifdef CONFIG_MMC_PARANOID_SD_INIT
 	retries = 5;
+
 	while (retries) {
 		err = mmc_sd_init_card(host, host->ocr, NULL);
 		if (err) {
@@ -1325,6 +1406,12 @@ remove_card:
 	host->card = NULL;
 	mmc_claim_host(host);
 err:
+
+
+	pr_err("%s: Error card!!\n", __func__);
+	mmc_err_info_set();
+
+
 	mmc_detach_bus(host);
 
 	pr_err("%s: error %d whilst initialising SD card\n",

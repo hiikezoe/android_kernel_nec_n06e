@@ -10,6 +10,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #ifndef _MACH_QDSP5_V2_VOICE_H
 #define _MACH_QDSP5_V2_VOICE_H
 
@@ -25,11 +29,32 @@
 #define CMD_DEVICE_INFO                 0x4
 #define CMD_DEVICE_CHANGE               0x6
 
+
+
+
+
+#define CMD_NV_GET                      0x10                             
+
+
+
+
+
+
 /* EVENTS received from MODEM */
 #define EVENT_ACQUIRE_START             0x51
 #define EVENT_RELEASE_START             0x52
 #define EVENT_CHANGE_START              0x54
 #define EVENT_NETWORK_RECONFIG          0x53
+
+
+
+
+
+#define EVENT_NV_GET                    0x80                             
+
+
+
+
 
 /* voice state */
 enum {

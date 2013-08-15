@@ -10,6 +10,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 #include <linux/platform_device.h>
@@ -62,6 +66,21 @@
 #define RD_BUF_SIZE			100
 #define SFR_MAX_RETRIES		10
 #define SFR_RETRY_INTERVAL	1000
+
+
+
+#define OEM_DVE021_FATAL_MODE_INIT    0x494E4954   
+#define OEM_DVE021_FATAL_MODE_APPS    0x41505053   
+#define OEM_DVE021_FATAL_MODE_MODEM   0x6D6F6431   
+#define OEM_DVE021_FATAL_MODE_MDM     0x394D444D   
+#define OEM_DVE021_FATAL_MODE_ERR     0x65727258   
+
+void DVE022_set_fatal_flg(unsigned int fatal_flag);
+unsigned int DVE022_get_fatal_flg(void);
+int DVE022_get_fatal_mode(void);
+int DVE022_set_fatal_mode(int mode);
+int subsystem_restart(const char *subsys_name);
+
 
 enum gpio_update_config {
 	GPIO_UPDATE_BOOTING_CONFIG = 1,
@@ -368,6 +387,9 @@ static long mdm_modem_ioctl(struct file *filp, unsigned int cmd,
 	struct mdm_device *mdev = filp->private_data;
 	struct mdm_modem_drv *mdm_drv;
 
+    unsigned int    fatal_flag = 0;
+
+
 	if (_IOC_TYPE(cmd) != CHARM_CODE) {
 		pr_err("%s: invalid ioctl code to mdm id %d\n",
 			   __func__, mdev->mdm_data.device_id);
@@ -381,6 +403,9 @@ static long mdm_modem_ioctl(struct file *filp, unsigned int cmd,
 	case WAKE_CHARM:
 		pr_info("%s: Powering on mdm id %d\n",
 				__func__, mdev->mdm_data.device_id);
+
+        atomic_set(&mdm_drv->mdm_ready, 2);
+
 		mdm_ops->power_on_mdm_cb(mdm_drv);
 		break;
 	case CHECK_FOR_BOOT:
@@ -473,6 +498,24 @@ static long mdm_modem_ioctl(struct file *filp, unsigned int cmd,
 			   __func__, ret);
 		put_user(ret, (unsigned long __user *) arg);
 		break;
+
+    case GET_FATAL_FLAG:
+        
+        fatal_flag = DVE022_get_fatal_flg();
+        
+        put_user( fatal_flag, (unsigned int __user *)arg );
+        break;
+    case SET_FATAL_FLAG:
+        
+        get_user( fatal_flag, (unsigned int __user *)arg );
+        
+        DVE022_set_fatal_flg(fatal_flag);
+        break;
+    case DUMP_COMP_REBOOT:
+        
+        machine_restart( NULL );
+        break;
+
 	default:
 		pr_err("%s: invalid ioctl cmd = %d\n", __func__, _IOC_NR(cmd));
 		ret = -EINVAL;
@@ -488,7 +531,20 @@ static void mdm_status_fn(struct work_struct *work)
 	struct mdm_modem_drv *mdm_drv = &mdev->mdm_data;
 	int value = gpio_get_value(mdm_drv->mdm2ap_status_gpio);
 
+    int retmode = OEM_DVE021_FATAL_MODE_INIT;
+
+
 	pr_debug("%s: status:%d\n", __func__, value);
+
+    
+    retmode = DVE022_set_fatal_mode(OEM_DVE021_FATAL_MODE_MDM);
+    
+    if( retmode == OEM_DVE021_FATAL_MODE_ERR )
+    {
+        pr_err("charm_status_fn: fatal mode error \n");
+        return;
+    }
+
 	if (atomic_read(&mdm_drv->mdm_ready) && mdm_ops->status_cb)
 		mdm_ops->status_cb(mdm_drv, value);
 
@@ -519,6 +575,9 @@ static irqreturn_t mdm_errfatal(int irq, void *dev_id)
 		(gpio_get_value(mdm_drv->mdm2ap_status_gpio) == 1)) {
 		pr_info("%s: Received err fatal from mdm id %d\n",
 				__func__, mdev->mdm_data.device_id);
+
+        printk(KERN_ERR "[T][ARM]Event:0x31 Info:0x00");
+
 		mdm_start_ssr(mdev);
 	}
 	return IRQ_HANDLED;
@@ -538,6 +597,9 @@ static int mdm_modem_open(struct inode *inode, struct file *file)
 static int mdm_panic_prep(struct notifier_block *this,
 				unsigned long event, void *ptr)
 {
+
+	int mode = OEM_DVE021_FATAL_MODE_INIT;
+
 	int i;
 	struct mdm_modem_drv *mdm_drv;
 	struct mdm_device *mdev =
@@ -548,6 +610,14 @@ static int mdm_panic_prep(struct notifier_block *this,
 	pr_debug("%s: setting AP2MDM_ERRFATAL high for a non graceful reset\n",
 			 __func__);
 	mdm_disable_irqs(mdev);
+
+    mode = DVE022_get_fatal_mode();
+    
+    
+    
+    if(mode != OEM_DVE021_FATAL_MODE_MDM)
+    {
+
 	gpio_set_value(mdm_drv->ap2mdm_errfatal_gpio, 1);
 
 	for (i = MDM_MODEM_TIMEOUT; i > 0; i -= MDM_MODEM_DELTA) {
@@ -562,6 +632,9 @@ static int mdm_panic_prep(struct notifier_block *this,
 		if (mdm_drv && mdm_ops->atomic_reset_mdm_cb)
 			mdm_ops->atomic_reset_mdm_cb(mdm_drv);
 	}
+
+    }
+
 	return NOTIFY_DONE;
 }
 
@@ -584,6 +657,9 @@ static irqreturn_t mdm_status_change(int irq, void *dev_id)
 	if (value == 0 && atomic_read(&mdm_drv->mdm_ready)) {
 		pr_info("%s: unexpected reset external modem id %d\n",
 				__func__, mdev->mdm_data.device_id);
+
+        printk(KERN_ERR "[T][ARM]Event:0x31 Info:0x00");
+
 		mdm_drv->mdm_unexpected_reset_occurred = 1;
 		mdm_start_ssr(mdev);
 	} else if (value == 1) {
@@ -618,6 +694,7 @@ static int mdm_subsys_shutdown(const struct subsys_desc *crashed_subsys)
 	pr_debug("%s: ssr on modem id %d\n", __func__,
 			 mdev->mdm_data.device_id);
 
+	cancel_delayed_work(&mdev->mdm2ap_status_check_work);
 	mdm_ssr_started(mdev);
 	cancel_delayed_work(&mdev->mdm2ap_status_check_work);
 

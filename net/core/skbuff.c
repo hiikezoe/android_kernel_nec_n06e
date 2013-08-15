@@ -31,6 +31,10 @@
  *	as published by the Free Software Foundation; either version
  *	2 of the License, or (at your option) any later version.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 /*
  *	The functions in this file will not compile correctly with gcc 2.4.x
@@ -1712,6 +1716,7 @@ int skb_splice_bits(struct sk_buff *skb, unsigned int offset,
 	struct splice_pipe_desc spd = {
 		.pages = pages,
 		.partial = partial,
+		.nr_pages_max = MAX_SKB_FRAGS,
 		.flags = flags,
 		.ops = &sock_pipe_buf_ops,
 		.spd_release = sock_spd_release,
@@ -1758,7 +1763,7 @@ done:
 		lock_sock(sk);
 	}
 
-	splice_shrink_spd(pipe, &spd);
+	splice_shrink_spd(&spd);
 	return ret;
 }
 

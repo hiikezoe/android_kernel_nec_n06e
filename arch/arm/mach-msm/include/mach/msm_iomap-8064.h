@@ -19,6 +19,19 @@
  * provide a master phys->virt mapping for peripherals here.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
+
+
+
+
+
+
+
+
 
 #ifndef __ASM_ARCH_MSM_IOMAP_8064_H
 #define __ASM_ARCH_MSM_IOMAP_8064_H
@@ -116,3 +129,21 @@
 #endif
 
 #endif
+
+
+
+
+#define MSM_OEM_DVE021_DB_UINIT_BASE IOMEM(0xFE400000)
+#define MSM_OEM_DVE021_DB_UINIT_PHYS 0x88600000
+#define MSM_OEM_DVE021_DB_UINIT_SIZE (SZ_4K*1536)   
+
+
+
+
+
+
+
+
+
+
+

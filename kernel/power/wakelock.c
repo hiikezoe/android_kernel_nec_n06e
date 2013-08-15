@@ -12,6 +12,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 #include <linux/platform_device.h>
@@ -349,7 +353,8 @@ static void suspend(struct work_struct *work)
 	}
 
 	entry_event_num = current_event_num;
-	suspend_sys_sync_queue();
+	
+	
 	if (debug_mask & DEBUG_SUSPEND)
 		pr_info("suspend: enter suspend\n");
 	getnstimeofday(&ts_entry);

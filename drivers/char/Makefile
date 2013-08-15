@@ -1,6 +1,10 @@
 #
 # Makefile for the kernel character device drivers.
 #
+#/***********************************************************************/
+#/* Modified by                                                         */
+#/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+#/***********************************************************************/
 
 obj-y				+= mem.o random.o
 obj-$(CONFIG_TTY_PRINTK)	+= ttyprintk.o
@@ -68,3 +72,4 @@ obj-$(CONFIG_MSM_ROTATOR)	+= msm_rotator.o
 obj-$(CONFIG_MMC_GENERIC_CSDIO)	+= csdio.o
 obj-$(CONFIG_DIAG_CHAR)		+= diag/
 obj-$(CONFIG_MSM_ADSPRPC)       += adsprpc.o
+obj-$(CONFIG_DIAG_W)         += diag_w/

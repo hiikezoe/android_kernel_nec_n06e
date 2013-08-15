@@ -18,6 +18,10 @@
  *   along with this program;  if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #include <linux/fs.h>
 #include <linux/slab.h>
 #include "cifs_unicode.h"
@@ -203,6 +207,27 @@ cifs_strtoUTF16(__le16 *to, const char *from, int len,
 	int i;
 	wchar_t wchar_to; /* needed to quiet sparse */
 
+	
+	if (!strcmp(codepage->charset, "utf8")) {
+		
+
+
+
+
+		i  = utf8s_to_utf16s(from, len, UTF16_LITTLE_ENDIAN,
+				       (wchar_t *) to, len);
+
+		
+		if (i >= 0)
+			goto success;
+		
+
+
+
+
+
+	}
+
 	for (i = 0; len && *from; i++, from += charlen, len -= charlen) {
 		charlen = codepage->char2uni(from, len, &wchar_to);
 		if (charlen < 1) {
@@ -215,6 +240,7 @@ cifs_strtoUTF16(__le16 *to, const char *from, int len,
 		put_unaligned_le16(wchar_to, &to[i]);
 	}
 
+success:
 	put_unaligned_le16(0, &to[i]);
 	return i;
 }
@@ -328,6 +354,6 @@ cifsConvertToUTF16(__le16 *target, const char *source, int srclen,
 	}
 
 ctoUTF16_out:
-	return i;
+	return j;
 }
 

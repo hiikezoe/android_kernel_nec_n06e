@@ -9,6 +9,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/kernel.h>
 #include <linux/interrupt.h>
@@ -31,12 +35,26 @@
 #define MODULE_NAME			"wcnss_8960"
 #define MAX_BUF_SIZE			0x51
 
+
+
+#define OEM_DVE021_FATAL_MODE_INIT    0x494E4954   
+#define OEM_DVE021_FATAL_MODE_APPS    0x41505053   
+#define OEM_DVE021_FATAL_MODE_MODEM   0x6D6F6431   
+#define OEM_DVE021_FATAL_MODE_DSP     0x64737073   
+#define OEM_DVE021_FATAL_MODE_LPASS   0x4C704173   
+#define OEM_DVE021_FATAL_MODE_RIVA    0x52495641   
+#define OEM_DVE021_FATAL_MODE_ERR     0x65727258   
+
+int DVE022_set_fatal_mode(int mode);
+
+
 static struct delayed_work cancel_vote_work;
 static void *riva_ramdump_dev;
 static int riva_crash;
 static int ss_restart_inprogress;
 static int enable_riva_ssr;
 static struct subsys_device *riva_8960_dev;
+
 
 static void smsm_state_cb_hdlr(void *data, uint32_t old_state,
 					uint32_t new_state)
@@ -45,6 +63,9 @@ static void smsm_state_cb_hdlr(void *data, uint32_t old_state,
 	char buffer[MAX_BUF_SIZE];
 	unsigned smem_reset_size;
 	unsigned size;
+
+    int  retmode = OEM_DVE021_FATAL_MODE_INIT;
+
 
 	riva_crash = true;
 
@@ -59,8 +80,24 @@ static void smsm_state_cb_hdlr(void *data, uint32_t old_state,
 		return;
 	}
 
+
+        
+        retmode = DVE022_set_fatal_mode( OEM_DVE021_FATAL_MODE_RIVA );
+        if ( retmode == OEM_DVE021_FATAL_MODE_ERR )
+        {
+            pr_err( "%s: fatal mode error \n", __func__ );
+            return ;
+        }
+
+
 	if (!enable_riva_ssr)
-		panic(MODULE_NAME ": SMSM reset request received from Riva");
+
+
+        {
+        printk(KERN_ERR "[T][ARM]Event:0x3C Info:0x04");
+		subsystem_restart("riva");
+	}
+
 
 	smem_reset_reason = smem_get_entry(SMEM_SSR_REASON_WCNSS0,
 			&smem_reset_size);
@@ -83,11 +120,17 @@ static void smsm_state_cb_hdlr(void *data, uint32_t old_state,
 	}
 
 	ss_restart_inprogress = true;
+
+    printk(KERN_ERR "[T][ARM]Event:0x3C Info:0x04");
+
 	subsystem_restart_dev(riva_8960_dev);
 }
 
 static irqreturn_t riva_wdog_bite_irq_hdlr(int irq, void *dev_id)
 {
+
+    int                 retmode = OEM_DVE021_FATAL_MODE_INIT;
+
 	riva_crash = true;
 
 	if (ss_restart_inprogress) {
@@ -96,10 +139,27 @@ static irqreturn_t riva_wdog_bite_irq_hdlr(int irq, void *dev_id)
 		return IRQ_HANDLED;
 	}
 
+    
+    retmode = DVE022_set_fatal_mode( OEM_DVE021_FATAL_MODE_RIVA );
+    if ( retmode == OEM_DVE021_FATAL_MODE_ERR )
+    {
+        pr_err( "%s: fatal mode error \n", __func__ );
+        return IRQ_HANDLED;
+    }
+
+
 	if (!enable_riva_ssr)
-		panic(MODULE_NAME ": Watchdog bite received from Riva");
+
+
+    {
+	    printk(KERN_ERR "[T][ARM]Event:0x3C Info:0x04");
+		subsystem_restart("riva");
+    }
 
 	ss_restart_inprogress = true;
+
+    printk(KERN_ERR "[T][ARM]Event:0x3C Info:0x04");
+
 	subsystem_restart_dev(riva_8960_dev);
 
 	return IRQ_HANDLED;

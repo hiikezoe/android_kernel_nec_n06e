@@ -14,6 +14,26 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -26,6 +46,9 @@
 #include <linux/usb/gadget.h>
 #include <linux/workqueue.h>
 #include <linux/debugfs.h>
+
+#include <linux/usb/oem_usb_common.h>
+
 
 static DEFINE_SPINLOCK(ch_lock);
 static LIST_HEAD(usb_diag_ch_list);
@@ -123,6 +146,25 @@ struct diag_context {
 	unsigned dpkts_tolaptop_pending;
 };
 
+
+#define INTERFACE_STRING_INDEX	0
+
+static struct usb_string diag_string_defs[] = {
+	[INTERFACE_STRING_INDEX].s	= DVE021_USB_IF_DESC_NAME_DIAG,
+	{  },	
+};
+
+static struct usb_gadget_strings diag_string_table = {
+	.language		= 0x0409,	
+	.strings		= diag_string_defs,
+};
+
+static struct usb_gadget_strings *diag_strings[] = {
+	&diag_string_table,
+	NULL,
+};
+
+
 static inline struct diag_context *func_to_diag(struct usb_function *f)
 {
 	return container_of(f, struct diag_context, function);
@@ -144,8 +186,13 @@ static void usb_config_work_func(struct work_struct *work)
 
 	/* pass on product id and serial number to dload */
 	if (!cdev->desc.iSerialNumber) {
+
 		ctxt->update_pid_and_serial_num(
-					cdev->desc.idProduct, 0);
+					cpu_to_le16(DVE021_USB_PID_DEFAULT), 0);
+
+
+
+
 		return;
 	}
 
@@ -157,8 +204,13 @@ static void usb_config_work_func(struct work_struct *work)
 	table = *(cdev->driver->strings);
 	for (s = table->strings; s && s->s; s++)
 		if (s->id == cdev->desc.iSerialNumber) {
+
 			ctxt->update_pid_and_serial_num(
-					cdev->desc.idProduct, s->s);
+					cpu_to_le16(DVE021_USB_PID_DEFAULT), s->s);
+
+
+
+
 			break;
 		}
 }
@@ -631,6 +683,9 @@ int diag_function_add(struct usb_configuration *c, const char *name,
 	struct usb_diag_ch *_ch;
 	int found = 0, ret;
 
+	int		status;
+
+
 	DBG(c->cdev, "diag_function_add\n");
 
 	list_for_each_entry(_ch, &usb_diag_ch_list, list) {
@@ -644,6 +699,15 @@ int diag_function_add(struct usb_configuration *c, const char *name,
 		return -ENODEV;
 	}
 
+	if (diag_string_defs[INTERFACE_STRING_INDEX].id == 0) {
+		status = usb_string_id(c->cdev);
+		if (status < 0)
+			return status;
+		diag_string_defs[INTERFACE_STRING_INDEX].id = status;
+		intf_desc.iInterface = status;
+	}
+
+
 	dev = container_of(_ch, struct diag_context, ch);
 	/* claim the channel for this USB interface */
 	_ch->priv_usb = dev;
@@ -651,6 +715,9 @@ int diag_function_add(struct usb_configuration *c, const char *name,
 	dev->update_pid_and_serial_num = update_pid;
 	dev->cdev = c->cdev;
 	dev->function.name = _ch->name;
+
+	dev->function.strings = diag_strings;
+
 	dev->function.descriptors = fs_diag_desc;
 	dev->function.hs_descriptors = hs_diag_desc;
 	dev->function.bind = diag_function_bind;

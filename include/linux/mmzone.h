@@ -1,3 +1,7 @@
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #ifndef _LINUX_MMZONE_H
 #define _LINUX_MMZONE_H
 
@@ -714,7 +718,7 @@ typedef struct pglist_data {
 					     range, including holes */
 	int node_id;
 	wait_queue_head_t kswapd_wait;
-	struct task_struct *kswapd;
+	struct task_struct *kswapd;	
 	int kswapd_max_order;
 	enum zone_type classzone_idx;
 } pg_data_t;
@@ -999,8 +1003,8 @@ static inline struct zoneref *first_zones_zonelist(struct zonelist *zonelist,
 #include <asm/sparsemem.h>
 #endif
 
-#if !defined(CONFIG_HAVE_ARCH_EARLY_PFN_TO_NID) && \
-	!defined(CONFIG_HAVE_MEMBLOCK_NODE_MAP)
+#if !defined(CONFIG_HAVE_ARCH_EARLY_PFN_TO_NID) && 	!defined(CONFIG_HAVE_MEMBLOCK_NODE_MAP)
+
 static inline unsigned long early_pfn_to_nid(unsigned long pfn)
 {
 	return 0;

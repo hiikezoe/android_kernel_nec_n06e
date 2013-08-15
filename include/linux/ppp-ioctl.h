@@ -7,6 +7,10 @@
  *  modify it under the terms of the GNU General Public License
  *  version 2 as published by the Free Software Foundation.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #ifndef _PPP_IOCTL_H
 #define _PPP_IOCTL_H
 
@@ -115,5 +119,8 @@ struct pppol2tp_ioc_stats {
 #define SIOCGPPPSTATS   (SIOCDEVPRIVATE + 0)
 #define SIOCGPPPVER     (SIOCDEVPRIVATE + 1)	/* NEVER change this!! */
 #define SIOCGPPPCSTATS  (SIOCDEVPRIVATE + 2)
+
+
+#define  PPP_MTU         1500    
 
 #endif /* _PPP_IOCTL_H */

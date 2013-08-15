@@ -8,6 +8,10 @@
  *	as published by the Free Software Foundation; either version
  *	2 of the License, or (at your option) any later version.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/capability.h>
 #include <linux/kernel.h>
@@ -1498,6 +1502,12 @@ void netdev_class_remove_file(struct class_attribute *class_attr)
 	class_remove_file(&net_class, class_attr);
 }
 EXPORT_SYMBOL(netdev_class_remove_file);
+
+void netdev_initialize_kobject(struct net_device *net)
+{
+ struct device *device = &(net->dev);
+ device_initialize(device);
+}
 
 int netdev_kobject_init(void)
 {

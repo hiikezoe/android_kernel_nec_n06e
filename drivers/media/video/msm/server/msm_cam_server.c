@@ -10,6 +10,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/of.h>
 #include "msm_cam_server.h"
@@ -364,7 +368,9 @@ static int msm_server_control(struct msm_cam_server_dev *server_dev,
 				uint32_t id, struct msm_ctrl_cmd *out)
 {
 	int rc = 0;
-	uint8_t wait_count;
+
+
+
 	void *value;
 	struct msm_queue_cmd *rcmd;
 	struct msm_queue_cmd *event_qcmd;
@@ -432,20 +438,26 @@ static int msm_server_control(struct msm_cam_server_dev *server_dev,
 
 	/* wait for config return status */
 	D("Waiting for config status\n");
-	/* wait event may be interrupted by sugnal,
-	 * in this case -ERESTARTSYS is returned and retry is needed.
-	 * Now we only retry once. */
-	wait_count = 2;
-	do {
-		rc = wait_event_interruptible_timeout(queue->wait,
+
+	rc = wait_event_timeout(queue->wait,
 			!list_empty_careful(&queue->list),
-			msecs_to_jiffies(out->timeout_ms));
-		wait_count--;
-		if (rc != -ERESTARTSYS)
-			break;
-		D("%s: wait_event interrupted by signal, remain_count = %d",
-			__func__, wait_count);
-	} while (1);
+			out->timeout_ms);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	D("Waiting is over for config status\n");
 	if (list_empty_careful(&queue->list)) {
 		if (!rc)
@@ -2776,40 +2788,6 @@ static unsigned int msm_poll_config(struct file *fp,
 	return rc;
 }
 
-static int msm_mmap_config(struct file *fp, struct vm_area_struct *vma)
-{
-	struct msm_cam_config_dev *config_cam = fp->private_data;
-	int rc = 0;
-	int phyaddr;
-	int retval;
-	unsigned long size;
-
-	D("%s: phy_addr=0x%x", __func__, config_cam->mem_map.cookie);
-	phyaddr = (int)config_cam->mem_map.cookie;
-	if (!phyaddr) {
-		pr_err("%s: no physical memory to map", __func__);
-		return -EFAULT;
-	}
-	memset(&config_cam->mem_map, 0,
-		sizeof(struct msm_mem_map_info));
-	size = vma->vm_end - vma->vm_start;
-	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
-	retval = remap_pfn_range(vma, vma->vm_start,
-					phyaddr >> PAGE_SHIFT,
-					size, vma->vm_page_prot);
-	if (retval) {
-		pr_err("%s: remap failed, rc = %d",
-					__func__, retval);
-		rc = -ENOMEM;
-		goto end;
-	}
-	D("%s: phy_addr=0x%x: %08lx-%08lx, pgoff %08lx\n",
-			__func__, (uint32_t)phyaddr,
-			vma->vm_start, vma->vm_end, vma->vm_pgoff);
-end:
-	return rc;
-}
-
 static int msm_open_config(struct inode *inode, struct file *fp)
 {
 	int rc;
@@ -3083,12 +3061,6 @@ static long msm_ioctl_config(struct file *fp, unsigned int cmd,
 		rc = msm_v4l2_evt_notify(config_cam->p_mctl, cmd, arg);
 		break;
 
-	case MSM_CAM_IOCTL_SET_MEM_MAP_INFO:
-		if (copy_from_user(&config_cam->mem_map, (void __user *)arg,
-				sizeof(struct msm_mem_map_info)))
-			rc = -EINVAL;
-		break;
-
 	case MSM_CAM_IOCTL_SET_MCTL_SDEV:{
 		struct msm_mctl_set_sdev_data set_data;
 		if (copy_from_user(&set_data, (void __user *)arg,
@@ -3150,7 +3122,6 @@ static const struct file_operations msm_fops_config = {
 	.open  = msm_open_config,
 	.poll  = msm_poll_config,
 	.unlocked_ioctl = msm_ioctl_config,
-	.mmap	= msm_mmap_config,
 	.release = msm_close_config,
 };
 

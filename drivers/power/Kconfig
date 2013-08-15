@@ -1,3 +1,7 @@
+#/***********************************************************************/
+#/* Modified by                                                         */
+#/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+#/***********************************************************************/
 menuconfig POWER_SUPPLY
 	tristate "Power supply class support"
 	help
@@ -444,3 +448,18 @@ config AB8500_BATTERY_THERM_ON_BATCTRL
 	  thermistor connected on BATCTRL ADC.
 
 endif # POWER_SUPPLY
+
+
+config FEATURE_DVE021_DIAG_PW
+	bool "DVE021 Power Diag Command"
+	default y
+	help
+	  Say Y here to enable support for DVE021 Power Diag Command
+
+
+config FEATURE_DVE021_BATTERY_IM
+	bool "DVE021 battery information manager"
+	default y
+	help
+		Say Y to enable support for battery information manager.
+		It enables battery adjustment from userland.

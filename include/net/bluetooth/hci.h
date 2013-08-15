@@ -21,6 +21,10 @@
    COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS
    SOFTWARE IS DISCLAIMED.
 */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifndef __HCI_H
 #define __HCI_H
@@ -86,6 +90,9 @@ enum {
 	HCI_SERVICE_CACHE,
 	HCI_LINK_KEYS,
 	HCI_DEBUG_KEYS,
+
+	HCI_UNREGISTER,
+
 
 	HCI_RESET,
 };
@@ -165,8 +172,10 @@ enum {
 
 #define SCO_ESCO_MASK	(ESCO_HV1 | ESCO_HV2 | ESCO_HV3)
 #define EDR_ESCO_MASK	(ESCO_2EV3 | ESCO_3EV3 | ESCO_2EV5 | ESCO_3EV5)
-#define ALL_ESCO_MASK	(SCO_ESCO_MASK | ESCO_EV3 | ESCO_EV4 | ESCO_EV5 | \
+
+#define ALL_ESCO_MASK	(SCO_ESCO_MASK | ESCO_EV5 | \
 			EDR_ESCO_MASK)
+
 
 /* Air Coding Format */
 #define ACF_CVSD	0x0000;

@@ -10,6 +10,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -391,7 +395,7 @@ int mdp4_wfd_pipe_commit(struct msm_fb_data_type *mfd,
 		pipe = vp->plist;
 		for (i = 0; i < OVERLAY_PIPE_MAX; i++, pipe++) {
 			pipe->pipe_used = 0;
-			pr_info("%s: dequeue update failed, unsetting pipes\n",
+			pr_debug("%s: dequeue update failed, unsetting pipes\n",
 				__func__);
 		}
 		return cnt;
@@ -477,6 +481,11 @@ static void mdp4_wfd_wait4ov(int cndx)
 {
 	struct vsycn_ctrl *vctrl;
 
+
+	unsigned long result;
+
+
+
 	if (cndx >= MAX_CONTROLLER) {
 		pr_err("%s: out or range: cndx=%d\n", __func__, cndx);
 		return;
@@ -487,7 +496,17 @@ static void mdp4_wfd_wait4ov(int cndx)
 	if (atomic_read(&vctrl->suspend) > 0)
 		return;
 
-	wait_for_completion(&vctrl->ov_comp);
+
+
+
+	result = wait_for_completion_timeout(&vctrl->ov_comp, msecs_to_jiffies(100));
+	if (!result) {
+		printk(KERN_INFO "[DEBUG]%s. There's no interrupt!!\n", __func__);
+		complete(&vctrl->ov_comp);
+	}
+
+
+
 }
 
 

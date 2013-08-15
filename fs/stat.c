@@ -3,6 +3,10 @@
  *
  *  Copyright (C) 1991, 1992  Linus Torvalds
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/export.h>
 #include <linux/mm.h>
@@ -57,7 +61,7 @@ EXPORT_SYMBOL(vfs_getattr);
 
 int vfs_fstat(unsigned int fd, struct kstat *stat)
 {
-	struct file *f = fget(fd);
+	struct file *f = fget_raw(fd);
 	int error = -EBADF;
 
 	if (f) {

@@ -9,6 +9,10 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifndef __LINUX_SND_SOC_H
 #define __LINUX_SND_SOC_H
@@ -352,6 +356,10 @@ int snd_soc_codec_volatile_register(struct snd_soc_codec *codec,
 				    unsigned int reg);
 int snd_soc_codec_readable_register(struct snd_soc_codec *codec,
 				    unsigned int reg);
+
+int snd_soc_codec_cal_volume(struct snd_soc_codec *codec,
+				    unsigned int reg);
+
 int snd_soc_codec_writable_register(struct snd_soc_codec *codec,
 				    unsigned int reg);
 int snd_soc_codec_set_cache_io(struct snd_soc_codec *codec,
@@ -621,6 +629,9 @@ struct snd_soc_codec {
 	int (*readable_register)(struct snd_soc_codec *, unsigned int);
 	int (*writable_register)(struct snd_soc_codec *, unsigned int);
 
+	int (*cal_volume)(struct snd_soc_codec *, unsigned int);
+
+
 	/* runtime */
 	struct snd_ac97 *ac97;  /* for ad-hoc ac97 devices */
 	unsigned int active;
@@ -691,6 +702,9 @@ struct snd_soc_codec_driver {
 	int (*volatile_register)(struct snd_soc_codec *, unsigned int);
 	int (*readable_register)(struct snd_soc_codec *, unsigned int);
 	int (*writable_register)(struct snd_soc_codec *, unsigned int);
+
+	int (*cal_volume)(struct snd_soc_codec *, unsigned int);
+
 	unsigned int reg_cache_size;
 	short reg_cache_step;
 	short reg_word_size;

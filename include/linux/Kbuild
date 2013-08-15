@@ -1,3 +1,7 @@
+#/***********************************************************************/
+#/* Modified by                                                         */
+#/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+#/***********************************************************************/
 header-y += byteorder/
 header-y += can/
 header-y += caif/
@@ -447,3 +451,5 @@ header-y += genlock.h
 header-y += msm_audio_amrwb.h
 header-y += msm_audio_amrwbplus.h
 header-y += coresight-stm.h
+
+header-y += ncdiagd_power.h

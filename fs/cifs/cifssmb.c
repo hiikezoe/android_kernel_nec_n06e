@@ -20,6 +20,10 @@
  *   along with this library; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
  /* SMB/CIFS PDU handling routines here - except for leftovers in connect.c   */
  /* These are mostly routines that operate on a pathname, or on a tree id     */
@@ -88,6 +92,32 @@ static struct {
 
 /* Forward declarations */
 static void cifs_readv_complete(struct work_struct *work);
+
+
+
+
+
+
+
+
+
+static DEFINE_MUTEX(cifs_kmap_mutex);
+
+static inline void
+cifs_kmap_lock(void)
+{
+	mutex_lock(&cifs_kmap_mutex);
+}
+
+static inline void
+cifs_kmap_unlock(void)
+{
+	mutex_unlock(&cifs_kmap_mutex);
+}
+
+
+
+
 
 /* Mark as invalid, all open files on tree connections since they
    were closed when session to server was lost */
@@ -1557,6 +1587,7 @@ cifs_readv_receive(struct TCP_Server_Info *server, struct mid_q_entry *mid)
 	eof_index = eof ? (eof - 1) >> PAGE_CACHE_SHIFT : 0;
 	cFYI(1, "eof=%llu eof_index=%lu", eof, eof_index);
 
+	cifs_kmap_lock();
 	list_for_each_entry_safe(page, tpage, &rdata->pages, lru) {
 		if (remaining >= PAGE_CACHE_SIZE) {
 			/* enough data to fill the page */
@@ -1606,6 +1637,7 @@ cifs_readv_receive(struct TCP_Server_Info *server, struct mid_q_entry *mid)
 			page_cache_release(page);
 		}
 	}
+	cifs_kmap_unlock();
 
 	/* issue the read if we have any iovecs left to fill */
 	if (rdata->nr_iov > 1) {
@@ -2194,7 +2226,9 @@ cifs_async_writev(struct cifs_writedata *wdata)
 	 * and set the iov_len properly for each one. It may also set
 	 * wdata->bytes too.
 	 */
+	cifs_kmap_lock();
 	wdata->marshal_iov(iov, wdata);
+	cifs_kmap_unlock();
 
 	cFYI(1, "async write at %llu %u bytes", wdata->offset, wdata->bytes);
 
@@ -4344,7 +4378,7 @@ int
 CIFSFindFirst(const int xid, struct cifs_tcon *tcon,
 	      const char *searchName,
 	      const struct nls_table *nls_codepage,
-	      __u16 *pnetfid,
+	      __u16 *pnetfid, __u16 search_flags,
 	      struct cifs_search_info *psrch_inf, int remap, const char dirsep)
 {
 /* level 257 SMB_ */
@@ -4416,8 +4450,7 @@ findFirstRetry:
 	    cpu_to_le16(ATTR_READONLY | ATTR_HIDDEN | ATTR_SYSTEM |
 			ATTR_DIRECTORY);
 	pSMB->SearchCount = cpu_to_le16(CIFSMaxBufSize/sizeof(FILE_UNIX_INFO));
-	pSMB->SearchFlags = cpu_to_le16(CIFS_SEARCH_CLOSE_AT_END |
-		CIFS_SEARCH_RETURN_RESUME);
+	pSMB->SearchFlags = cpu_to_le16(search_flags);
 	pSMB->InformationLevel = cpu_to_le16(psrch_inf->info_level);
 
 	/* BB what should we set StorageType to? Does it matter? BB */
@@ -4487,8 +4520,8 @@ findFirstRetry:
 	return rc;
 }
 
-int CIFSFindNext(const int xid, struct cifs_tcon *tcon,
-		 __u16 searchHandle, struct cifs_search_info *psrch_inf)
+int CIFSFindNext(const int xid, struct cifs_tcon *tcon, __u16 searchHandle,
+		 __u16 search_flags, struct cifs_search_info *psrch_inf)
 {
 	TRANSACTION2_FNEXT_REQ *pSMB = NULL;
 	TRANSACTION2_FNEXT_RSP *pSMBr = NULL;
@@ -4531,8 +4564,7 @@ int CIFSFindNext(const int xid, struct cifs_tcon *tcon,
 		cpu_to_le16(CIFSMaxBufSize / sizeof(FILE_UNIX_INFO));
 	pSMB->InformationLevel = cpu_to_le16(psrch_inf->info_level);
 	pSMB->ResumeKey = psrch_inf->resume_key;
-	pSMB->SearchFlags =
-	      cpu_to_le16(CIFS_SEARCH_CLOSE_AT_END | CIFS_SEARCH_RETURN_RESUME);
+	pSMB->SearchFlags = cpu_to_le16(search_flags);
 
 	name_len = psrch_inf->resume_name_len;
 	params += name_len;
@@ -5883,55 +5915,55 @@ SetTimesRetry:
 
 /* Can not be used to set time stamps yet (due to old DOS time format) */
 /* Can be used to set attributes */
-#if 0  /* Possibly not needed - since it turns out that strangely NT4 has a bug
-	  handling it anyway and NT4 was what we thought it would be needed for
-	  Do not delete it until we prove whether needed for Win9x though */
-int
-CIFSSMBSetAttrLegacy(int xid, struct cifs_tcon *tcon, char *fileName,
-		__u16 dos_attrs, const struct nls_table *nls_codepage)
-{
-	SETATTR_REQ *pSMB = NULL;
-	SETATTR_RSP *pSMBr = NULL;
-	int rc = 0;
-	int bytes_returned;
-	int name_len;
 
-	cFYI(1, "In SetAttrLegacy");
 
-SetAttrLgcyRetry:
-	rc = smb_init(SMB_COM_SETATTR, 8, tcon, (void **) &pSMB,
-		      (void **) &pSMBr);
-	if (rc)
-		return rc;
 
-	if (pSMB->hdr.Flags2 & SMBFLG2_UNICODE) {
-		name_len =
-			ConvertToUTF16((__le16 *) pSMB->fileName, fileName,
-				       PATH_MAX, nls_codepage);
-		name_len++;     /* trailing null */
-		name_len *= 2;
-	} else {	/* BB improve the check for buffer overruns BB */
-		name_len = strnlen(fileName, PATH_MAX);
-		name_len++;     /* trailing null */
-		strncpy(pSMB->fileName, fileName, name_len);
-	}
-	pSMB->attr = cpu_to_le16(dos_attrs);
-	pSMB->BufferFormat = 0x04;
-	inc_rfc1001_len(pSMB, name_len + 1);
-	pSMB->ByteCount = cpu_to_le16(name_len + 1);
-	rc = SendReceive(xid, tcon->ses, (struct smb_hdr *) pSMB,
-			 (struct smb_hdr *) pSMBr, &bytes_returned, 0);
-	if (rc)
-		cFYI(1, "Error in LegacySetAttr = %d", rc);
 
-	cifs_buf_release(pSMB);
 
-	if (rc == -EAGAIN)
-		goto SetAttrLgcyRetry;
 
-	return rc;
-}
-#endif /* temporarily unneeded SetAttr legacy function */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 static void
 cifs_fill_unix_set_info(FILE_UNIX_BASIC_INFO *data_offset,

@@ -4,6 +4,10 @@
  * Copyright (C) 1999  Linus Torvalds
  * Copyright (C) 2002  Christoph Hellwig
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/mman.h>
 #include <linux/pagemap.h>
@@ -13,6 +17,7 @@
 #include <linux/hugetlb.h>
 #include <linux/sched.h>
 #include <linux/ksm.h>
+#include <linux/file.h>
 
 /*
  * Any behaviour which results in changes to the vma->vm_flags needs to
@@ -203,14 +208,16 @@ static long madvise_remove(struct vm_area_struct *vma,
 	struct address_space *mapping;
 	loff_t offset, endoff;
 	int error;
+	struct file *f;
 
 	*prev = NULL;	/* tell sys_madvise we drop mmap_sem */
 
 	if (vma->vm_flags & (VM_LOCKED|VM_NONLINEAR|VM_HUGETLB))
 		return -EINVAL;
 
-	if (!vma->vm_file || !vma->vm_file->f_mapping
-		|| !vma->vm_file->f_mapping->host) {
+	f = vma->vm_file;
+
+	if (!f || !f->f_mapping || !f->f_mapping->host) {
 			return -EINVAL;
 	}
 
@@ -224,9 +231,16 @@ static long madvise_remove(struct vm_area_struct *vma,
 	endoff = (loff_t)(end - vma->vm_start - 1)
 			+ ((loff_t)vma->vm_pgoff << PAGE_SHIFT);
 
-	/* vmtruncate_range needs to take i_mutex */
+	
+
+
+
+
+
+	get_file(f);
 	up_read(&current->mm->mmap_sem);
 	error = vmtruncate_range(mapping->host, offset, endoff);
+	fput(f);
 	down_read(&current->mm->mmap_sem);
 	return error;
 }

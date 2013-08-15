@@ -10,6 +10,10 @@
  *
  *  This is the "shell" of the ARMv7 processor support.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #include <linux/linkage.h>
 #include <linux/init.h>
 #include <asm/assembler.h>
@@ -211,6 +215,9 @@ ENTRY(v7_coherent_user_range)
  * isn't mapped, just try the next page.
  */
 9001:
+
+
+
 	mov	r12, r12, lsr #12
 	mov	r12, r12, lsl #12
 	add	r12, r12, #4096

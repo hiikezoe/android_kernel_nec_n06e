@@ -30,6 +30,10 @@
 * Qualcomm Confidential and Proprietary.
 *
 ******************************************************************************/
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include "palTypes.h"
 #include "aniGlobal.h"
@@ -45,6 +49,8 @@
 #include "wlan_qct_wda.h"
 #include "limSessionUtils.h"
 #include "csrInsideApi.h"
+
+#include <vos_power.h>
 
 extern void pmcReleaseCommand( tpAniSirGlobal pMac, tSmeCmd *pCommand );
 
@@ -204,6 +210,10 @@ eHalStatus pmcStart (tHalHandle hHal)
 
     /* Initialize basic PMC information about device. */
     pMac->pmc.pmcState = FULL_POWER;
+
+    
+    pm_obs_a_wlan(PM_OBS_WLAN_TR_ON_MODE); 
+
     pMac->pmc.requestFullPowerPending = FALSE;
     pMac->pmc.uapsdSessionRequired = FALSE;
     pMac->pmc.wowlModeRequired = FALSE;

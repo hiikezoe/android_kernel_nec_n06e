@@ -24,6 +24,10 @@
  * 		sequentially scan LUNs up until some maximum is reached,
  * 		or a LUN is seen that cannot have a device attached to it.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 #include <linux/moduleparam.h>
@@ -775,6 +779,16 @@ static int scsi_add_lun(struct scsi_device *sdev, unsigned char *inq_result,
 	sdev->vendor = (char *) (sdev->inquiry + 8);
 	sdev->model = (char *) (sdev->inquiry + 16);
 	sdev->rev = (char *) (sdev->inquiry + 32);
+
+	if (strncmp(sdev->vendor, "ATA     ", 8) == 0) {
+		
+
+
+
+
+
+		sdev->allow_restart = 1;
+	}
 
 	if (*bflags & BLIST_ISROM) {
 		sdev->type = TYPE_ROM;
@@ -1714,6 +1728,9 @@ static void scsi_sysfs_add_devices(struct Scsi_Host *shost)
 {
 	struct scsi_device *sdev;
 	shost_for_each_device(sdev, shost) {
+		
+		if (sdev->sdev_state == SDEV_DEL)
+			continue;
 		if (!scsi_host_scan_allowed(shost) ||
 		    scsi_sysfs_add_sdev(sdev) != 0)
 			__scsi_remove_device(sdev);

@@ -10,10 +10,23 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 /*
  * Qualcomm PMIC 8921 driver header file
  *
  */
+
+
+
+
+
+
+
+
+
 
 #ifndef __MFD_PM8921_H
 #define __MFD_PM8921_H
@@ -121,6 +134,10 @@
 #define PM8921_LVS1_OCP_IRQ		PM8921_IRQ_BLOCK_BIT(13, 1)
 #define PM8921_HDMI_MVS_OCP_IRQ		PM8921_IRQ_BLOCK_BIT(13, 0)
 
+
+#define PM8921_CABLE_IRQ	PM8921_IRQ_BLOCK_BIT(4, 3)
+
+
 /* PMIC I/O Resources */
 #define PM8921_RTC_BASE 0x11D
 
@@ -143,5 +160,9 @@ struct pm8921_platform_data {
 	struct pm8xxx_ccadc_platform_data	*ccadc_pdata;
 	struct pm8xxx_pwm_platform_data		*pwm_pdata;
 };
+
+
+int nc_pm8921_readb(u16 addr, u8 *val);
+int nc_pm8921_writeb(u16 addr, u8 val);
 
 #endif

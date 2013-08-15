@@ -9,6 +9,17 @@
  *
  *  You may use this code as per GPL version 2
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
+
+
+
+
+
+
 
 #include <linux/kernel.h>
 #include <linux/device.h>
@@ -19,41 +30,45 @@
 
 /* Battery specific LEDs triggers. */
 
-static void power_supply_update_bat_leds(struct power_supply *psy)
-{
-	union power_supply_propval status;
-	unsigned long delay_on = 0;
-	unsigned long delay_off = 0;
 
-	if (psy->get_property(psy, POWER_SUPPLY_PROP_STATUS, &status))
-		return;
 
-	dev_dbg(psy->dev, "%s %d\n", __func__, status.intval);
 
-	switch (status.intval) {
-	case POWER_SUPPLY_STATUS_FULL:
-		led_trigger_event(psy->charging_full_trig, LED_FULL);
-		led_trigger_event(psy->charging_trig, LED_OFF);
-		led_trigger_event(psy->full_trig, LED_FULL);
-		led_trigger_event(psy->charging_blink_full_solid_trig,
-			LED_FULL);
-		break;
-	case POWER_SUPPLY_STATUS_CHARGING:
-		led_trigger_event(psy->charging_full_trig, LED_FULL);
-		led_trigger_event(psy->charging_trig, LED_FULL);
-		led_trigger_event(psy->full_trig, LED_OFF);
-		led_trigger_blink(psy->charging_blink_full_solid_trig,
-			&delay_on, &delay_off);
-		break;
-	default:
-		led_trigger_event(psy->charging_full_trig, LED_OFF);
-		led_trigger_event(psy->charging_trig, LED_OFF);
-		led_trigger_event(psy->full_trig, LED_OFF);
-		led_trigger_event(psy->charging_blink_full_solid_trig,
-			LED_OFF);
-		break;
-	}
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 static int power_supply_create_bat_triggers(struct power_supply *psy)
 {
@@ -115,20 +130,23 @@ static void power_supply_remove_bat_triggers(struct power_supply *psy)
 
 /* Generated power specific LEDs triggers. */
 
-static void power_supply_update_gen_leds(struct power_supply *psy)
-{
-	union power_supply_propval online;
 
-	if (psy->get_property(psy, POWER_SUPPLY_PROP_ONLINE, &online))
-		return;
 
-	dev_dbg(psy->dev, "%s %d\n", __func__, online.intval);
 
-	if (online.intval)
-		led_trigger_event(psy->online_trig, LED_FULL);
-	else
-		led_trigger_event(psy->online_trig, LED_OFF);
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 static int power_supply_create_gen_triggers(struct power_supply *psy)
 {
@@ -158,10 +176,20 @@ static void power_supply_remove_gen_triggers(struct power_supply *psy)
 
 void power_supply_update_leds(struct power_supply *psy)
 {
-	if (psy->type == POWER_SUPPLY_TYPE_BATTERY)
-		power_supply_update_bat_leds(psy);
-	else
-		power_supply_update_gen_leds(psy);
+
+
+    if (psy->type == POWER_SUPPLY_TYPE_BATTERY)
+        pr_debug("%s : Execution of power_supply_update_bat_leds() is not.\n", psy->name);
+    else
+        pr_debug("%s : Execution of power_supply_update_gen_leds() is not.\n", psy->name);
+
+
+
+
+
+
+
+
 }
 
 int power_supply_create_triggers(struct power_supply *psy)

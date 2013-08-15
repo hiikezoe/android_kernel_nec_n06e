@@ -1,6 +1,10 @@
 #
 # Makefile for misc devices that really don't fit anywhere else.
 #
+#/***********************************************************************/
+#/* Modified by                                                         */
+#/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+#/***********************************************************************/
 
 obj-$(CONFIG_IBM_ASM)		+= ibmasm/
 obj-$(CONFIG_AD525X_DPOT)	+= ad525x_dpot.o
@@ -18,7 +22,11 @@ obj-$(CONFIG_TIFM_7XX1)       	+= tifm_7xx1.o
 obj-$(CONFIG_PHANTOM)		+= phantom.o
 obj-$(CONFIG_SENSORS_BH1780)	+= bh1780gli.o
 obj-$(CONFIG_SENSORS_BH1770)	+= bh1770glc.o
+
+
 obj-$(CONFIG_SENSORS_APDS990X)	+= apds990x.o
+
+
 obj-$(CONFIG_ANDROID_PMEM)	+= pmem.o
 obj-$(CONFIG_SGI_IOC4)		+= ioc4.o
 obj-$(CONFIG_ENCLOSURE_SERVICES) += enclosure.o
@@ -56,7 +64,9 @@ obj-$(CONFIG_WL127X_RFKILL)	+= wl127x-rfkill.o
 obj-$(CONFIG_SENSORS_AK8975)	+= akm8975.o
 obj-$(CONFIG_WL127X_RFKILL)	+= wl127x-rfkill.o
 obj-$(CONFIG_APANIC)		+= apanic.o
-obj-$(CONFIG_SENSORS_AK8975)	+= akm8975.o
+
+
+
 obj-$(CONFIG_TSIF) += msm_tsif.o
 msm_tsif-objs := tsif.o
 obj-$(CONFIG_TSIF_CHRDEV) += tsif_chrdev.o

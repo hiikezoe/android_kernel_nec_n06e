@@ -5,6 +5,10 @@
  *
  * Created to pull SCSI mid layer sysfs routines into one file.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -485,47 +489,47 @@ static DEVICE_ATTR(field, S_IRUGO | S_IWUSR, sdev_show_##field, sdev_store_##fie
 
 /* Currently we don't export bit fields, but we might in future,
  * so leave this code in */
-#if 0
-/*
- * sdev_rd_attr: create a function and attribute variable for a
- * read/write bit field.
- */
-#define sdev_rw_attr_bit(field)						\
-	sdev_show_function(field, "%d\n")					\
-									\
-static ssize_t								\
-sdev_store_##field (struct device *dev, struct device_attribute *attr,	\
-		    const char *buf, size_t count)			\
-{									\
-	int ret;							\
-	struct scsi_device *sdev;					\
-	ret = scsi_sdev_check_buf_bit(buf);				\
-	if (ret >= 0)	{						\
-		sdev = to_scsi_device(dev);				\
-		sdev->field = ret;					\
-		ret = count;						\
-	}								\
-	return ret;							\
-}									\
-static DEVICE_ATTR(field, S_IRUGO | S_IWUSR, sdev_show_##field, sdev_store_##field);
 
-/*
- * scsi_sdev_check_buf_bit: return 0 if buf is "0", return 1 if buf is "1",
- * else return -EINVAL.
- */
-static int scsi_sdev_check_buf_bit(const char *buf)
-{
-	if ((buf[1] == '\0') || ((buf[1] == '\n') && (buf[2] == '\0'))) {
-		if (buf[0] == '1')
-			return 1;
-		else if (buf[0] == '0')
-			return 0;
-		else 
-			return -EINVAL;
-	} else
-		return -EINVAL;
-}
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /*
  * Create the actual show/store functions and data structures.
  */
@@ -971,11 +975,8 @@ void __scsi_remove_device(struct scsi_device *sdev)
 		sdev->host->hostt->slave_destroy(sdev);
 	transport_destroy_device(dev);
 
-	/* cause the request function to reject all I/O requests */
-	sdev->request_queue->queuedata = NULL;
-
 	/* Freeing the queue signals to block that we're done */
-	scsi_free_queue(sdev->request_queue);
+	blk_cleanup_queue(sdev->request_queue);
 	put_device(dev);
 }
 
@@ -1000,7 +1001,6 @@ static void __scsi_remove_target(struct scsi_target *starget)
 	struct scsi_device *sdev;
 
 	spin_lock_irqsave(shost->host_lock, flags);
-	starget->reap_ref++;
  restart:
 	list_for_each_entry(sdev, &shost->__devices, siblings) {
 		if (sdev->channel != starget->channel ||
@@ -1014,14 +1014,6 @@ static void __scsi_remove_target(struct scsi_target *starget)
 		goto restart;
 	}
 	spin_unlock_irqrestore(shost->host_lock, flags);
-	scsi_target_reap(starget);
-}
-
-static int __remove_child (struct device * dev, void * data)
-{
-	if (scsi_is_target_device(dev))
-		__scsi_remove_target(to_scsi_target(dev));
-	return 0;
 }
 
 /**
@@ -1034,14 +1026,32 @@ static int __remove_child (struct device * dev, void * data)
  */
 void scsi_remove_target(struct device *dev)
 {
-	if (scsi_is_target_device(dev)) {
-		__scsi_remove_target(to_scsi_target(dev));
-		return;
-	}
+	struct Scsi_Host *shost = dev_to_shost(dev->parent);
+	struct scsi_target *starget, *last = NULL;
+	unsigned long flags;
 
-	get_device(dev);
-	device_for_each_child(dev, NULL, __remove_child);
-	put_device(dev);
+	
+
+
+	spin_lock_irqsave(shost->host_lock, flags);
+	list_for_each_entry(starget, &shost->__targets, siblings) {
+		if (starget->state == STARGET_DEL)
+			continue;
+		if (starget->dev.parent == dev || &starget->dev == dev) {
+			
+			starget->reap_ref++;
+			spin_unlock_irqrestore(shost->host_lock, flags);
+			if (last)
+				scsi_target_reap(last);
+			last = starget;
+			__scsi_remove_target(starget);
+			spin_lock_irqsave(shost->host_lock, flags);
+		}
+	}
+	spin_unlock_irqrestore(shost->host_lock, flags);
+
+	if (last)
+		scsi_target_reap(last);
 }
 EXPORT_SYMBOL(scsi_remove_target);
 

@@ -13,6 +13,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/kernel.h>
 #include <linux/err.h>
@@ -25,6 +29,10 @@
 #include <trace/events/power.h>
 #include <mach/clk-provider.h>
 #include "clock.h"
+
+
+#include <linux/delay.h>
+
 
 struct handoff_clk {
 	struct list_head list;
@@ -229,6 +237,17 @@ int clk_enable(struct clk *clk)
 			goto err_enable_clock;
 	}
 	clk->count++;
+
+	
+	if(!strcmp(clk->dbg_name, "cxo_clk") || !strcmp(clk->dbg_name, "msm_xo"))
+	{
+			udelay(1000);
+			udelay(1000);
+			udelay(1000);
+			udelay(1000);
+	}
+	
+
 	spin_unlock_irqrestore(&clk->lock, flags);
 
 	return 0;

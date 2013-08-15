@@ -9,6 +9,20 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
+
+
+
+
+
+
+
+
+
 
 #ifndef __PM8XXX_CHARGER_H
 #define __PM8XXX_CHARGER_H
@@ -17,6 +31,12 @@
 #include <linux/power_supply.h>
 
 #define PM8921_CHARGER_DEV_NAME	"pm8921-charger"
+
+
+
+#define PM8921_DIAG_IUSB_SET 0x1
+
+
 
 struct pm8xxx_charger_core_data {
 	unsigned int	vbat_channel;
@@ -269,6 +289,9 @@ int pm8921_disable_source_current(bool disable);
  *		allowable values are from 4300mV to 6500mV
  */
 int pm8921_regulate_input_voltage(int voltage);
+
+int pm8921_regulate_get_input_voltage(void);
+
 /**
  * pm8921_is_battery_charging -
  * @source: when the battery is charging the source is updated to reflect which
@@ -315,6 +338,39 @@ int pm8921_usb_ovp_disable(int disable);
  * batfet this will return 0.
  */
 int pm8921_is_batfet_closed(void);
+
+
+
+
+
+
+
+
+int nc_pm8921_get_fsm_status(u64 * val);
+
+
+
+
+
+int nc_pm8921_chg_usb_suspend_enable(int enable);
+
+
+
+
+int nc_pm8921_chg_vmaxsel_set(int voltage);
+
+
+
+
+
+
+void ncm_pm8921_notify_thermal_trip(int trip);
+
+
+
+int nc_pm8921_charger_enable(bool enable);
+
+
 #else
 static inline void pm8921_charger_vbus_draw(unsigned int mA)
 {
@@ -387,6 +443,20 @@ static inline int pm8921_is_batfet_closed(void)
 {
 	return 1;
 }
+
+static inline int nc_pm8921_get_fsm_status(u64 * val)
+{
+	*val = 0;
+	return 0;
+}
+static inline int nc_pm8921_chg_usb_suspend_enable(int enable)
+{
+	return 0;
+}
+static inline void ncm_pm8921_notify_thermal_trip(int trip)
+{
+}
+
 #endif
 
 #endif

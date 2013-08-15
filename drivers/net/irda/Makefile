@@ -4,6 +4,10 @@
 # 9 Aug 2000, Christoph Hellwig <hch@infradead.org>
 # Rewritten to use lists instead of if-statements.
 #
+#/***********************************************************************/
+#/* Modified by                                                         */
+#/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+#/***********************************************************************/
 
 # FIR drivers
 obj-$(CONFIG_USB_IRDA)		+= irda-usb.o
@@ -39,6 +43,7 @@ obj-$(CONFIG_EP7211_DONGLE)	+= ep7211-sir.o
 obj-$(CONFIG_KINGSUN_DONGLE)	+= kingsun-sir.o
 obj-$(CONFIG_KSDAZZLE_DONGLE)	+= ksdazzle-sir.o
 obj-$(CONFIG_KS959_DONGLE)    	+= ks959-sir.o
+obj-$(CONFIG_MSM_SIR)           +=msm-sir.o
 
 # The SIR helper module
 sir-dev-objs := sir_dev.o sir_dongle.o

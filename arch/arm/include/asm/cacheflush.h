@@ -7,6 +7,10 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #ifndef _ASMARM_CACHEFLUSH_H
 #define _ASMARM_CACHEFLUSH_H
 
@@ -209,9 +213,9 @@ extern void copy_to_user_page(struct vm_area_struct *, struct page *,
  * Optimized __flush_icache_all for the common cases. Note that UP ARMv7
  * will fall through to use __flush_icache_all_generic.
  */
-#if (defined(CONFIG_CPU_V7) && \
-     (defined(CONFIG_CPU_V6) || defined(CONFIG_CPU_V6K))) || \
-	defined(CONFIG_SMP_ON_UP)
+#if (defined(CONFIG_CPU_V7) &&      (defined(CONFIG_CPU_V6) || defined(CONFIG_CPU_V6K))) || 	defined(CONFIG_SMP_ON_UP)
+
+
 #define __flush_icache_preferred	__cpuc_flush_icache_all
 #elif __LINUX_ARM_ARCH__ >= 7 && defined(CONFIG_SMP)
 #define __flush_icache_preferred	__flush_icache_all_v7_smp
@@ -237,7 +241,9 @@ static inline void vivt_flush_cache_mm(struct mm_struct *mm)
 static inline void
 vivt_flush_cache_range(struct vm_area_struct *vma, unsigned long start, unsigned long end)
 {
-	if (cpumask_test_cpu(smp_processor_id(), mm_cpumask(vma->vm_mm)))
+	struct mm_struct *mm = vma->vm_mm;
+
+	if (!mm || cpumask_test_cpu(smp_processor_id(), mm_cpumask(mm)))
 		__cpuc_flush_user_range(start & PAGE_MASK, PAGE_ALIGN(end),
 					vma->vm_flags);
 }
@@ -245,7 +251,9 @@ vivt_flush_cache_range(struct vm_area_struct *vma, unsigned long start, unsigned
 static inline void
 vivt_flush_cache_page(struct vm_area_struct *vma, unsigned long user_addr, unsigned long pfn)
 {
-	if (cpumask_test_cpu(smp_processor_id(), mm_cpumask(vma->vm_mm))) {
+	struct mm_struct *mm = vma->vm_mm;
+
+	if (!mm || cpumask_test_cpu(smp_processor_id(), mm_cpumask(mm))) {
 		unsigned long addr = user_addr & PAGE_MASK;
 		__cpuc_flush_user_range(addr, addr + PAGE_SIZE, vma->vm_flags);
 	}

@@ -10,6 +10,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/init.h>
 #include <linux/ioport.h>
@@ -71,8 +75,12 @@ static struct msm_mmc_reg_data mmc_vdd_io_reg_data[MAX_SDCC_CONTROLLER] = {
 		.name = "sdc_vdd_io",
 		.high_vol_level = 2950000,
 		.low_vol_level = 1850000,
-		.always_on = 1,
-		.lpm_sup = 1,
+
+
+
+
+
+
 		/* Max. Active current required is 16 mA */
 		.hpm_uA = 16000,
 		/*
@@ -137,14 +145,28 @@ static struct msm_mmc_pad_drv sdc3_pad_drv_off_cfg[] = {
 
 static struct msm_mmc_pad_pull sdc3_pad_pull_on_cfg[] = {
 	{TLMM_PULL_SDC3_CLK, GPIO_CFG_NO_PULL},
-	{TLMM_PULL_SDC3_CMD, GPIO_CFG_PULL_UP},
-	{TLMM_PULL_SDC3_DATA, GPIO_CFG_PULL_UP}
+
+
+	{TLMM_PULL_SDC3_CMD, GPIO_CFG_NO_PULL},
+	{TLMM_PULL_SDC3_DATA, GPIO_CFG_NO_PULL}
+
+
+
+
+
 };
 
 static struct msm_mmc_pad_pull sdc3_pad_pull_off_cfg[] = {
 	{TLMM_PULL_SDC3_CLK, GPIO_CFG_NO_PULL},
-	{TLMM_PULL_SDC3_CMD, GPIO_CFG_PULL_UP},
-	{TLMM_PULL_SDC3_DATA, GPIO_CFG_PULL_UP}
+
+
+	{TLMM_PULL_SDC3_CMD, GPIO_CFG_NO_PULL},
+	{TLMM_PULL_SDC3_DATA, GPIO_CFG_NO_PULL}
+
+
+
+
+
 };
 
 static struct msm_mmc_pad_pull_data mmc_pad_pull_data[MAX_SDCC_CONTROLLER] = {
@@ -223,6 +245,11 @@ static struct msm_mmc_pin_data mmc_slot_pin_data[MAX_SDCC_CONTROLLER] = {
 	},
 	[SDCC3] = {
 		.pad_data = &mmc_pad_data[SDCC3],
+
+
+		.cfg_sts = true,
+
+
 	},
 	[SDCC4] = {
 		.is_gpio = 1,
@@ -298,10 +325,14 @@ static struct mmc_platform_data sdc3_data = {
 	.status_irq	= MSM_GPIO_TO_INT(26),
 	.irq_flags	= IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
 	.is_status_gpio_active_low = 1,
-	.xpc_cap	= 1,
-	.uhs_caps	= (MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 |
-			MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_DDR50 |
-			MMC_CAP_UHS_SDR104 | MMC_CAP_MAX_CURRENT_800),
+
+
+
+
+
+
+
+
 	.mpm_sdiowakeup_int = MSM_MPM_PIN_SDC3_DAT1,
 	.msm_bus_voting_data = &sps_to_ddr_bus_voting_data,
 };

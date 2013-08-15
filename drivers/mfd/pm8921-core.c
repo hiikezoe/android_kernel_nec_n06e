@@ -10,6 +10,19 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
+
+
+
+
+
+
+
+
 
 #define pr_fmt(fmt) "%s: " fmt, __func__
 
@@ -25,6 +38,7 @@
 #include <linux/mfd/pm8xxx/core.h>
 #include <linux/mfd/pm8xxx/regulator.h>
 #include <linux/leds-pm8xxx.h>
+#include <mach/rpm-regulator-8960.h>  
 
 #define REG_HWREV		0x002  /* PMIC4 revision */
 #define REG_HWREV_2		0x0E8  /* PMIC4 revision 2 */
@@ -57,6 +71,8 @@
 	.flags	= IORESOURCE_IRQ, \
 }
 
+#define NC_LDO_LPM_BIT  BIT(5)  
+
 struct pm8921 {
 	struct device					*dev;
 	struct pm_irq_chip				*irq_chip;
@@ -65,6 +81,8 @@ struct pm8921 {
 	u32						rev_registers;
 	u8						restart_reason;
 };
+
+static struct pm8921 *the_pm8921;  
 
 static int pm8921_readb(const struct device *dev, u16 addr, u8 *val)
 {
@@ -283,6 +301,9 @@ static const struct resource charger_cell_resources[] __devinitconst = {
 	SINGLE_IRQ_RESOURCE("DCIN_VALID_IRQ", PM8921_DCIN_VALID_IRQ),
 	SINGLE_IRQ_RESOURCE("DCIN_OV_IRQ", PM8921_DCIN_OV_IRQ),
 	SINGLE_IRQ_RESOURCE("DCIN_UV_IRQ", PM8921_DCIN_UV_IRQ),
+
+
+
 };
 
 static const struct resource bms_cell_resources[] __devinitconst = {
@@ -455,6 +476,72 @@ static struct pm8xxx_vreg pm8917_regulator_data[] = {
 	/*    name          ctrl */
 	BOOST("8917_boost", 0x04B),
 };
+
+
+
+
+
+int nc_pm8921_ldo_set_lpm(unsigned int ldo_id)
+
+{
+	u8 reg  = 0;
+	
+	pr_info("[PM] %s CTRL:0x%02x  Set to LPM.\n", 
+		regulator_data[ldo_id].rdesc.name,
+		regulator_data[ldo_id].ctrl_addr);
+	
+	nc_pm8921_readb(regulator_data[ldo_id].ctrl_addr, &reg);
+	reg |= NC_LDO_LPM_BIT;
+	
+	return nc_pm8921_writeb(regulator_data[ldo_id].ctrl_addr, reg);
+}
+
+EXPORT_SYMBOL_GPL(nc_pm8921_ldo_set_lpm);
+
+
+
+int nc_pm8921_ldo_set_npm(unsigned int ldo_id)
+{
+	u8 reg  = 0;
+
+        pr_info("[PM] %s CTRL:0x%02x  Set to LPM.\n",
+		regulator_data[ldo_id].rdesc.name,
+		regulator_data[ldo_id].ctrl_addr);
+
+	nc_pm8921_readb(regulator_data[ldo_id].ctrl_addr, &reg);
+	reg &=~NC_LDO_LPM_BIT;
+
+        return nc_pm8921_writeb(regulator_data[ldo_id].ctrl_addr, reg);
+}
+EXPORT_SYMBOL_GPL(nc_pm8921_ldo_set_npm);
+
+
+
+int nc_pm8921_readb(u16 addr, u8 *val)
+{
+	if(!the_pm8921) {
+		pr_err("[PM] called before init.\n");
+		return -EINVAL;
+	}
+
+	pr_info("[PM] addr:0x%02x", addr);
+	return pm8921_readb(the_pm8921->dev, addr, val);
+}
+EXPORT_SYMBOL_GPL(nc_pm8921_readb);
+
+int nc_pm8921_writeb(u16 addr, u8 val)
+{
+	if(!the_pm8921) {
+		pr_err("[PM] called before init.\n");
+		return -EINVAL;
+	}
+
+	pr_info("[PM] addr:0x%02x  data:0x%02x", addr, val);
+	return pm8921_writeb(the_pm8921->dev, addr, val);
+}
+EXPORT_SYMBOL_GPL(nc_pm8921_writeb);
+
+
 
 #define MAX_NAME_COMPARISON_LEN 32
 
@@ -732,6 +819,12 @@ pm8921_add_subdevices(const struct pm8921_platform_data *pdata,
 		}
 	}
 
+
+
+	nc_pm8921_ldo_set_lpm(RPM_VREG_ID_PM8921_L9);
+
+
+
 	ret = mfd_add_devices(pmic->dev, 0, &debugfs_cell, 1, NULL, irq_base);
 	if (ret) {
 		pr_err("Failed to add debugfs subdevice ret=%d\n", ret);
@@ -890,6 +983,8 @@ static int __devinit pm8921_probe(struct platform_device *pdev)
 
 	pmic->dev = &pdev->dev;
 	pm8921_drvdata.pm_chip_data = pmic;
+	the_pm8921 = pmic;  
+
 	platform_set_drvdata(pdev, &pm8921_drvdata);
 
 	/* Print out human readable version and revision names. */

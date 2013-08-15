@@ -21,6 +21,10 @@
  *  License.  See the file COPYING in the main directory of the Linux
  *  distribution for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/cpu.h>
 #include <linux/cpumask.h>
@@ -2064,6 +2068,9 @@ static void scan_for_empty_cpusets(struct cpuset *root)
  * period.  This is necessary in order to make cpusets transparent
  * (of no affect) on systems that are actively using CPU hotplug
  * but making no active use of cpusets.
+ *
+ * The only exception to this is suspend/resume, where we don't
+ * modify cpusets at all.
  *
  * This routine ensures that top_cpuset.cpus_allowed tracks
  * cpu_active_mask on each CPU hotplug (cpuhp) event.

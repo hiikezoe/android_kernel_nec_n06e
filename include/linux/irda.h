@@ -21,6 +21,10 @@
  *     provided "AS-IS" and at no charge.
  *
  ********************************************************************/
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifndef KERNEL_IRDA_H
 #define KERNEL_IRDA_H
@@ -77,6 +81,13 @@ typedef enum {
 	IRDA_MA600_DONGLE        = 11,
 	IRDA_TOIM3232_DONGLE     = 12,
 	IRDA_EP7211_DONGLE       = 13,
+
+
+
+	IRDA_DVE031_DONGLE       = 14,
+
+
+
 } IRDA_DONGLE;
 
 /* Protocol types to be used for SOCK_DGRAM */

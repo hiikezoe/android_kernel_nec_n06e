@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -9,6 +9,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/interrupt.h>
 #include <linux/io.h>
@@ -18,6 +22,9 @@
 #include <linux/errno.h>
 #include <linux/proc_fs.h>
 #include <linux/cpu.h>
+#include <mach/usb_trace.h>
+
+DEFINE_TRACE(usb_daytona_invalid_access);
 
 #define MODULE_NAME "msm_ebi_erp"
 
@@ -113,6 +120,11 @@ static irqreturn_t msm_ebi_irq(int irq, void *dev_id)
 	err_cntl |= CNTL_CLEAR_ERR;
 	writel_relaxed(err_cntl, base + SLV_ERR_CNTL);
 	mb();	/* Ensure interrupt is cleared before returning */
+
+	if ((err_apacket0 & AMID_MASK) == 0x00000102)
+		trace_usb_daytona_invalid_access(err_addr, err_apacket0,
+				err_apacket1);
+
 	return IRQ_HANDLED;
 }
 

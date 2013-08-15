@@ -10,6 +10,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #include <linux/clk.h>
 #include <mach/clk.h>
 #include "msm_fb.h"
@@ -342,8 +346,11 @@ int mipi_dsi_phy_pll_config(u32 clk_rate)
 
 	/* DSIPHY_PLL_CTRL_1 */
 	fb_divider = ((dividers->fb_divider) / 2) - 1;
+#if defined (LCD_DEVICE_S6E8AA0X01)
+	MIPI_OUTP(MIPI_DSI_BASE + 0x204, 0xE6);
+#else
 	MIPI_OUTP(MIPI_DSI_BASE + 0x204, fb_divider & 0xff);
-
+#endif
 	/* DSIPHY_PLL_CTRL_2 */
 	tmp = MIPI_INP(MIPI_DSI_BASE + 0x208);
 	tmp &= ~0x07;

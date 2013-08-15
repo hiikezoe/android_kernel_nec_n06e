@@ -1,3 +1,7 @@
+#/***********************************************************************/
+#/* Modified by                                                         */
+#/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+#/***********************************************************************/
 if ARCH_MSM
 
 menu "MSM SoC Type"
@@ -2614,5 +2618,480 @@ config MSM_CPU_PWRCTL
 	  Droop detector mechanism can adversely affect krait plls during
 	  stand alone power collapse operation. Selecting this option
 	  ensures that they are always off.
+
+
+
+
+
+
+menu "DVE021 Product Option"
+
+
+config FEATURE_DVE021_DVE902
+    bool "FEATURE_DVE021_DVE902"
+	default n
+
+
+config FEATURE_DVE021_DVE903
+    bool "FEATURE_DVE021_DVE903"
+	default n
+
+
+config FEATURE_DVE021_DVE905
+    bool "FEATURE_DVE021_DVE905"
+	default n
+
+
+config FEATURE_DVE021_DVE082_PP
+    bool "FEATURE_DVE021_DVE082_PP"
+	default n
+
+
+
+
+
+
+
+
+
+
+
+config FEATURE_DVE021_DVE901
+	bool "FEATURE_DVE021_DVE901"
+	default n
+
+
+config FEATURE_DVE021_DVE004
+	bool "FEATURE_DVE021_DVE004"
+	default n
+
+
+config FEATURE_DVE021_DVE014
+	bool "FEATURE_DVE021_DVE014"
+	default n
+
+
+
+
+
+
+config FEATURE_DVE021_DVE007
+	bool "FEATURE_DVE021_DVE007"
+	default n
+
+
+config FEATURE_DVE021_DVE017
+	bool "FEATURE_DVE021_DVE017"
+	default n
+
+
+config FEATURE_DVE021_DVE040
+	bool "FEATURE_DVE021_DVE040"
+	default n
+
+
+config FEATURE_DVE021_DVE081
+	bool "FEATURE_DVE021_DVE081"
+	default n
+
+
+
+
+
+
+config FEATURE_DVE021_ONLY_FOR_PRODUCTION_PROCESS_DVE082
+	bool "FEATURE_DVE021_ONLY_FOR_PRODUCTION_PROCESS_DVE082"
+	default n
+
+
+config CONFIG_FEATURE_DVE021_DVE082_BRB
+	bool "CONFIG_FEATURE_DVE021_DVE082_BRB"
+	default n
+
+endmenu
+
+
+
+
+
+menu "DVE021 Hardware Specification Options"
+
+
+config FEATURE_DVE021_BSP
+	bool "FEATURE_DVE021_BSP"
+	default n
+
+
+config FEATURE_DVE021_LCD
+	bool "FEATURE_DVE021_LCD"
+	default n
+
+
+config FEATURE_DVE021_SDCARD
+	bool "FEATURE_DVE021_SDCARD"
+	default n
+
+
+config FEATURE_DVE021_UIM
+	bool "FEATURE_DVE021_UIM"
+	default n
+
+
+config FEATURE_DVE021_CAMERA
+	bool "FEATURE_DVE021_CAMERA"
+	default n
+
+
+config FEATURE_DVE021_AUDIO
+	bool "FEATURE_DVE021_AUDIO"
+	default n
+
+
+config FEATURE_DVE021_POWER
+	bool "FEATURE_DVE021_POWER"
+	default n
+
+
+config FEATURE_DVE021_LED
+	bool "FEATURE_DVE021_LED"
+	default n
+
+
+config FEATURE_DVE021_IR
+	bool "FEATURE_DVE021_IR"
+	default n
+
+
+config FEATURE_DVE021_KEY
+	bool "FEATURE_DVE021_KEY"
+	default n
+
+
+config FEATURE_DVE021_VIB
+	bool "FEATURE_DVE021_VIB"
+	default n
+
+
+config FEATURE_DVE021_I2C
+	bool "FEATURE_DVE021_I2C"
+	default n
+
+
+config FEATURE_DVE021_USB
+	bool "FEATURE_DVE021_USB"
+	default n
+
+
+config FEATURE_DVE021_6AXIS_SENSOR
+	bool "FEATURE_DVE021_6AXIS_SENSOR"
+	default n
+
+
+config FEATURE_DVE021_PROX_SENSOR
+	bool "FEATURE_DVE021_PROX_SENSOR"
+	default n
+
+
+config FEATURE_DVE021_AMBLIGHT_SENSOR
+	bool "FEATURE_DVE021_AMBLIGHT_SENSOR"
+	default n
+
+
+config FEATURE_DVE021_TEMP_SENSOR
+	bool "FEATURE_DVE021_TEMP_SENSOR"
+	default n
+
+
+config FEATURE_DVE021_WLAN
+	bool "FEATURE_DVE021_WLAN"
+	default n
+
+
+config FEATURE_DVE021_BT
+	bool "FEATURE_DVE021_BT"
+	default n
+
+
+config FEATURE_DVE021_HEAT
+	bool "FEATURE_DVE021_HEAT"
+	default n
+
+
+config FEATURE_DVE021_HDMI
+	bool "FEATURE_DVE021_HDMI"
+	default n
+
+
+config FEATURE_DVE021_GPS
+	bool "FEATURE_DVE021_GPS"
+	default n
+
+
+config FEATURE_DVE021_CDMA
+	bool "FEATURE_DVE021_CDMA"
+	default n
+
+
+config FEATURE_DVE021_GSM
+	bool "FEATURE_DVE021_GSM"
+	default n
+
+
+config FEATURE_DVE021_DIAG
+	bool "FEATURE_DVE021_DIAG"
+	default n
+
+
+config FEATURE_DVE021_TOUCHPANEL
+	bool "FEATURE_DVE021_TOUCHPANEL"
+	default n
+
+
+config FEATURE_DVE021_MHL
+    depends on FB_MSM_HDMI_MHL_8334
+    bool "FEATURE_DVE021_MHL"
+    default n
+
+
+config FEATURE_DVE021_MHL_CHARGING
+    depends on FEATURE_DVE021_MHL
+    bool "FEATURE_DVE021_MHL_CHARGING"
+    default n
+endmenu
+
+
+
+
+
+menu "DVE021 typical function option"
+
+
+config FEATURE_DVE021_CPRM
+	bool "FEATURE_DVE021_CPRM"
+	default n
+
+
+config FEATURE_DVE021_FELICA
+	bool "FEATURE_DVE021_FELICA"
+	default n
+
+
+config FEATURE_DVE021_REMOTE_LOCK
+	bool "FEATURE_DVE021_REMOTE_LOCK"
+	default n
+
+
+config FEATURE_DVE021_SYS_UPDATE
+	bool "FEATURE_DVE021_SYS_UPDATE"
+	default n
+
+
+config FEATURE_DVE021_CLEAR_PASS
+	bool "FEATURE_DVE021_CLEAR_PASS"
+	default n
+
+
+config FEATURE_DVE021_DVE003
+	bool "FEATURE_DVE021_DVE003"
+	default n
+
+
+config FEATURE_DVE021_MMS
+	bool "FEATURE_DVE021_MMS"
+	default n
+
+
+config FEATURE_DVE021_COMFORT_TONE
+	bool "FEATURE_DVE021_COMFORT_TONE"
+	default n
+
+
+config FEATURE_DVE021_DVE016
+	bool "FEATURE_DVE021_DVE016"
+	default n
+
+
+config FEATURE_DVE021_MAIL_IM_EXPORT
+	bool "FEATURE_DVE021_MAIL_IM_EXPORT"
+	default n
+
+
+config FEATURE_DVE021_SMS_IM_EXPORT
+	bool "FEATURE_DVE021_SMS_IM_EXPORT"
+	default n
+
+
+config FEATURE_DVE021_FOTA
+	bool "FEATURE_DVE021_FOTA"
+	default n
+
+
+config FEATURE_DVE021_DRM_WM
+	bool "FEATURE_DVE021_DRM_WM"
+	default n
+
+
+config FEATURE_DVE021_DRM_PR
+	bool "FEATURE_DVE021_DRM_PR"
+	default n
+
+
+config FEATURE_DVE021_DRM_OMA
+	bool "FEATURE_DVE021_DRM_OMA"
+	default n
+
+
+config FEATURE_DVE021_DTV
+	bool "FEATURE_DVE021_DTV"
+	default n
+
+
+
+config FEATURE_DVE021_MMB
+	bool "FEATURE_DVE021_MMB"
+	default n
+
+
+
+config FEATURE_DVE021_WIFISETTING_APMODE
+	bool "FEATURE_DVE021_WIFISETTING_APMODE"
+	default n
+
+
+config FEATURE_DVE021_WIFISETTING_DVE037
+	bool "FEATURE_DVE021_WIFISETTING_DVE037"
+	default n
+
+
+config FEATURE_DVE021_WIFISETTING_PRIORITY
+	bool "FEATURE_DVE021_WIFISETTING_PRIORITY"
+	default n
+
+
+config FEATURE_DVE021_WIFISETTING_AIRPLANE
+	bool "FEATURE_DVE021_WIFISETTING_AIRPLANE"
+	default n
+
+
+config FEATURE_DVE021_CAMERA_CONTINUOUS_AF
+	bool "FEATURE_DVE021_CAMERA_CONTINUOUS_AF"
+	default n
+
+
+config FEATURE_DVE021_CAMERA_FACE_DETECT
+	bool "FEATURE_DVE021_CAMERA_FACE_DETECT"
+	default n
+
+
+config FEATURE_DVE021_CAM_SHAKE_RESISTANT
+	bool "FEATURE_DVE021_CAM_SHAKE_RESISTANT"
+	default n
+
+
+config FEATURE_DVE021_CAM_QUICK_SHOT
+	bool "FEATURE_DVE021_CAM_QUICK_SHOT"
+	default n
+
+
+config FEATURE_DVE021_CAM_AUTO_SCENE_PICT
+	bool "FEATURE_DVE021_CAM_AUTO_SCENE_PICT"
+	default n
+
+
+config FEATURE_DVE021_CAM_SPEED_MOVIE
+	bool "FEATURE_DVE021_CAM_SPEED_MOVIE"
+	default n
+
+
+config FEATURE_DVE021_CAM_SETTING
+	bool "FEATURE_DVE021_CAM_SETTING"
+	default n
+
+
+config FEATURE_DVE021_CAM_SELF_TIMER
+	bool "FEATURE_DVE021_CAM_SELF_TIMER"
+	default n
+
+
+config FEATURE_DVE021_CAM_CONTINUOUS_SHOOT
+	bool "FEATURE_DVE021_CAM_CONTINUOUS_SHOOT"
+	default n
+
+
+config FEATURE_DVE021_CAM_MOBILE_LIGHT
+	bool "FEATURE_DVE021_CAM_MOBILE_LIGHT"
+	default n
+
+
+config FEATURE_DVE021_CAM_LIGHT_PREVENT_PEEPING
+	bool "FEATURE_DVE021_CAM_LIGHT_PREVENT_PEEPING"
+	default n
+
+
+config FEATURE_DVE021_CAM_EXIF
+	bool "FEATURE_DVE021_CAM_EXIF"
+	default n
+
+
+config FEATURE_DVE021_IRDA
+	bool "FEATURE_DVE021_IRDA"
+	default n
+	select IRDA
+	select IRDA_DEBUG
+	select IRTTY_SIR
+	select DONGLE
+	select MSM_SIR
+
+
+if DVE021_DVE900_BRB
+
+config FEATURE_DVE021_IRDA_SIR_LOCALECHO
+	bool "FEATURE_DVE021_IRDA_SIR_LOCALECHO"
+	default n
+endif
+
+
+config FEATURE_DVE021_SE13_LIST
+	bool "FEATURE_DVE021_SE13_LIST"
+	default n
+
+config FEATURE_DVE021_OPERATOR_NAME_DVE007
+	bool "FEATURE_DVE021_OPERATOR_NAME_DVE007"
+	default n
+
+config FEATURE_DVE021_CAM_SOUND_PREVENT_PEEPING
+	bool "FEATURE_DVE021_CAM_SOUND_PREVENT_PEEPING"
+	default n
+
+config FEATURE_DVE021_EMERGENCY_JPN
+	bool "FEATURE_DVE021_EMERGENCY_JPN"
+	default n
+
+config FEATURE_DVE021_FAST_DORMANCY
+	bool "FEATURE_DVE021_FAST_DORMANCY"
+
+config FEATURE_DVE021_PWR_ON_FEEDBACK
+	bool "FEATURE_DVE021_PWR_ON_FEEDBACK"
+	default n
+
+config FEATURE_DVE021_SPMODE
+	bool "FEATURE_DVE021_SPMODE"
+	default n
+config FEATURE_DVE021_AUDIO_AUDIENCE
+	bool "FEATURE_DVE021_AUDIO_AUDIENCE"
+	default n
+
+endmenu
+
+menu "DVE021 Common defines selection."
+config DVE033_NORMAL_RELEASE
+	bool "DVE033_NORMAL_RELEASE"
+	default n
+
+
+endmenu
+
+
+
 
 endif

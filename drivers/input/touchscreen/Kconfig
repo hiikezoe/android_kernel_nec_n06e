@@ -1,6 +1,10 @@
 #
 # Touchscreen driver configuration
 #
+#/***********************************************************************/
+#/* Modified by                                                         */
+#/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+#/***********************************************************************/
 menuconfig INPUT_TOUCHSCREEN
 	bool "Touchscreens"
 	help
@@ -1007,5 +1011,16 @@ config TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called synaptics_dsx_fw_update.
+
+config TOUCHSCREEN_MELFAS_NCM
+       tristate "Melfas MMS Touch Screen sensor IC"
+       depends on I2C
+       help
+         Say Y here if you have a Melfas MMS touchscreen.
+
+         If unsure, say N.
+
+         To compile this driver as a module, choose M here: the
+         module will be called melfas_ncm.
 
 endif

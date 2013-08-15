@@ -8,6 +8,10 @@
  * TCP NFS related read + write fixes
  * (C) 1999 Dave Airlie, University of Limerick, Ireland <airlied@linux.ie>
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 
@@ -790,7 +794,9 @@ void rpc_execute(struct rpc_task *task)
 
 static void rpc_async_schedule(struct work_struct *work)
 {
+	current->flags |= PF_FSTRANS;
 	__rpc_execute(container_of(work, struct rpc_task, u.tk_work));
+	current->flags &= ~PF_FSTRANS;
 }
 
 /**

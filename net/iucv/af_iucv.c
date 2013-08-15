@@ -8,6 +8,10 @@
  *  PM functions:
  *		Ursula Braun <ursula.braun@de.ibm.com>
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #define KMSG_COMPONENT "af_iucv"
 #define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
@@ -372,7 +376,6 @@ static int afiucv_hs_send(struct iucv_message *imsg, struct sock *sock,
 			skb_trim(skb, skb->dev->mtu);
 	}
 	skb->protocol = ETH_P_AF_IUCV;
-	skb_shinfo(skb)->tx_flags |= SKBTX_DRV_NEEDS_SK_REF;
 	nskb = skb_clone(skb, GFP_ATOMIC);
 	if (!nskb)
 		return -ENOMEM;

@@ -1,0 +1,13 @@
+#/***********************************************************************/
+#/* Modified by                                                         */
+#/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+#/***********************************************************************/
+
+
+config FEATURE_DVE021_MHL
+    bool "Sili8334 MHL Transmitter"
+    default n
+    ---help---
+         Support for SiI8334 MHL Transmitter
+
+

@@ -9,6 +9,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifndef _ARCH_ARM_MACH_MSM_BUS_CORE_H
 #define _ARCH_ARM_MACH_MSM_BUS_CORE_H
@@ -36,7 +40,7 @@
 	(((slv >= MSM_BUS_SLAVE_FIRST) && (slv <= MSM_BUS_SLAVE_LAST)) ? 1 : 0)
 
 #define INTERLEAVED_BW(fab_pdata, bw, ports) \
-	((fab_pdata->il_flag) ? msm_bus_div64((bw), (ports)) : (bw))
+	((fab_pdata->il_flag) ? msm_bus_div64((ports), (bw)) : (bw))
 #define INTERLEAVED_VAL(fab_pdata, n) \
 	((fab_pdata->il_flag) ? (n) : 1)
 

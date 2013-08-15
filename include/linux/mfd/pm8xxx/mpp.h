@@ -9,6 +9,17 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
+
+
+
+
+
+
 
 #ifndef __PM8XXX_MPP_H
 #define __PM8XXX_MPP_H
@@ -118,6 +129,72 @@ struct pm8xxx_mpp_config_data {
  */
 int pm8xxx_mpp_config(unsigned mpp, struct pm8xxx_mpp_config_data *config);
 
+
+
+
+
+
+
+
+
+
+
+
+int nc_pm8xxx_mpp_config_digital_in(unsigned mpp, unsigned level, unsigned control);
+
+
+
+
+
+
+
+
+
+int nc_pm8xxx_mpp_config_digital_out(unsigned mpp, unsigned level, unsigned control);
+
+
+
+
+
+
+
+
+
+int nc_pm8xxx_mpp_config_bi_dir(unsigned mpp, unsigned level, unsigned control);
+
+
+
+
+
+
+
+
+
+int nc_pm8xxx_mpp_config_analog_input(unsigned mpp, unsigned level, unsigned control);
+
+
+
+
+
+
+
+
+
+int nc_pm8xxx_mpp_config_analog_output(unsigned mpp, unsigned level, unsigned control);
+
+
+
+
+
+
+
+
+
+int nc_pm8xxx_mpp_config_current_sink(unsigned mpp, unsigned level, unsigned control);
+
+
+
+
 #else
 
 static inline int pm8xxx_mpp_config(unsigned mpp,
@@ -125,6 +202,48 @@ static inline int pm8xxx_mpp_config(unsigned mpp,
 {
 	return -ENXIO;
 }
+
+
+
+
+static inline int nc_pm8xxx_mpp_config_digital_in(unsigned mpp,
+					unsigned level, unsigned control);
+{
+	return -ENXIO;
+}
+
+static inline int nc_pm8xxx_mpp_config_digital_out(unsigned mpp,
+					unsigned level, unsigned control)
+{
+	return -ENXIO;
+}
+
+static inline int nc_pm8xxx_mpp_config_bi_dir(unsigned mpp,
+					unsigned level, unsigned control)
+{
+	return -ENXIO;
+}
+
+static inline int nc_pm8xxx_mpp_config_analog_input(unsigned mpp,
+					unsigned level, unsigned control)
+{
+	return -ENXIO;
+}
+
+static inline int nc_pm8xxx_mpp_config_analog_output(unsigned mpp,
+					unsigned level, unsigned control)
+{
+	return -ENXIO;
+}
+
+static inline int nc_pm8xxx_mpp_config_current_sink(unsigned mpp,
+					unsigned level, unsigned control)
+{
+	return -ENXIO;
+}
+
+
+
 
 #endif
 

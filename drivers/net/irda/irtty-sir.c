@@ -25,6 +25,10 @@
  *     provided "AS-IS" and at no charge.
  *     
  ********************************************************************/    
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -42,6 +46,17 @@
 #include "irtty-sir.h"
 
 static int qos_mtt_bits = 0x03;      /* 5 ms or more */
+
+
+
+
+
+extern void msmsir_enable_rx(struct sir_dev *dev);
+extern void msmsir_disable_rx(struct sir_dev *dev);
+
+
+
+
 
 module_param(qos_mtt_bits, int, 0);
 MODULE_PARM_DESC(qos_mtt_bits, "Minimum Turn Time");
@@ -191,6 +206,17 @@ static int irtty_do_write(struct sir_dev *dev, const unsigned char *ptr, size_t 
 	tty = priv->tty;
 	if (!tty->ops->write)
 		return 0;
+
+
+
+
+
+	msmsir_disable_rx(dev);
+
+
+
+
+
 	set_bit(TTY_DO_WRITE_WAKEUP, &tty->flags);
 	writelen = tty_write_room(tty);
 	if (writelen > len)
@@ -234,6 +260,16 @@ static void irtty_receive_buf(struct tty_struct *tty, const unsigned char *cp,
 		IRDA_WARNING("%s(), not ready yet!\n", __func__);
 		return;
 	}
+
+
+
+
+	
+	IRDA_DEBUG(4, "%s() rx count= %d\n", __func__, count);
+	
+
+
+
 
 	for (i = 0; i < count; i++) {
 		/* 

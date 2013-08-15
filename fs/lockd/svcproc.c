@@ -6,6 +6,10 @@
  *
  * Copyright (C) 1996, Olaf Kirch <okir@monad.swb.de>
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/types.h>
 #include <linux/time.h>
@@ -67,7 +71,8 @@ nlmsvc_retrieve_args(struct svc_rqst *rqstp, struct nlm_args *argp,
 
 	/* Obtain file pointer. Not used by FREE_ALL call. */
 	if (filp != NULL) {
-		if ((error = nlm_lookup_file(rqstp, &file, &lock->fh)) != 0)
+		error = cast_status(nlm_lookup_file(rqstp, &file, &lock->fh));
+		if (error != 0)
 			goto no_locks;
 		*filp = file;
 
@@ -143,17 +148,17 @@ nlmsvc_proc_lock(struct svc_rqst *rqstp, struct nlm_args *argp,
 	if ((resp->status = nlmsvc_retrieve_args(rqstp, argp, &host, &file)))
 		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
 
-#if 0
-	/* If supplied state doesn't match current state, we assume it's
-	 * an old request that time-warped somehow. Any error return would
-	 * do in this case because it's irrelevant anyway.
-	 *
-	 * NB: We don't retrieve the remote host's state yet.
-	 */
-	if (host->h_nsmstate && host->h_nsmstate != argp->state) {
-		resp->status = nlm_lck_denied_nolocks;
-	} else
-#endif
+
+
+
+
+
+
+
+
+
+
+
 
 	/* Now try to lock the file */
 	resp->status = cast_status(nlmsvc_lock(rqstp, file, host, &argp->lock,

@@ -25,6 +25,10 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 /*
  * TODOs, for both the mixer and the streaming interfaces:
@@ -1247,6 +1251,13 @@ static int parse_audio_feature_unit(struct mixer_build *state, int unitid, void 
 		/* disable non-functional volume control */
 		master_bits &= ~UAC_CONTROL_BIT(UAC_FU_VOLUME);
 		break;
+	case USB_ID(0x1130, 0xf211):
+		snd_printk(KERN_INFO
+			   "usbmixer: volume control quirk for Tenx TP6911 Audio Headset\n");
+		
+		channels = 0;
+		break;
+
 	}
 	if (channels > 0)
 		first_ch_bits = snd_usb_combine_bytes(bmaControls + csize, csize);

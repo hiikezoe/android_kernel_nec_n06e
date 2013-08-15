@@ -10,6 +10,10 @@
  *	the License, or (at your option) any later version.
  *
  ********************************************************************/    
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/hardirq.h>
 #include <linux/module.h>
@@ -23,6 +27,23 @@
 #include <net/irda/irda_device.h>
 
 #include "sir-dev.h"
+
+
+
+
+extern void msmsir_enable_rx(struct sir_dev *dev);
+extern void msmsir_disable_rx(struct sir_dev *dev);
+extern int msmsir_rx_receiving(struct sir_dev *dev);
+extern int irda_discovery_state;
+
+
+
+
+static int	localechodata;
+static	int	rx_count_log;	
+static unsigned char localechobuf[256];
+
+
 
 
 static struct workqueue_struct *irda_sir_wq;
@@ -258,11 +279,11 @@ static void sirdev_config_fsm(struct work_struct *work)
 		case SIRDEV_STATE_ERROR:
 			IRDA_ERROR("%s - error: %d\n", __func__, fsm->result);
 
-#if 0	/* don't enable this before we have netdev->tx_timeout to recover */
-			netif_stop_queue(dev->netdev);
-#else
+
+
+
 			netif_wake_queue(dev->netdev);
-#endif
+
 			/* fall thru */
 
 		case SIRDEV_STATE_COMPLETE:
@@ -330,14 +351,53 @@ void sirdev_enable_rx(struct sir_dev *dev)
 	dev->rx_buff.in_frame = FALSE;
 	dev->rx_buff.state = OUTSIDE_FRAME;
 	atomic_set(&dev->enable_rx, 1);
+
+
+
+
+	msmsir_enable_rx(dev);
+
+
+
+
 }
 
 static int sirdev_is_receiving(struct sir_dev *dev)
 {
-	if (!atomic_read(&dev->enable_rx))
-		return 0;
 
-	return dev->rx_buff.state != OUTSIDE_FRAME;
+
+
+	int	ret;
+	int rx_count;
+
+	if (!atomic_read(&dev->enable_rx)){
+		ret = 0;
+		IRDA_DEBUG(4, "%s : rx is disabled, ret = %d.\n", __func__, ret);
+	}
+	else {
+		rx_count = msmsir_rx_receiving(dev);
+
+		
+		if ( (rx_count > 15) && (rx_count_log != rx_count)){
+
+		
+			ret =  TRUE;
+			IRDA_DEBUG(4, "%s : data in buffer, ret = %d, rx_count = %d.\n", __func__, ret, rx_count);
+		}
+		else {
+			ret = dev->rx_buff.state != OUTSIDE_FRAME;
+			IRDA_DEBUG(4, "%s : no data in buffer, ret = %d.\n", __func__, ret);
+		}
+	}
+	return ret;
+
+
+
+
+
+
+
+
 }
 
 int sirdev_set_dongle(struct sir_dev *dev, IRDA_DONGLE type)
@@ -534,6 +594,17 @@ EXPORT_SYMBOL(sirdev_write_complete);
 
 int sirdev_receive(struct sir_dev *dev, const unsigned char *cp, size_t count) 
 {
+
+
+	int i;
+	unsigned char c[32];
+
+	unsigned char *eofp, *ebufp;
+	int	framelen;
+
+
+
+
 	if (!dev || !dev->netdev) {
 		IRDA_WARNING("%s(), not ready yet!\n", __func__);
 		return -1;
@@ -555,12 +626,167 @@ int sirdev_receive(struct sir_dev *dev, const unsigned char *cp, size_t count)
 		return 0;
 	}
 
+
+
+	IRDA_DEBUG(3, "%s; get rx: %zd\n", __func__, count);
+
+
+
 	/* Read the characters into the buffer */
 	if (likely(atomic_read(&dev->enable_rx))) {
-		while (count--)
-			/* Unwrap and destuff one byte */
+
+		
+		rx_count_log = count;
+		
+		
+		if (count >0){
+			for(i= 0; i<32; i ++){
+				if (i<count){
+					c[i] = cp[i];
+				}
+				else {
+					c[i] = 0x00;
+				}
+			}
+			IRDA_DEBUG(3, "RcvData= %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x", 
+					 c[0], c[1], c[2], c[3], c[4], c[5],c[6], c[7], c[8], c[9], c[10], c[11], c[12], c[13],c[14],c[15],
+					 c[16], c[17], c[18], c[19], c[20], c[21],c[22], c[23], c[24], c[25], c[26], c[27], c[28], c[29],c[30],c[31]
+					 );
+		}
+		if (count >= 32){
+			for(i= 0; i<32; i ++){
+				if ( i < count-32){
+					c[i] = cp[i+32];
+				}
+				else {
+					c[i] = 0x00;
+				}
+			}
+			IRDA_DEBUG(3, "RcvData= %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x", 
+					 c[0], c[1], c[2], c[3], c[4], c[5],c[6], c[7], c[8], c[9], c[10], c[11], c[12], c[13],c[14],c[15],
+					 c[16], c[17], c[18], c[19], c[20], c[21],c[22], c[23], c[24], c[25], c[26], c[27], c[28], c[29],c[30],c[31]
+					 );
+		}
+		if (count >= 64){
+			for(i= 0; i< 32; i ++){
+				if ( i < count-64){
+					c[i] = cp[i+64];
+				}
+				else {
+					c[i] = 0x00;
+				}
+			}
+			IRDA_DEBUG(3, "RcvData= %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x", 
+					 c[0], c[1], c[2], c[3], c[4], c[5],c[6], c[7], c[8], c[9], c[10], c[11], c[12], c[13],c[14],c[15],
+					 c[16], c[17], c[18], c[19], c[20], c[21],c[22], c[23], c[24], c[25], c[26], c[27], c[28], c[29],c[30],c[31]
+					 );
+		}
+		if (count >=96){
+			for(i= 0; i<32; i ++){
+				if ( i < count-96){
+					c[i] = cp[i+96];
+				}
+				else {
+					c[i] = 0x00;
+				}
+			}
+			IRDA_DEBUG(3, "RcvData= %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x", 
+					 c[0], c[1], c[2], c[3], c[4], c[5],c[6], c[7], c[8], c[9], c[10], c[11], c[12], c[13],c[14],c[15],
+					 c[16], c[17], c[18], c[19], c[20], c[21],c[22], c[23], c[24], c[25], c[26], c[27], c[28], c[29],c[30],c[31]
+					 );
+		}
+		
+
+
+
+		ebufp = localechobuf;
+
+		if ( ( count < 20) && localechodata > 0 && dev->rx_buff.state == OUTSIDE_FRAME){
+			if ( count > localechodata){
+				if (!memcmp(localechobuf, cp + count - localechodata, localechodata)){
+					IRDA_DEBUG(4, "%s; data mutch trush %d byte!\n", __func__, count);
+					localechodata = 0;
+					cp += count;
+					count = 0;
+				}
+			}
+			else {
+				if (!memcmp(localechobuf + localechodata - count, cp , count)){
+					IRDA_DEBUG(4, "%s; data mutch trush %d byte!\n", __func__, count);
+					localechodata = 0;
+					cp += count;
+					count = 0;
+				}
+			}
+		}
+		while (count--){
+			
+			if (localechodata > 0 && dev->rx_buff.state == OUTSIDE_FRAME){
+				switch(*cp) {
+				case BOF:
+
+					if ( count > 1 && *(cp + 1) == BOF){
+						ebufp ++;
+						localechodata--;
+						cp++;
+						continue;
+						break;
+					}
+					else {
+						eofp = (unsigned char *)memchr( (void *)cp, (int)EOF, count);
+						if ( eofp  == NULL){
+							IRDA_DEBUG(4, "%s; not find eof, get start of next frame.\n", __func__);
+							localechodata = 0;
+							break;
+						}
+						else {
+							framelen = eofp - cp +1 ;
+							if ( framelen <= localechodata &&
+								   !memcmp((void *)cp, ebufp + localechodata - framelen, framelen)){
+								IRDA_DEBUG(4, "%s; find one frame, skip it\n", __func__);
+								cp += framelen;
+								count -= framelen;
+								localechodata = 0;
+								break;
+							}
+							else {
+								IRDA_DEBUG(4, "%s; frame line =%d, localechodata = %d.\n", __func__, framelen, localechodata);
+								IRDA_DEBUG(4, "%s; find start of next frame.\n", __func__);
+								localechodata = 0;
+								break;
+							}
+						}
+					}
+
+
+
+
+
+				case EOF:
+					IRDA_DEBUG(4, "%s; find end of trush data!\n", __func__);
+					ebufp ++;		
+					localechodata = 0;
+					cp++;
+					continue;
+					break;
+				default:
+					ebufp ++;		
+					localechodata--;
+					cp++;
+					continue;
+					break;
+				}
+			}
 			async_unwrap_char(dev->netdev, &dev->netdev->stats,
 					  &dev->rx_buff, *cp++);
+		}
+
+
+
+
+
+
+
 	} else {
 		while (count--) {
 			/* rx not enabled: save the raw bytes and never
@@ -596,6 +822,13 @@ static netdev_tx_t sirdev_hard_xmit(struct sk_buff *skb,
 	IRDA_ASSERT(dev != NULL, return NETDEV_TX_OK;);
 
 	netif_stop_queue(ndev);
+
+
+    if (irda_discovery_state == 1) {
+		IRDA_ERROR("%s(), STATE ERROR irda_discovery_state => 1\n", __func__);
+		return NETDEV_TX_OK;
+	}
+
 
 	IRDA_DEBUG(3, "%s(), skb->len = %d\n", __func__, skb->len);
 
@@ -649,12 +882,95 @@ static netdev_tx_t sirdev_hard_xmit(struct sk_buff *skb,
 	 * reset the rx_buf OUTSIDE_FRAME in this case too?
 	 */
 	atomic_set(&dev->enable_rx, 0);
+
+		
+		rx_count_log = 0;
+		
+
 	if (unlikely(sirdev_is_receiving(dev)))
 		dev->netdev->stats.collisions++;
+
+
+
+	
+	{
+		int i;
+		unsigned char c[32];
+		
+		if (dev->tx_buff.len >0){
+			for(i= 0; i<32; i ++){
+				if (i<dev->tx_buff.len){
+					c[i] = dev->tx_buff.data[i];
+				}
+				else {
+					c[i] = 0x00;
+				}
+			}
+			IRDA_DEBUG(3, "SendData= %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x\n", 
+					 c[0], c[1], c[2], c[3], c[4], c[5],c[6], c[7], c[8], c[9], c[10], c[11], c[12], c[13],c[14],c[15],
+					 c[16], c[17], c[18], c[19], c[20], c[21],c[22], c[23], c[24], c[25], c[26], c[27], c[28], c[29],c[30],c[31]
+					 );
+		}
+		if (dev->tx_buff.len >=32){
+			for(i= 0; i<32; i ++){
+				if ( i < dev->tx_buff.len -32){
+					c[i] = dev->tx_buff.data[i+32];
+				}
+				else {
+					c[i] = 0x00;
+				}
+			}
+			IRDA_DEBUG(3, "SendData= %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x\n", 
+					 c[0], c[1], c[2], c[3], c[4], c[5],c[6], c[7], c[8], c[9], c[10], c[11], c[12], c[13],c[14],c[15],
+					 c[16], c[17], c[18], c[19], c[20], c[21],c[22], c[23], c[24], c[25], c[26], c[27], c[28], c[29],c[30],c[31]
+					 );
+		}
+		if (dev->tx_buff.len >=64){
+			for(i= 0; i<32; i ++){
+				if ( i < dev->tx_buff.len -64){
+					c[i] = dev->tx_buff.data[i+64];
+				}
+				else {
+					c[i] = 0x00;
+				}
+			}
+			IRDA_DEBUG(3, "SendData= %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x\n", 
+					 c[0], c[1], c[2], c[3], c[4], c[5],c[6], c[7], c[8], c[9], c[10], c[11], c[12], c[13],c[14],c[15],
+					 c[16], c[17], c[18], c[19], c[20], c[21],c[22], c[23], c[24], c[25], c[26], c[27], c[28], c[29],c[30],c[31]
+					 );
+		}
+		if (dev->tx_buff.len >=96){
+			for(i= 0; i<32; i ++){
+				if ( i < dev->tx_buff.len -96){
+					c[i] = dev->tx_buff.data[i+96];
+				}
+				else {
+					c[i] = 0x00;
+				}
+			}
+			IRDA_DEBUG(3, "SendData= %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x\n", 
+					 c[0], c[1], c[2], c[3], c[4], c[5],c[6], c[7], c[8], c[9], c[10], c[11], c[12], c[13],c[14],c[15],
+					 c[16], c[17], c[18], c[19], c[20], c[21],c[22], c[23], c[24], c[25], c[26], c[27], c[28], c[29],c[30],c[31]
+					 );
+		}
+	}
+	
+
 
 	actual = dev->drv->do_write(dev, dev->tx_buff.data, dev->tx_buff.len);
 
 	if (likely(actual > 0)) {
+
+
+
+		if ( actual <= 20)
+			localechodata = actual;
+		else
+			localechodata = 20;
+		memcpy(localechobuf, dev->tx_buff.data + actual - localechodata, localechodata);
+
+
+
 		dev->tx_skb = skb;
 		dev->tx_buff.data += actual;
 		dev->tx_buff.len -= actual;
@@ -728,16 +1044,16 @@ static int sirdev_ioctl(struct net_device *ndev, struct ifreq *rq, int cmd)
 		break;
 
 	case SIOCSMODE:
-#if 0
-		if (!capable(CAP_NET_ADMIN))
-			ret = -EPERM;
-		else
-			ret = sirdev_schedule_mode(dev, irq->ifr_mode);
-		/* cannot sleep here for completion
-		 * we are called from network layer with rtnl hold
-		 */
-		break;
-#endif
+
+
+
+
+
+
+
+
+
+
 	default:
 		ret = -EOPNOTSUPP;
 	}

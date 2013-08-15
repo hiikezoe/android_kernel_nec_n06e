@@ -8,6 +8,10 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 
@@ -23,12 +27,68 @@
 #include <linux/delay.h>
 #include <linux/platform_device.h>
 #include <linux/input.h>
+#include <linux/keypad_cmd.h>
 #include <linux/gpio_keys.h>
 #include <linux/workqueue.h>
 #include <linux/gpio.h>
 #include <linux/of_platform.h>
 #include <linux/of_gpio.h>
 #include <linux/spinlock.h>
+
+#include <linux/earlysuspend.h>
+
+#include <../../../arch/arm/mach-msm/board-8064.h>
+#include <linux/wakelock.h>
+
+
+
+
+
+static volatile int keypad_mask = 0;
+static void *g_callback = NULL;
+static keypad_cmd_callback_param_keycode g_keycode;
+static struct wake_lock g_vol_up;
+
+static const int d_buttons[] = {
+	KEY_MENU,          
+	KEY_DELETE,        
+	KEY_UP,            
+	KEY_DOWN,          
+	KEY_ENTER,         
+	KEY_RIGHT,         
+	KEY_LEFT,          
+	KEY_CAMERA,        
+	KEY_HOME,          
+	KEY_SEND,          
+	KEY_BACK,          
+	KEY_F5,            
+	KEY_1,             
+	KEY_2,             
+	KEY_3,             
+	KEY_4,             
+	KEY_5,             
+	KEY_6,             
+	KEY_7,             
+	KEY_8,             
+	KEY_9,             
+	KEY_NUMERIC_STAR,  
+	KEY_0,             
+	KEY_NUMERIC_POUND, 
+
+	KEY_F6,            
+	KEY_VOLUMEUP,      
+	KEY_VOLUMEDOWN,    
+	KEY_F4,            
+	KEY_F2,            
+	KEY_POWER,         
+	KEY_SEARCH,        
+	KEY_FOCUS,         
+	KEY_F1,            
+	KEY_DISPLAYTOGGLE  
+	};
+static const int d_nbuttons = sizeof(d_buttons) / sizeof(d_buttons[0]);
+
+static struct input_dev *g_input;
 
 struct gpio_button_data {
 	const struct gpio_keys_button *button;
@@ -48,8 +108,16 @@ struct gpio_keys_drvdata {
 	unsigned int n_buttons;
 	int (*enable)(struct device *dev);
 	void (*disable)(struct device *dev);
+
+	struct early_suspend early_suspend;
+
 	struct gpio_button_data data[0];
 };
+
+
+static void gpio_keys_early_suspend(struct early_suspend *p_h);
+static void gpio_keys_late_resume(struct early_suspend *p_h);
+
 
 /*
  * SYSFS interface for enabling/disabling keys and switches:
@@ -126,6 +194,16 @@ static void gpio_keys_disable_button(struct gpio_button_data *bdata)
 	}
 }
 
+
+
+
+
+
+
+
+
+
+
 /**
  * gpio_keys_enable_button() - enables given GPIO button
  * @bdata: button data for button to be disabled
@@ -143,6 +221,16 @@ static void gpio_keys_enable_button(struct gpio_button_data *bdata)
 		bdata->disabled = false;
 	}
 }
+
+
+
+
+
+
+
+
+
+
 
 /**
  * gpio_keys_attr_show_helper() - fill in stringified bitmap of buttons
@@ -324,6 +412,99 @@ static struct attribute_group gpio_keys_attr_group = {
 	.attrs = gpio_keys_attrs,
 };
 
+unsigned char keypad_cmd(unsigned char diag_type, int *val)
+{
+	unsigned char ret = 0;
+	
+	switch( diag_type )
+	{
+	case KEYPAD_CMD_TYPE_MASK:
+		printk(KERN_DEBUG "[gpio_keys]%s: KEY_MASK (val:0x%02X)\n", __func__, val[0]);
+		if (val[0] == 0)
+		{
+			keypad_mask = 0;
+			g_callback = NULL;
+			ret = 1;
+		}
+		else if (val[0] == 1)
+		{
+			keypad_mask |= KEY_DIAG_FLG_KEYMASK;
+			ret = 1;
+		}
+		else
+		{
+			printk(KERN_DEBUG "[gpio_keys]%s: val[0] = %d\n", __func__, val[0]);
+		}
+		break;
+	
+	case KEYPAD_CMD_TYPE_KEY_EMULATION:
+		printk(KERN_DEBUG "[gpio_keys]%s: KEY_EMULATION input_report_key(val:0x%02X 0x%02X)\n",
+						__func__, val[1], val[2]);
+		
+		input_report_key(g_input, val[1], val[2]);
+		input_sync(g_input);
+		ret = 1;
+		break;
+	
+	default:
+		printk(KERN_DEBUG "[gpio_keys]%s: NG diag_type = %d\n", __func__, diag_type);
+		ret = 0;
+		break;
+	}
+	return ret;
+}
+EXPORT_SYMBOL(keypad_cmd);
+
+unsigned char keypad_cmd_callback(unsigned char diag_type, unsigned char val, void (*func)(void *))
+{
+	printk(KERN_DEBUG "[gpio_keys]%s: (Diag_type:0x%02X keypad_mask:0x%02X)\n",
+					__func__, diag_type, keypad_mask);
+	
+	if (diag_type != KEYPAD_CMD_TYPE_GET_KEYCODE)
+	{
+		return 0;
+	}
+	else
+	{
+		printk(KERN_DEBUG "[gpio_keys]%s: diag_type = %d\n", __func__, diag_type);
+	}
+	
+	keypad_mask |= KEY_DIAG_FLG_RAND_IN;
+	g_callback = func;
+	g_keycode.key_code = 0;
+	return 1;
+}
+EXPORT_SYMBOL(keypad_cmd_callback);
+
+static void keypad_callback(void (*func)(void *))
+{
+	if (func != NULL)
+	{
+		func(&g_keycode);
+	}
+	else
+	{
+		printk(KERN_DEBUG "[gpio_keys]%s: func = NULL\n", __func__);
+	}
+	
+	keypad_mask &= ~(KEY_DIAG_FLG_RAND_IN);
+	g_callback = NULL;
+}
+
+void keypad_diag_func(int code)
+{
+	g_keycode.key_code = code;
+
+	keypad_callback(g_callback);
+}
+EXPORT_SYMBOL(keypad_diag_func);
+
+int keypad_mask_get(void)
+{
+	return keypad_mask;
+}
+EXPORT_SYMBOL(keypad_mask_get);
+
 static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 {
 	const struct gpio_keys_button *button = bdata->button;
@@ -331,13 +512,49 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 	unsigned int type = button->type ?: EV_KEY;
 	int state = (gpio_get_value_cansleep(button->gpio) ? 1 : 0) ^ button->active_low;
 
-	if (type == EV_ABS) {
+	if (type == EV_ABS)
+	{
 		if (state)
 			input_event(input, type, button->code, button->value);
-	} else {
-		input_event(input, type, button->code, !!state);
+			input_sync(input);
+
+
+
+
 	}
-	input_sync(input);
+	else
+	{
+		if ((keypad_mask & KEY_DIAG_FLG_RAND_IN) != 0)
+		{
+			keypad_diag_func(button->code);
+		}
+		else if(!(keypad_mask) && button->code)
+		{
+			input_event(input, type, button->code, !!state);
+			input_sync(input);
+
+
+
+
+			if (button->code == KEY_VOLUMEUP && state == 1)
+				wake_lock_timeout(&g_vol_up, HZ);
+		}
+		else
+		{
+
+
+
+		}
+	}
+
+
+
+
+
+
+
+
+
 }
 
 static void gpio_keys_gpio_work_func(struct work_struct *work)
@@ -651,7 +868,7 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct gpio_keys_platform_data alt_pdata;
 	struct input_dev *input;
-	int i, error;
+	int i, error, d_cnt;
 	int wakeup = 0;
 
 	if (!pdata) {
@@ -661,6 +878,7 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 		pdata = &alt_pdata;
 	}
 
+	wake_lock_init(&g_vol_up, WAKE_LOCK_SUSPEND, "key_volup_flashlight");
 	ddata = kzalloc(sizeof(struct gpio_keys_drvdata) +
 			pdata->nbuttons * sizeof(struct gpio_button_data),
 			GFP_KERNEL);
@@ -706,6 +924,12 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 		if (button->wakeup)
 			wakeup = 1;
 	}
+	
+	
+	for (d_cnt = 0; d_cnt < d_nbuttons; d_cnt++)
+	{
+		input_set_capability(input, EV_KEY, d_buttons[d_cnt]);
+	}
 
 	error = sysfs_create_group(&pdev->dev.kobj, &gpio_keys_attr_group);
 	if (error) {
@@ -729,7 +953,16 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 	}
 	input_sync(input);
 
+    g_input = input;
+
 	device_init_wakeup(&pdev->dev, wakeup);
+
+
+	ddata->early_suspend.level   = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
+	ddata->early_suspend.suspend = gpio_keys_early_suspend;
+	ddata->early_suspend.resume  = gpio_keys_late_resume;
+	register_early_suspend(&ddata->early_suspend);
+
 
 	return 0;
 
@@ -756,6 +989,10 @@ static int __devexit gpio_keys_remove(struct platform_device *pdev)
 	struct input_dev *input = ddata->input;
 	int i;
 
+
+	unregister_early_suspend(&ddata->early_suspend);
+
+
 	sysfs_remove_group(&pdev->dev.kobj, &gpio_keys_attr_group);
 
 	device_init_wakeup(&pdev->dev, 0);
@@ -778,51 +1015,185 @@ static int __devexit gpio_keys_remove(struct platform_device *pdev)
 	return 0;
 }
 
+
+
+
+
+static void gpio_keys_early_suspend(struct early_suspend *h)
+
+
+
+{
+	printk(KERN_DEBUG "[gpio_keys]%s: Enter\n", __func__);
+
+
+
+
+
+	printk(KERN_DEBUG "[gpio_keys]%s: Exit\n", __func__);
+
+
+
+
+}
+
+
+
+
+
+static void gpio_keys_late_resume(struct early_suspend *h)
+
+
+
+{
+	printk(KERN_DEBUG "[gpio_keys]%s: Enter\n", __func__);
+
+
+
+
+
+	printk(KERN_DEBUG "[gpio_keys]%s: Exit\n", __func__);
+
+
+
+
+}
+
+
+
+
 #ifdef CONFIG_PM_SLEEP
-static int gpio_keys_suspend(struct device *dev)
+static int gpio_keys_pm_suspend(struct device *dev)
 {
 	struct gpio_keys_drvdata *ddata = dev_get_drvdata(dev);
 	int i;
 
-	if (device_may_wakeup(dev)) {
-		for (i = 0; i < ddata->n_buttons; i++) {
+
+
+
+
+
+
+
+
+
+
+
+
+
+	if (device_may_wakeup(dev))
+	{
+		for (i = 0; i < ddata->n_buttons; i++)
+		{
 			struct gpio_button_data *bdata = &ddata->data[i];
+
+
+
 			if (bdata->button->wakeup)
+
+			{
+
+
+
 				enable_irq_wake(bdata->irq);
+			}
+			else
+			{
+
+
+
+			}
+		}
+	}
+	else
+	{
+		
+	}
+
+
+
+
+
+
+	return 0;
+}
+
+
+
+
+static int gpio_keys_pm_resume(struct device *dev)
+{
+	struct gpio_keys_drvdata *ddata = dev_get_drvdata(dev);
+	int i;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	for (i = 0; i < ddata->n_buttons; i++)
+	{
+		struct gpio_button_data *bdata = &ddata->data[i];
+
+
+
+		if (bdata->button->wakeup && device_may_wakeup(dev))
+
+		{
+
+
+
+			disable_irq_wake(bdata->irq);
+		}
+		else
+		{
+
+
+
 		}
 	}
 
-	return 0;
-}
 
-static int gpio_keys_resume(struct device *dev)
-{
-	struct gpio_keys_drvdata *ddata = dev_get_drvdata(dev);
-	int i;
 
-	for (i = 0; i < ddata->n_buttons; i++) {
-		struct gpio_button_data *bdata = &ddata->data[i];
-		if (bdata->button->wakeup && device_may_wakeup(dev))
-			disable_irq_wake(bdata->irq);
 
-		if (gpio_is_valid(bdata->button->gpio))
-			gpio_keys_gpio_report_event(bdata);
-	}
-	input_sync(ddata->input);
+
 
 	return 0;
 }
-#endif
 
-static SIMPLE_DEV_PM_OPS(gpio_keys_pm_ops, gpio_keys_suspend, gpio_keys_resume);
+static SIMPLE_DEV_PM_OPS(gpio_keys_pm_ops, gpio_keys_pm_suspend, gpio_keys_pm_resume);
+#endif 
 
 static struct platform_driver gpio_keys_device_driver = {
 	.probe		= gpio_keys_probe,
 	.remove		= __devexit_p(gpio_keys_remove),
+
+
+
+
+
+
+
+
+
+
+
 	.driver		= {
 		.name	= "gpio-keys",
 		.owner	= THIS_MODULE,
+
 		.pm	= &gpio_keys_pm_ops,
+
 		.of_match_table = gpio_keys_of_match,
 	}
 };

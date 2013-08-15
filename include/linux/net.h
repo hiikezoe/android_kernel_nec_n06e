@@ -15,6 +15,10 @@
  *		as published by the Free Software Foundation; either version
  *		2 of the License, or (at your option) any later version.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #ifndef _LINUX_NET_H
 #define _LINUX_NET_H
 
@@ -72,6 +76,7 @@ struct net;
 #define SOCK_NOSPACE		2
 #define SOCK_PASSCRED		3
 #define SOCK_PASSSEC		4
+#define SOCK_EXTERNALLY_ALLOCATED 5
 
 #ifndef ARCH_HAS_SOCKET_TYPES
 /**

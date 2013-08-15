@@ -36,6 +36,10 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 /*
  * The Mass Storage Function acts as a USB Mass Storage device,
@@ -269,6 +273,21 @@
  */
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /* #define VERBOSE_DEBUG */
 /* #define DUMP_MSGS */
 
@@ -296,13 +315,20 @@
 
 #include "gadget_chips.h"
 
+#include <linux/usb/oem_usb_common.h>
+
+
 
 /*------------------------------------------------------------------------*/
 
 #define FSG_DRIVER_DESC		"Mass Storage Function"
 #define FSG_DRIVER_VERSION	"2009/09/11"
 
-static const char fsg_string_interface[] = "Mass Storage";
+
+static const char fsg_string_interface[] = DVE021_USB_IF_DESC_NAME_MSC;
+
+
+
 
 #define FSG_NO_DEVICE_STRINGS    1
 #define FSG_NO_OTG               1
@@ -1302,12 +1328,12 @@ static int do_request_sense(struct fsg_common *common, struct fsg_buffhd *bh)
 	 *
 	 * FSG normally uses option a); enable this code to use option b).
 	 */
-#if 0
-	if (curlun && curlun->unit_attention_data != SS_NO_SENSE) {
-		curlun->sense_data = curlun->unit_attention_data;
-		curlun->unit_attention_data = SS_NO_SENSE;
-	}
-#endif
+
+
+
+
+
+
 
 	if (!curlun) {		/* Unsupported LUNs are okay */
 		common->bad_lun_okay = 1;
@@ -1783,14 +1809,14 @@ static int finish_reply(struct fsg_common *common)
 		 * STALL.  Not realizing the endpoint was halted, it wouldn't
 		 * clear the halt -- leading to problems later on.
 		 */
-#if 0
-		} else if (common->can_stall) {
-			if (fsg_is_set(common))
-				fsg_set_halt(common->fsg,
-					     common->fsg->bulk_out);
-			raise_exception(common, FSG_STATE_ABORT_BULK_OUT);
-			rc = -EINTR;
-#endif
+
+
+
+
+
+
+
+
 
 		/*
 		 * We can't stall.  Read in the excess data and throw it
@@ -2958,13 +2984,20 @@ buffhds_first_it:
 			i = 0x0399;
 		}
 	}
+
 	snprintf(common->inquiry_string, sizeof common->inquiry_string,
-		 "%-8s%-16s%04x", cfg->vendor_name ?: "Linux",
-		 /* Assume product name dependent on the first LUN */
-		 cfg->product_name ?: (common->luns->cdrom
-				     ? "File-Stor Gadget"
-				     : "File-CD Gadget"),
-		 i);
+		 "%-8s%-16s%04x", cfg->vendor_name ?: DVE021_USB_VENDOR_NAME, 
+	     cfg->product_name ?: DVE021_USB_STORAGE_NAME,
+	     i);
+
+
+
+
+
+
+
+
+
 
 	/*
 	 * Some peripheral controllers are known not to be able to

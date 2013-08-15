@@ -9,6 +9,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #define pr_fmt(fmt) "subsys-restart: %s(): " fmt, __func__
 
@@ -36,6 +40,22 @@
 #include <mach/subsystem_restart.h>
 
 #include "smd_private.h"
+
+
+
+#define OEM_DVE021_FATAL_MODE_INIT    0x494E4954   
+#define OEM_DVE021_FATAL_MODE_APPS    0x41505053   
+#define OEM_DVE021_FATAL_MODE_MODEM   0x6D6F6431   
+#define OEM_DVE021_FATAL_MODE_DSP     0x64737073   
+#define OEM_DVE021_FATAL_MODE_LPASS   0x4C704173   
+#define OEM_DVE021_FATAL_MODE_RIVA    0x52495641   
+
+#define OEM_DVE021_FATAL_MODE_MDM     0x394D444D   
+
+#define OEM_DVE021_FATAL_MODE_ERR     0x65727258   
+
+int DVE022_get_fatal_mode(void);
+
 
 struct subsys_soc_restart_order {
 	const char * const *subsystem_list;
@@ -147,6 +167,7 @@ static int restart_level_set(const char *val, struct kernel_param *kp)
 {
 	int ret;
 	int old_val = restart_level;
+	int subtype;
 
 	if (cpu_is_msm9615()) {
 		pr_err("Only Phase 1 subsystem restart is supported\n");
@@ -159,7 +180,9 @@ static int restart_level_set(const char *val, struct kernel_param *kp)
 
 	switch (restart_level) {
 	case RESET_SUBSYS_INDEPENDENT:
-		if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE) {
+		subtype = socinfo_get_platform_subtype();
+		if ((subtype == PLATFORM_SUBTYPE_SGLTE) ||
+			(subtype == PLATFORM_SUBTYPE_SGLTE2)) {
 			pr_info("Phase 3 is currently unsupported. Using phase 2 instead.\n");
 			restart_level = RESET_SUBSYS_COUPLED;
 		}
@@ -448,6 +471,24 @@ int subsystem_restart_dev(struct subsys_device *dev)
 {
 	const char *name = dev->desc->name;
 
+    int mode = OEM_DVE021_FATAL_MODE_INIT;
+
+    
+    
+    mode = DVE022_get_fatal_mode();
+    if ( mode == OEM_DVE021_FATAL_MODE_MODEM
+    ||   mode == OEM_DVE021_FATAL_MODE_DSP
+    ||   mode == OEM_DVE021_FATAL_MODE_LPASS
+    ||   mode == OEM_DVE021_FATAL_MODE_RIVA 
+    ||   mode == OEM_DVE021_FATAL_MODE_MDM 
+       )
+    {
+        pr_err("Subsystem Restart: Restart sequence requested for  %s\n", name);
+        panic("subsys-restart: Unknown restart level!\n");
+        return 0;
+    }
+
+
 	/*
 	 * If a system reboot/shutdown is underway, ignore subsystem errors.
 	 * However, print a message so that we know that a subsystem behaved
@@ -483,6 +524,27 @@ EXPORT_SYMBOL(subsystem_restart_dev);
 int subsystem_restart(const char *name)
 {
 	struct subsys_device *dev;
+
+
+    int mode = OEM_DVE021_FATAL_MODE_INIT;
+
+    
+    mode = DVE022_get_fatal_mode();
+    if ( mode == OEM_DVE021_FATAL_MODE_MODEM
+    ||   mode == OEM_DVE021_FATAL_MODE_DSP
+    ||   mode == OEM_DVE021_FATAL_MODE_LPASS
+
+
+    ||   mode == OEM_DVE021_FATAL_MODE_RIVA 
+    ||   mode == OEM_DVE021_FATAL_MODE_MDM 
+       )
+
+    {
+        pr_err("Subsystem Restart: Restart sequence requested for  %s\n", name);
+        panic("subsys-restart: Unknown restart level!\n");
+        return 0;
+    }
+
 
 	mutex_lock(&subsystem_list_lock);
 	list_for_each_entry(dev, &subsystem_list, list)

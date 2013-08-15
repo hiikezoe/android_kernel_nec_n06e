@@ -15,6 +15,10 @@
  *	Fixes:
  *	Vitaly E. Lavrov		RTA_OK arithmetics was wrong.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/errno.h>
 #include <linux/module.h>
@@ -671,6 +675,12 @@ static void set_operstate(struct net_device *dev, unsigned char transition)
 	}
 }
 
+static unsigned int rtnl_dev_get_flags(const struct net_device *dev)
+{
+	return (dev->flags & ~(IFF_PROMISC | IFF_ALLMULTI)) |
+	       (dev->gflags & (IFF_PROMISC | IFF_ALLMULTI));
+}
+
 static unsigned int rtnl_dev_combine_flags(const struct net_device *dev,
 					   const struct ifinfomsg *ifm)
 {
@@ -679,7 +689,7 @@ static unsigned int rtnl_dev_combine_flags(const struct net_device *dev,
 	/* bugwards compatibility: ifi_change == 0 is treated as ~0 */
 	if (ifm->ifi_change)
 		flags = (flags & ifm->ifi_change) |
-			(dev->flags & ~ifm->ifi_change);
+			(rtnl_dev_get_flags(dev) & ~ifm->ifi_change);
 
 	return flags;
 }
@@ -1370,6 +1380,7 @@ static int do_setlink(struct net_device *dev, struct ifinfomsg *ifm,
 			goto errout;
 		send_addr_notify = 1;
 		modified = 1;
+		add_device_randomness(dev->dev_addr, dev->addr_len);
 	}
 
 	if (tb[IFLA_MTU]) {

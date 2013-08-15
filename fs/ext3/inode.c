@@ -21,6 +21,10 @@
  *
  *  Assorted race fixes, rewrite of ext3_get_block() by Al Viro, 2000
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/highuid.h>
 #include <linux/quotaops.h>
@@ -2209,9 +2213,9 @@ static Indirect *ext3_find_shared(struct inode *inode, int depth,
 	} else {
 		*top = *p->p;
 		/* Nope, don't do this in ext3.  Must leave the tree intact */
-#if 0
-		*p->p = 0;
-#endif
+
+
+
 	}
 	/* Writer: end */
 
@@ -3068,6 +3072,8 @@ static int ext3_do_update_inode(handle_t *handle,
 	struct ext3_inode_info *ei = EXT3_I(inode);
 	struct buffer_head *bh = iloc->bh;
 	int err = 0, rc, block;
+	int need_datasync = 0;
+	__le32 disksize;
 
 again:
 	/* we can't allow multiple procs in here at once, its a bit racey */
@@ -3105,7 +3111,11 @@ again:
 		raw_inode->i_gid_high = 0;
 	}
 	raw_inode->i_links_count = cpu_to_le16(inode->i_nlink);
-	raw_inode->i_size = cpu_to_le32(ei->i_disksize);
+	disksize = cpu_to_le32(ei->i_disksize);
+	if (disksize != raw_inode->i_size) {
+		need_datasync = 1;
+		raw_inode->i_size = disksize;
+	}
 	raw_inode->i_atime = cpu_to_le32(inode->i_atime.tv_sec);
 	raw_inode->i_ctime = cpu_to_le32(inode->i_ctime.tv_sec);
 	raw_inode->i_mtime = cpu_to_le32(inode->i_mtime.tv_sec);
@@ -3121,8 +3131,11 @@ again:
 	if (!S_ISREG(inode->i_mode)) {
 		raw_inode->i_dir_acl = cpu_to_le32(ei->i_dir_acl);
 	} else {
-		raw_inode->i_size_high =
-			cpu_to_le32(ei->i_disksize >> 32);
+		disksize = cpu_to_le32(ei->i_disksize >> 32);
+		if (disksize != raw_inode->i_size_high) {
+			raw_inode->i_size_high = disksize;
+			need_datasync = 1;
+		}
 		if (ei->i_disksize > 0x7fffffffULL) {
 			struct super_block *sb = inode->i_sb;
 			if (!EXT3_HAS_RO_COMPAT_FEATURE(sb,
@@ -3175,6 +3188,8 @@ again:
 	ext3_clear_inode_state(inode, EXT3_STATE_NEW);
 
 	atomic_set(&ei->i_sync_tid, handle->h_transaction->t_tid);
+	if (need_datasync)
+		atomic_set(&ei->i_datasync_tid, handle->h_transaction->t_tid);
 out_brelse:
 	brelse (bh);
 	ext3_std_error(inode->i_sb, err);
@@ -3510,34 +3525,34 @@ out:
 	return;
 }
 
-#if 0
-/*
- * Bind an inode's backing buffer_head into this transaction, to prevent
- * it from being flushed to disk early.  Unlike
- * ext3_reserve_inode_write, this leaves behind no bh reference and
- * returns no iloc structure, so the caller needs to repeat the iloc
- * lookup to mark the inode dirty later.
- */
-static int ext3_pin_inode(handle_t *handle, struct inode *inode)
-{
-	struct ext3_iloc iloc;
 
-	int err = 0;
-	if (handle) {
-		err = ext3_get_inode_loc(inode, &iloc);
-		if (!err) {
-			BUFFER_TRACE(iloc.bh, "get_write_access");
-			err = journal_get_write_access(handle, iloc.bh);
-			if (!err)
-				err = ext3_journal_dirty_metadata(handle,
-								  iloc.bh);
-			brelse(iloc.bh);
-		}
-	}
-	ext3_std_error(inode->i_sb, err);
-	return err;
-}
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 int ext3_change_inode_journal_flag(struct inode *inode, int val)
 {

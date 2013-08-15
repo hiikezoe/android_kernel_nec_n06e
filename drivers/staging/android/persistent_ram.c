@@ -11,6 +11,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/device.h>
 #include <linux/err.h>
@@ -77,23 +81,6 @@ static inline void buffer_size_add(struct persistent_ram_zone *prz, size_t a)
 		if (new > prz->buffer_size)
 			new = prz->buffer_size;
 	} while (atomic_cmpxchg(&prz->buffer->size, old, new) != old);
-}
-
-/* increase the size counter, retuning an error if it hits the max size */
-static inline ssize_t buffer_size_add_clamp(struct persistent_ram_zone *prz,
-	size_t a)
-{
-	size_t old;
-	size_t new;
-
-	do {
-		old = atomic_read(&prz->buffer->size);
-		new = old + a;
-		if (new > prz->buffer_size)
-			return -ENOMEM;
-	} while (atomic_cmpxchg(&prz->buffer->size, old, new) != old);
-
-	return 0;
 }
 
 static void notrace persistent_ram_encode_rs8(struct persistent_ram_zone *prz,
@@ -304,7 +291,7 @@ int notrace persistent_ram_write(struct persistent_ram_zone *prz,
 		c = prz->buffer_size;
 	}
 
-	buffer_size_add_clamp(prz, c);
+	buffer_size_add(prz, c);
 
 	start = buffer_start_add(prz, c);
 

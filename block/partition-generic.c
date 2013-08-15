@@ -8,6 +8,10 @@
  *  be grouped in one location, and it to be mostly self
  *  contained.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/init.h>
 #include <linux/module.h>
@@ -17,6 +21,7 @@
 #include <linux/ctype.h>
 #include <linux/genhd.h>
 #include <linux/blktrace_api.h>
+#include <linux/vmalloc.h>    
 
 #include "partitions/check.h"
 
@@ -427,7 +432,10 @@ int rescan_partitions(struct gendisk *disk, struct block_device *bdev)
 	int p, highest, res;
 rescan:
 	if (state && !IS_ERR(state)) {
-		kfree(state);
+		
+		
+		vfree(state);
+		
 		state = NULL;
 	}
 
@@ -534,7 +542,10 @@ rescan:
 			md_autodetect_dev(part_to_dev(part)->devt);
 #endif
 	}
-	kfree(state);
+	
+	
+	vfree(state);
+	
 	return 0;
 }
 

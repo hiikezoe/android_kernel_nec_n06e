@@ -1,3 +1,7 @@
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #ifndef _VT_KERN_H
 #define _VT_KERN_H
 
@@ -29,7 +33,13 @@
 
 extern void kd_mksound(unsigned int hz, unsigned int ticks);
 extern int kbd_rate(struct kbd_repeat *rep);
-extern int fg_console, last_console, want_console;
+
+extern int last_console, want_console;
+extern volatile int fg_console;
+
+
+
+
 
 /* console.c */
 

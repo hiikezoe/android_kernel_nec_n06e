@@ -18,6 +18,10 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifndef WLAN_HDD_MISC_H
 #define WLAN_HDD_MISC_H
@@ -28,8 +32,14 @@
 #define WLAN_CFG_FILE              "wlan/prima/WCNSS_cfg.dat"
 #define WLAN_FW_FILE               ""
 #define WLAN_NV_FILE               "wlan/prima/WCNSS_qcom_wlan_nv.bin"
+
+#define WLAN_NV_FILE_PWRDOWN      "wlan/prima/WCNSS_qcom_wlan_nv_pwrdown.bin"
+
 #define WLAN_COUNTRY_INFO_FILE     "wlan/prima/WCNSS_wlan_country_info.dat"
 #define WLAN_HO_CFG_FILE           "wlan/prima/WCNSS_wlan_ho_config"
+
+#define WLAN_DVE021_NV_FILE          "wlan/prima/WCNSS_DVE022_wlan_mac.bin"
+
 #else
 #define WLAN_INI_FILE              "wlan/volans/WCN1314_qcom_cfg.ini"
 #define WLAN_CFG_FILE              "wlan/volans/WCN1314_cfg.dat"
@@ -55,15 +65,15 @@ VOS_STATUS hdd_release_firmware(char *pFileName,v_VOID_t *pCtx);
 VOS_STATUS hdd_get_cfg_file_size(v_VOID_t *pCtx, char *pFileName, v_SIZE_t *pBufSize);
 
 VOS_STATUS hdd_read_cfg_file(v_VOID_t *pCtx, char *pFileName, v_VOID_t *pBuffer, v_SIZE_t *pBufSize);
-#if 0
 
-VOS_STATUS hdd_release_firmware(char *pFileName,v_VOID_t *pCtx);
 
-VOS_STATUS hdd_get_cfg_file_size(v_VOID_t *pCtx, char *pFileName, v_SIZE_t *pBufSize);
 
-VOS_STATUS hdd_read_cfg_file(v_VOID_t *pCtx, char *pFileName, v_VOID_t *pBuffer, v_SIZE_t *pBufSize);
 
-#endif
+
+
+
+
+
 
 tVOS_CONCURRENCY_MODE hdd_get_concurrency_mode ( void );
 

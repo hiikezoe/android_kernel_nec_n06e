@@ -10,6 +10,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 /*
  * QUP driver for Qualcomm MSM platforms
  *
@@ -1001,7 +1005,12 @@ timeout_err:
 				} else if (dev->err < 0) {
 					dev_err(dev->dev,
 					"QUP data xfer error %d\n", dev->err);
-					ret = dev->err;
+
+
+
+
+					ret = -ECOMM;
+
 					goto out_err;
 				} else if (dev->err > 0) {
 					/*
@@ -1011,6 +1020,10 @@ timeout_err:
 					 * this error happens
 					 */
 					qup_i2c_recover_bus_busy(dev);
+
+
+					dev->err = ECOMM;
+
 				}
 				ret = -dev->err;
 				goto out_err;

@@ -29,6 +29,10 @@
    Qualcomm Confidential and Proprietary.
   
   ========================================================================*/
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 /**========================================================================= 
                        EDIT HISTORY FOR FILE 
    
@@ -1641,51 +1645,51 @@ static int iw_set_ap_encodeext(struct net_device *dev,
         key_index--;
     }
     if(!ext->key_len) {
-#if 0     
-      /*Set the encrytion type to NONE*/
-#if 0
-       pRoamProfile->EncryptionType.encryptionType[0] = eCSR_ENCRYPT_TYPE_NONE;
-#endif
-     
-         RemoveKey.keyId = key_index;
-         if(ext->ext_flags & IW_ENCODE_EXT_GROUP_KEY) {
-              /*Key direction for group is RX only*/
-             vos_mem_copy(RemoveKey.peerMac,groupmacaddr,WNI_CFG_BSSID_LEN);
-         }
-         else {
-             vos_mem_copy(RemoveKey.peerMac,ext->addr.sa_data,WNI_CFG_BSSID_LEN);
-         }
-         switch(ext->alg)
-         {
-           case IW_ENCODE_ALG_NONE:
-              RemoveKey.encType = eCSR_ENCRYPT_TYPE_NONE;
-              break;
-           case IW_ENCODE_ALG_WEP:
-              RemoveKey.encType = (ext->key_len== 5) ? eCSR_ENCRYPT_TYPE_WEP40:eCSR_ENCRYPT_TYPE_WEP104;
-              break;
-           case IW_ENCODE_ALG_TKIP:
-              RemoveKey.encType = eCSR_ENCRYPT_TYPE_TKIP;
-              break;
-           case IW_ENCODE_ALG_CCMP:
-              RemoveKey.encType = eCSR_ENCRYPT_TYPE_AES;
-              break;
-          default:
-              RemoveKey.encType = eCSR_ENCRYPT_TYPE_NONE;
-              break;
-         }
-         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: Remove key cipher_alg:%d key_len%d *pEncryptionType :%d \n",
-                    __FUNCTION__,(int)ext->alg,(int)ext->key_len,RemoveKey.encType);
-         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: Peer Mac = "MAC_ADDRESS_STR"\n",
-                    __FUNCTION__, MAC_ADDR_ARRAY(RemoveKey.peerMac));
-          );
-         vstatus = WLANSAP_DelKeySta( pVosContext, &RemoveKey);
-         if ( vstatus != VOS_STATUS_SUCCESS )
-         {
-             VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, "[%4d] WLANSAP_DeleteKeysSta returned ERROR status= %d",
-                        __LINE__, vstatus );
-             retval = -EINVAL;
-         }
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
          return retval;
 
     }
@@ -1800,45 +1804,45 @@ static int iw_set_ap_mlme(struct net_device *dev,
                        union iwreq_data *wrqu,
                        char *extra)
 {
-#if 0
-    hdd_adapter_t *pAdapter = (netdev_priv(dev));
-    struct iw_mlme *mlme = (struct iw_mlme *)extra;
- 
-    ENTER();    
-   
-    //reason_code is unused. By default it is set to eCSR_DISCONNECT_REASON_UNSPECIFIED
-    switch (mlme->cmd) {
-        case IW_MLME_DISASSOC:
-        case IW_MLME_DEAUTH:
-            hddLog(LOG1, "Station disassociate");    
-            if( pAdapter->conn_info.connState == eConnectionState_Associated ) 
-            {
-                eCsrRoamDisconnectReason reason = eCSR_DISCONNECT_REASON_UNSPECIFIED;
-                
-                if( mlme->reason_code == HDD_REASON_MICHAEL_MIC_FAILURE )
-                    reason = eCSR_DISCONNECT_REASON_MIC_ERROR;
-                
-                status = sme_RoamDisconnect( pAdapter->hHal,pAdapter->sessionId, reason);
-                
-                //clear all the reason codes
-                if (status != 0)
-                {
-                    hddLog(LOGE,"%s %d Command Disassociate/Deauthenticate : csrRoamDisconnect failure returned %d \n", __FUNCTION__, (int)mlme->cmd, (int)status );
-                }
-                
-               netif_stop_queue(dev);
-               netif_carrier_off(dev);
-            }
-            else
-            {
-                hddLog(LOGE,"%s %d Command Disassociate/Deauthenticate called but station is not in associated state \n", __FUNCTION__, (int)mlme->cmd );
-            }
-        default:
-            hddLog(LOGE,"%s %d Command should be Disassociate/Deauthenticate \n", __FUNCTION__, (int)mlme->cmd );
-            return -EINVAL;
-    }//end of switch
-    EXIT();
-#endif    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     return 0;
 //    return status;
 }
@@ -2686,24 +2690,26 @@ VOS_STATUS hdd_init_ap_mode( hdd_adapter_t *pAdapter )
 #ifdef CONFIG_CFG80211
     wlan_hdd_set_monitor_tx_adapter( WLAN_HDD_GET_CTX(pAdapter), pAdapter );
 #endif
-#ifdef WLAN_FEATURE_P2P
-    /* If administrative interface is enabled then one interface being
-     * created for p2p device address. This will take one HW STA and 
-     * the max number of clients that can connect to softAP will be 
-     * reduced by one. So as soon as SoftAP interface got created remove 
-     * the session for p2p device address.
-     */
-    if ( VOS_IS_STATUS_SUCCESS( status ) && 
-            ( pAdapter->device_mode == WLAN_HDD_SOFTAP ) && 
-            ( !strncmp( pAdapter->dev->name, "wlan", 4 )) )
-    {
-       /* TODO: Revisit this later, either unregister p2p0 
-                interface here or make change in wifi.c file to pass 
-                information, that driver is getting loaded for SAP interface, 
-                in that case, during load time don't start p2p0 interface 
-        */
-    }
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     EXIT();
     return status;
 }

@@ -10,6 +10,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -38,6 +42,13 @@
 #include <mach/iommu_domains.h>
 
 #define DSI_VIDEO_BASE	0xE0000
+
+
+#if defined (LCD_DEVICE_S6E8AA0X01)
+extern boolean msm_fb_oled_force_off;
+extern boolean msm_fb_oled_esd_command_locked;
+#endif
+
 
 static int first_pixel_start_x;
 static int first_pixel_start_y;
@@ -326,6 +337,8 @@ static void mdp4_video_vsync_irq_ctrl(int cndx, int enable)
 			if (vsync_irq_cnt == 0)
 				vsync_irq_disable(INTR_PRIMARY_VSYNC,
 						MDP_PRIM_VSYNC_TERM);
+			vctrl->wait_vsync_cnt = 0;
+			complete_all(&vctrl->vsync_comp);
 		}
 	}
 	pr_debug("%s: enable=%d cnt=%d\n", __func__, enable, vsync_irq_cnt);
@@ -357,7 +370,14 @@ void mdp4_dsi_video_wait4vsync(int cndx)
 	struct vsycn_ctrl *vctrl;
 	struct mdp4_overlay_pipe *pipe;
 	unsigned long flags;
-	int ret;
+
+
+
+
+
+	unsigned long result;
+
+
 
 	if (cndx >= MAX_CONTROLLER) {
 		pr_err("%s: out or range: cndx=%d\n", __func__, cndx);
@@ -378,11 +398,22 @@ void mdp4_dsi_video_wait4vsync(int cndx)
 
 	vctrl->wait_vsync_cnt++;
 	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
-	/* double the timeout in vsync time stamp generation */
-	ret = wait_for_completion_interruptible_timeout(&vctrl->vsync_comp,
-		msecs_to_jiffies(VSYNC_PERIOD * 8));
-	if (ret <= 0)
-		pr_err("%s timeout ret=%d", __func__, ret);
+
+
+
+
+
+
+
+
+
+	result = wait_for_completion_timeout(&vctrl->vsync_comp, msecs_to_jiffies(100));
+	if (!result) {
+		printk(KERN_INFO "[DEBUG]%s. There's no interrupt!!\n", __func__);
+		complete_all(&vctrl->vsync_comp);
+	}
+
+
 
 	mdp4_video_vsync_irq_ctrl(cndx, 0);
 	mdp4_stat.wait4vsync0++;
@@ -391,6 +422,9 @@ void mdp4_dsi_video_wait4vsync(int cndx)
 static void mdp4_dsi_video_wait4dmap(int cndx)
 {
 	struct vsycn_ctrl *vctrl;
+
+	unsigned long result;
+
 
 	if (cndx >= MAX_CONTROLLER) {
 		pr_err("%s: out or range: cndx=%d\n", __func__, cndx);
@@ -402,7 +436,14 @@ static void mdp4_dsi_video_wait4dmap(int cndx)
 	if (atomic_read(&vctrl->suspend) > 0)
 		return;
 
-	wait_for_completion(&vctrl->dmap_comp);
+
+	
+	result = wait_for_completion_timeout(&vctrl->dmap_comp, msecs_to_jiffies(100));
+	if (!result) {
+		printk(KERN_INFO "[DEBUG]%s. There's no interrupt!!\n", __func__);
+		complete_all(&vctrl->dmap_comp);
+	}
+
 }
 
 
@@ -429,6 +470,9 @@ static void mdp4_dsi_video_wait4ov(int cndx)
 {
 	struct vsycn_ctrl *vctrl;
 
+	unsigned long result;
+
+
 	if (cndx >= MAX_CONTROLLER) {
 		pr_err("%s: out or range: cndx=%d\n", __func__, cndx);
 		return;
@@ -439,7 +483,14 @@ static void mdp4_dsi_video_wait4ov(int cndx)
 	if (atomic_read(&vctrl->suspend) > 0)
 		return;
 
-	wait_for_completion(&vctrl->ov_comp);
+
+	
+	result = wait_for_completion_timeout(&vctrl->ov_comp, msecs_to_jiffies(100));
+	if (!result) {
+		printk(KERN_INFO "[DEBUG]%s. There's no interrupt!!\n", __func__);
+		complete_all(&vctrl->ov_comp);
+	}
+
 }
 
 ssize_t mdp4_dsi_video_show_event(struct device *dev,
@@ -549,14 +600,7 @@ void mdp4_dsi_video_base_swap(int cndx, struct mdp4_overlay_pipe *pipe)
 /* timing generator off */
 static void mdp4_dsi_video_tg_off(struct vsycn_ctrl *vctrl)
 {
-	unsigned long flags;
-
-	spin_lock_irqsave(&vctrl->spin_lock, flags);
-	INIT_COMPLETION(vctrl->vsync_comp);
-	vctrl->wait_vsync_cnt++;
 	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE, 0); /* turn off timing generator */
-	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
-
 	/* some delay after turning off the tg */
 	msleep(20);
 }
@@ -782,6 +826,9 @@ int mdp4_dsi_video_on(struct platform_device *pdev)
 	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE + 0x2c, dsi_underflow_clr);
 	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE + 0x30, dsi_hsync_skew);
 	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE + 0x38, ctrl_polarity);
+
+	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE + 0x44, 0x000E0FFF);
+
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 
 	mdp_histogram_ctrl_all(TRUE);
@@ -866,7 +913,7 @@ int mdp4_dsi_video_off(struct platform_device *pdev)
 
 	if (vctrl->vsync_irq_enabled) {
 		vctrl->vsync_irq_enabled = 0;
-		vsync_irq_disable(INTR_PRIMARY_VSYNC, MDP_PRIM_VSYNC_TERM);
+		mdp4_video_vsync_irq_ctrl(cndx, 0);
 	}
 
 	/* mdp clock off */
@@ -1256,4 +1303,12 @@ void mdp4_dsi_video_overlay(struct msm_fb_data_type *mfd)
 
 	mdp4_overlay_mdp_perf_upd(mfd, 0);
 	mutex_unlock(&mfd->dma->ov_mutex);
+
+
+#if defined (LCD_DEVICE_S6E8AA0X01)
+    
+	if ( (msm_fb_oled_force_off == FALSE) && (msm_fb_oled_esd_command_locked != TRUE) )
+		mipi_dsi_cmds_tx_lp_mode(mfd);
+#endif
+
 }

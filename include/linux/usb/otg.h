@@ -5,6 +5,10 @@
  * (for either host or peripheral roles) don't use these calls; they
  * continue to use just usb_device and usb_gadget.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifndef __LINUX_USB_OTG_H
 #define __LINUX_USB_OTG_H
@@ -33,6 +37,10 @@ enum usb_otg_state {
 	OTG_STATE_A_PERIPHERAL,
 	OTG_STATE_A_WAIT_VFALL,
 	OTG_STATE_A_VBUS_ERR,
+
+	OTG_STATE_MHL_DETECTED,
+	OTG_STATE_MHL_CONNECTED,
+
 };
 
 enum usb_otg_event {

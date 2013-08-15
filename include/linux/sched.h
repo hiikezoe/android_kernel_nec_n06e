@@ -1,3 +1,7 @@
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #ifndef _LINUX_SCHED_H
 #define _LINUX_SCHED_H
 
@@ -826,15 +830,15 @@ enum cpu_idle_type {
  * when BITS_PER_LONG <= 32 are pretty high and the returns do not justify the
  * increased costs.
  */
-#if 0 /* BITS_PER_LONG > 32 -- currently broken: it increases power usage under light load  */
-# define SCHED_LOAD_RESOLUTION	10
-# define scale_load(w)		((w) << SCHED_LOAD_RESOLUTION)
-# define scale_load_down(w)	((w) >> SCHED_LOAD_RESOLUTION)
-#else
+
+
+
+
+
 # define SCHED_LOAD_RESOLUTION	0
 # define scale_load(w)		(w)
 # define scale_load_down(w)	(w)
-#endif
+
 
 #define SCHED_LOAD_SHIFT	(10 + SCHED_LOAD_RESOLUTION)
 #define SCHED_LOAD_SCALE	(1L << SCHED_LOAD_SHIFT)
@@ -1281,6 +1285,9 @@ struct task_struct {
 	const struct sched_class *sched_class;
 	struct sched_entity se;
 	struct sched_rt_entity rt;
+
+	struct task_group *sched_task_group;
+
 
 #ifdef CONFIG_PREEMPT_NOTIFIERS
 	/* list of struct preempt_notifier: */
@@ -1946,6 +1953,14 @@ static inline void set_wake_up_idle(bool enabled)
 	else
 		current->flags &= ~PF_WAKE_UP_IDLE;
 }
+
+
+void calc_load_enter_idle(void);
+void calc_load_exit_idle(void);
+
+
+
+
 
 #ifndef CONFIG_CPUMASK_OFFSTACK
 static inline int set_cpus_allowed(struct task_struct *p, cpumask_t new_mask)
@@ -2751,7 +2766,7 @@ extern int sched_group_set_rt_period(struct task_group *tg,
 extern long sched_group_rt_period(struct task_group *tg);
 extern int sched_rt_can_attach(struct task_group *tg, struct task_struct *tsk);
 #endif
-#endif
+#endif 
 
 extern int task_can_switch_user(struct user_struct *up,
 					struct task_struct *tsk);

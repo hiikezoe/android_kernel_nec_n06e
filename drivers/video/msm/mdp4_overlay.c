@@ -11,6 +11,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -377,6 +381,12 @@ void mdp4_iommu_unmap(struct mdp4_overlay_pipe *pipe)
 		iom_pipe_info->mark_unmap = 0;
 	}
 }
+
+#if defined (LCD_DEVICE_S6E8AA0X01)
+
+MSM_FB_REQUEST_FLAG mdp4_overlay_argb_enable = MSM_FB_REQUEST_ENABLE;
+
+#endif
 
 int mdp4_overlay_mixer_play(int mixer_num)
 {
@@ -881,6 +891,9 @@ void mdp4_overlay_vg_setup(struct mdp4_overlay_pipe *pipe)
 	int pnum, ptype, i;
 	uint32_t block;
 
+	uint32 curr;
+
+
 	pnum = pipe->pipe_num - OVERLAY_PIPE_VG1; /* start from 0 */
 	vg_base = MDP_BASE + MDP4_VIDEO_BASE;
 	vg_base += (MDP4_VIDEO_OFF * pnum);
@@ -995,6 +1008,12 @@ void mdp4_overlay_vg_setup(struct mdp4_overlay_pipe *pipe)
 		mdp4_overlay_vg_get_src_offset(pipe, vg_base, &luma_offset,
 			&chroma_offset);
 	}
+
+
+	curr = inpdw(vg_base + 0x0058);
+	mask = 0xFFFCFFFF;
+	pipe->op_mode = (pipe->op_mode & mask) | (curr & ~mask);
+
 
 	/* luma component plane */
 	outpdw(vg_base + 0x0010, pipe->srcp0_addr + luma_offset);
@@ -2117,7 +2136,13 @@ void mdp4_mixer_blend_setup(int mixer)
 				blend->solidfill = 1;
 				blend->solidfill_pipe = d_pipe;
 			}
+
+#if defined (LCD_DEVICE_S6E8AA0X01)
+	    } else if (s_alpha && mdp4_overlay_argb_enable != MSM_FB_REQUEST_DISABLE) {
+#else
 		} else if (s_alpha) {
+#endif
+
 			if (!alpha_drop) {
 				blend->op = MDP4_BLEND_BG_ALPHA_FG_PIXEL;
 				if (!(s_pipe->flags & MDP_BLEND_FG_PREMULT))
@@ -2127,7 +2152,13 @@ void mdp4_mixer_blend_setup(int mixer)
 				blend->op = MDP4_BLEND_BG_ALPHA_FG_CONST;
 
 			blend->op |= MDP4_BLEND_BG_INV_ALPHA;
+
+#if defined (LCD_DEVICE_S6E8AA0X01)
+		} else if (d_alpha && mdp4_overlay_argb_enable != MSM_FB_REQUEST_DISABLE) {
+#else
 		} else if (d_alpha) {
+#endif
+
 			ptype = mdp4_overlay_format2type(s_pipe->src_format);
 			if (ptype == OVERLAY_TYPE_VIDEO &&
 				(!(s_pipe->flags & MDP_BACKEND_COMPOSITION))) {
@@ -2731,6 +2762,8 @@ static int mdp4_calc_pipe_mdp_clk(struct msm_fb_data_type *mfd,
 
 	rst >>= shift;
 
+
+#if !defined (LCD_DEVICE_S6E8AA0X01)
 	/*
 	 * There is one special case for the panels that have low
 	 * v_back_porch (<=4), mdp clk should be fast enough to buffer
@@ -2747,6 +2780,8 @@ static int mdp4_calc_pipe_mdp_clk(struct msm_fb_data_type *mfd,
 			 __func__, clk, mfd->panel_info.lcdc.v_back_porch);
 		rst = (rst > clk) ? rst : clk;
 	}
+#endif
+
 
 	/*
 	 * If the calculated mdp clk is less than panel pixel clk,
@@ -2761,6 +2796,22 @@ static int mdp4_calc_pipe_mdp_clk(struct msm_fb_data_type *mfd,
 	}
 
 	pipe->req_clk = (u32) rst;
+
+
+#if defined (LCD_DEVICE_S6E8AA0X01)
+	if (96000000 >= pipe->req_clk) {
+		
+		pipe->req_clk = 128000000;
+	} else if ( (96000000 < pipe->req_clk) && (pipe->req_clk <= 177780000) ) {
+		
+		pipe->req_clk = 177780000;
+	} else if (pipe->req_clk >= 200000000) {
+		pipe->req_clk = mdp_max_clk;
+	} else {
+		printk(KERN_DEBUG "%s. other clock, %d.\n", __func__, pipe->req_clk);
+	}
+#endif
+
 
 	pr_debug("%s: required mdp clk %d mixer %d pipe ndx %d\n",
 		 __func__, pipe->req_clk, pipe->mixer_num, pipe->pipe_ndx);

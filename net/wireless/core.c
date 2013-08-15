@@ -3,6 +3,10 @@
  *
  * Copyright 2006-2010		Johannes Berg <johannes@sipsolutions.net>
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
@@ -975,6 +979,11 @@ static int cfg80211_netdev_notifier_call(struct notifier_block * nb,
 		 */
 		synchronize_rcu();
 		INIT_LIST_HEAD(&wdev->list);
+		
+
+
+
+		cfg80211_process_wdev_events(wdev);
 		break;
 	case NETDEV_PRE_UP:
 		if (!(wdev->wiphy->interface_modes & BIT(wdev->iftype)))

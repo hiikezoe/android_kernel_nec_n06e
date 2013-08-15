@@ -12,6 +12,10 @@
  * interface, ESPECIALLY the parts about reference counts and object
  * destructors.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifndef _KOBJECT_H_
 #define _KOBJECT_H_
@@ -224,7 +228,7 @@ static inline int kobject_uevent_env(struct kobject *kobj,
 
 static inline __printf(2, 3)
 int add_uevent_var(struct kobj_uevent_env *env, const char *format, ...)
-{ return 0; }
+{ return -ENOMEM; }
 
 static inline int kobject_action_type(const char *buf, size_t count,
 				      enum kobject_action *type)

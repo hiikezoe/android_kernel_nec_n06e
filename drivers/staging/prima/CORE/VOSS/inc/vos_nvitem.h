@@ -33,6 +33,10 @@
    Qualcomm Confidential and Proprietary.
 
   ========================================================================*/
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 /* $Header$ */
 
@@ -160,7 +164,13 @@ typedef enum
    REGDOMAIN_HI_5GHZ,
    REGDOMAIN_NO_5GHZ,
    // add new regulatory domain here
-   REGDOMAIN_COUNT
+   REGDOMAIN_COUNT,
+   
+
+   REGDOMAIN_NO_COUNTRY = REGDOMAIN_FCC,
+   REGDOMAIN_ANY_COUNTRY = REGDOMAIN_WORLD
+
+   
 }
 v_REGDOMAIN_t;
 

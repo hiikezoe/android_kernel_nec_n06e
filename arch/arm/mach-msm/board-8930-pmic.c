@@ -10,6 +10,17 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
+
+
+
+
+
+
 
 #include <linux/interrupt.h>
 #include <linux/mfd/pm8xxx/pm8038.h>
@@ -471,6 +482,7 @@ static struct pm8xxx_spk_platform_data pm8xxx_spk_pdata = {
 	.cd_delay		= 0x0,
 };
 
+
 static struct pm8921_bms_platform_data pm8921_bms_pdata __devinitdata = {
 	.battery_type			= BATT_UNKNOWN,
 	.r_sense_uohm			= 10000,
@@ -488,6 +500,7 @@ static struct pm8921_bms_platform_data pm8921_bms_pdata __devinitdata = {
 	.low_ocv_correction_limit_uv	= 100,
 	.hold_soc_est			= 3,
 };
+
 
 static struct pm8038_platform_data pm8038_platform_data __devinitdata = {
 	.irq_pdata		= &pm8xxx_irq_pdata,

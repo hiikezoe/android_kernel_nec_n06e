@@ -12,6 +12,10 @@
  * directory.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #ifndef _LINUX_MEMORY_H_
 #define _LINUX_MEMORY_H_
 
@@ -19,7 +23,7 @@
 #include <linux/compiler.h>
 #include <linux/mutex.h>
 
-#define MIN_MEMORY_BLOCK_SIZE     (1 << SECTION_SIZE_BITS)
+#define MIN_MEMORY_BLOCK_SIZE     (1UL << SECTION_SIZE_BITS)
 
 struct memory_block {
 	unsigned long start_section_nr;

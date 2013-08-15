@@ -7,6 +7,10 @@
  * Based on code from fs/super.c, copyright Linus Torvalds and others.
  * Heavily rewritten.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/syscalls.h>
 #include <linux/export.h>
@@ -1073,8 +1077,9 @@ void umount_tree(struct mount *mnt, int propagate, struct list_head *kill)
 		list_del_init(&p->mnt_expire);
 		list_del_init(&p->mnt_list);
 		__touch_mnt_namespace(p->mnt_ns);
+		if (p->mnt_ns)
+			__mnt_make_shortterm(p);
 		p->mnt_ns = NULL;
-		__mnt_make_shortterm(p);
 		list_del_init(&p->mnt_child);
 		if (mnt_has_parent(p)) {
 			p->mnt_parent->mnt_ghosts++;
@@ -1192,6 +1197,12 @@ SYSCALL_DEFINE2(umount, char __user *, name, int, flags)
 	int retval;
 	int lookup_flags = 0;
 
+
+
+
+
+
+
 	if (flags & ~(MNT_FORCE | MNT_DETACH | MNT_EXPIRE | UMOUNT_NOFOLLOW))
 		return -EINVAL;
 
@@ -1208,12 +1219,28 @@ SYSCALL_DEFINE2(umount, char __user *, name, int, flags)
 	if (!check_mnt(mnt))
 		goto dput_and_out;
 
+
+
+
+
+
+
+
+
+
+
 	retval = -EPERM;
 	if (!capable(CAP_SYS_ADMIN))
 		goto dput_and_out;
 
 	retval = do_umount(mnt, flags);
 dput_and_out:
+
+
+
+
+
+
 	/* we mustn't call path_put() as that would clear mnt_expiry_mark */
 	dput(path.dentry);
 	mntput_no_expire(mnt);
@@ -1658,6 +1685,12 @@ static int do_remount(struct path *path, int flags, int mnt_flags,
 	struct super_block *sb = path->mnt->mnt_sb;
 	struct mount *mnt = real_mount(path->mnt);
 
+
+
+
+
+
+
 	if (!capable(CAP_SYS_ADMIN))
 		return -EPERM;
 
@@ -1666,6 +1699,16 @@ static int do_remount(struct path *path, int flags, int mnt_flags,
 
 	if (path->dentry != path->mnt->mnt_root)
 		return -EINVAL;
+
+
+
+
+
+
+
+
+
+
 
 	err = security_sb_remount(sb, data);
 	if (err)
@@ -1688,6 +1731,13 @@ static int do_remount(struct path *path, int flags, int mnt_flags,
 		touch_mnt_namespace(mnt->mnt_ns);
 		br_write_unlock(vfsmount_lock);
 	}
+
+
+
+
+
+
+
 	return err;
 }
 

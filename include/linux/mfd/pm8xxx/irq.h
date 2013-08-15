@@ -10,10 +10,21 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 /*
  * Qualcomm PMIC irq 8xxx driver header file
  *
  */
+
+
+
+
+
+
+
 
 #ifndef __MFD_PM8XXX_IRQ_H
 #define __MFD_PM8XXX_IRQ_H
@@ -57,4 +68,11 @@ static inline int pm8xxx_irq_exit(struct pm_irq_chip *chip)
 	return -ENXIO;
 }
 #endif /* CONFIG_MFD_PM8XXX_IRQ */
+
+
+
+int nc_pm8921_get_rt_status(int irq_id, int* status);
+
+
+
 #endif /* __MFD_PM8XXX_IRQ_H */

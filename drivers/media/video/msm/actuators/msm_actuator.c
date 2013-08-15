@@ -9,9 +9,20 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 #include "msm_actuator.h"
+#include <linux/debugfs.h>
+
+
+#define CAMTSE_LENS_STEP_LOG_OUT    0
+
+
+
 
 static struct msm_actuator_ctrl_t msm_actuator_t;
 static struct msm_actuator msm_vcm_actuator_table;
@@ -58,7 +69,12 @@ static int32_t msm_actuator_parse_i2c_params(struct msm_actuator_ctrl_t *a_ctrl,
 	uint32_t size = a_ctrl->reg_tbl_size, i = 0;
 	int32_t rc = 0;
 	struct msm_camera_i2c_reg_tbl *i2c_tbl = a_ctrl->i2c_reg_tbl;
+
+	uint8_t hw_reg_write = 1;
 	CDBG("%s: IN\n", __func__);
+	if (a_ctrl->curr_hwparams == hw_params)
+		hw_reg_write = 0;
+
 	for (i = 0; i < size; i++) {
 		if (write_arr[i].reg_write_type == MSM_ACTUATOR_WRITE_DAC) {
 			value = (next_lens_position <<
@@ -88,19 +104,38 @@ static int32_t msm_actuator_parse_i2c_params(struct msm_actuator_ctrl_t *a_ctrl,
 				i2c_byte1 = (value & 0xFF00) >> 8;
 				i2c_byte2 = value & 0xFF;
 			}
+
+			CDBG("%s: i2c_byte1:0x%x, i2c_byte2:0x%x\n", __func__,
+				i2c_byte1, i2c_byte2);
+			i2c_tbl[a_ctrl->i2c_tbl_index].reg_addr = i2c_byte1;
+			i2c_tbl[a_ctrl->i2c_tbl_index].reg_data = i2c_byte2;
+			i2c_tbl[a_ctrl->i2c_tbl_index].delay = delay;
+			a_ctrl->i2c_tbl_index++;
 		} else {
-			i2c_byte1 = write_arr[i].reg_addr;
-			i2c_byte2 = (hw_dword & write_arr[i].hw_mask) >>
-				write_arr[i].hw_shift;
+
+
+
+			if (hw_reg_write) {
+				i2c_byte1 = write_arr[i].reg_addr;
+				i2c_byte2 = (hw_dword & write_arr[i].hw_mask) >>
+					write_arr[i].hw_shift;
+				CDBG("%s: i2c_byte1:0x%x, i2c_byte2:0x%x\n", __func__,
+					i2c_byte1, i2c_byte2);
+				rc = msm_camera_i2c_write(&a_ctrl->i2c_client,
+					i2c_byte1, i2c_byte2, a_ctrl->i2c_data_type);
+				if (rc == 0)
+					a_ctrl->curr_hwparams = hw_params;
+			}
 		}
-		CDBG("%s: i2c_byte1:0x%x, i2c_byte2:0x%x\n", __func__,
-			i2c_byte1, i2c_byte2);
-		i2c_tbl[a_ctrl->i2c_tbl_index].reg_addr = i2c_byte1;
-		i2c_tbl[a_ctrl->i2c_tbl_index].reg_data = i2c_byte2;
-		i2c_tbl[a_ctrl->i2c_tbl_index].delay = delay;
-		a_ctrl->i2c_tbl_index++;
+
+
+
+
+
+
 	}
 		CDBG("%s: OUT\n", __func__);
+
 	return rc;
 }
 
@@ -155,6 +190,9 @@ static int32_t msm_actuator_write_focus(
 	damping_code_step = damping_params->damping_step;
 	wait_time = damping_params->damping_delay;
 
+	CDBG("%s: damping_code_step:%d, wait_time:%d, code_bound:%d\n",
+		__func__, damping_code_step, wait_time, code_boundary);
+
 	/* Write code based on damping_code_step in a loop */
 	for (next_lens_pos =
 		curr_lens_pos + (sign_direction * damping_code_step);
@@ -178,6 +216,13 @@ static int32_t msm_actuator_write_focus(
 		rc = a_ctrl->func_tbl->
 			actuator_parse_i2c_params(a_ctrl, code_boundary,
 				damping_params->hw_params, wait_time);
+
+		if (rc < 0) {
+			pr_err("%s: error:%d\n",
+				__func__, rc);
+			return rc;
+		}
+
 	}
 	return rc;
 }
@@ -234,6 +279,13 @@ static int32_t msm_actuator_move_focus(
 
 	if (dest_step_pos == a_ctrl->curr_step_pos)
 		return rc;
+
+
+	if(a_ctrl->step_position_table == NULL){
+		pr_err("%s: step_position_table failed (null)\n",__func__);
+		return -EINVAL;
+	}
+
 
 	curr_lens_pos = a_ctrl->step_position_table[a_ctrl->curr_step_pos];
 	a_ctrl->i2c_tbl_index = 0;
@@ -304,6 +356,84 @@ static int32_t msm_actuator_move_focus(
 	return rc;
 }
 
+int32_t msm_actuator_init_table2(
+	struct msm_actuator_ctrl_t *a_ctrl,
+	struct msm_actuator_set_info_t *set_info)
+{
+	int16_t step_index = 0;
+	uint16_t pos_2 = 0, pos_3 = 0, pos_4 = 0;
+	uint16_t pos_1 = 0;
+	uint32_t dac_step = 0, dac_cur = 0;
+
+	kfree(a_ctrl->step_position_table);
+	a_ctrl->step_position_table = NULL;
+
+	
+	a_ctrl->step_position_table =
+		kmalloc(sizeof(uint16_t) *
+		(set_info->af_tuning_params.total_steps + 1), GFP_KERNEL);
+
+	if (a_ctrl->step_position_table == NULL)
+		return -EFAULT;
+
+	pos_2 = set_info->af_calib_data[0]; 
+	pos_3 = set_info->af_calib_data[1]; 
+	pos_4 = set_info->af_calib_data[2]; 
+
+	pos_1 = pos_2 - 88 ;
+
+	dac_cur = pos_1;
+	a_ctrl->step_position_table[0] = dac_cur;
+
+	dac_step = 11;
+
+	for (step_index = 1; step_index < 8; step_index++) {
+		dac_cur += dac_step;
+		a_ctrl->step_position_table[step_index] = dac_cur;
+	}
+	dac_cur = pos_2 << 8;
+    a_ctrl->step_position_table[8] = pos_2;
+
+	dac_step = (((uint32_t)(pos_3 - pos_2)) << 8) / 2;
+
+	dac_cur += dac_step;
+	a_ctrl->step_position_table[9] = dac_cur >> 8;
+
+	a_ctrl->step_position_table[10] = pos_3;
+
+	dac_cur = pos_3 << 8;
+	dac_step = (((uint32_t)(pos_4 - pos_3)) << 8) / 22;
+	
+	for (step_index = 11; step_index < 32; step_index++) {
+		dac_cur += dac_step;
+		a_ctrl->step_position_table[step_index] = dac_cur >> 8;
+	}
+
+	dac_cur = pos_4;
+	a_ctrl->step_position_table[32] = pos_4;
+
+	dac_step = 11;
+	for (step_index = 33; step_index < 40; step_index++) {
+
+		dac_cur += dac_step;
+		a_ctrl->step_position_table[step_index] = dac_cur;
+	}
+
+	a_ctrl->step_position_table[40] = pos_4 + 88;
+
+	for (step_index = 0;
+		step_index < a_ctrl->total_steps;
+		step_index++) {
+		CDBG("step_position_table[%d]= %d\n",
+			step_index, a_ctrl->step_position_table[step_index]);
+	}
+	a_ctrl->curr_step_pos = 0;
+	a_ctrl->curr_region_index = 0;
+
+	return 0;
+}
+
+
 static int32_t msm_actuator_init_step_table(struct msm_actuator_ctrl_t *a_ctrl,
 	struct msm_actuator_set_info_t *set_info)
 {
@@ -355,10 +485,26 @@ static int32_t msm_actuator_init_step_table(struct msm_actuator_ctrl_t *a_ctrl,
 						step_index] =
 						max_code_size;
 
+
+#if CAMTSE_LENS_STEP_LOG_OUT
+                    goto done;
+#else
 				return rc;
+#endif
+
 			}
 		}
 	}
+
+#if CAMTSE_LENS_STEP_LOG_OUT
+done:
+	for (step_index = 0; step_index <= step_boundary ; step_index++) {
+		pr_err("step_position_table[%d]= %d\n",
+			step_index,
+			a_ctrl->step_position_table[step_index]);
+	}
+#endif
+
 
 	return rc;
 }
@@ -487,9 +633,18 @@ static int32_t msm_actuator_init(struct msm_actuator_ctrl_t *a_ctrl,
 	}
 
 	a_ctrl->initial_code = set_info->af_tuning_params.initial_code;
-	if (a_ctrl->func_tbl->actuator_init_step_table)
-		rc = a_ctrl->func_tbl->
-			actuator_init_step_table(a_ctrl, set_info);
+
+
+
+
+	if (set_info->is_af_calib) {
+		rc = msm_actuator_init_table2 (a_ctrl, set_info);
+	} else {
+		if (a_ctrl->func_tbl->actuator_init_step_table)
+			rc = a_ctrl->func_tbl->
+				actuator_init_step_table(a_ctrl, set_info);
+	}
+
 
 	a_ctrl->curr_step_pos = 0;
 	a_ctrl->curr_region_index = 0;
@@ -589,6 +744,72 @@ static int32_t msm_actuator_power_up(struct msm_actuator_ctrl_t *a_ctrl)
 	}
 	return rc;
 }
+
+
+static int msm_actuator_get_move(void *data, u64 *val)
+{
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	return 0;
+}
+
+static int msm_actuator_set_move(void *data, u64 val)
+{
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	return 0;
+}
+
+	DEFINE_SIMPLE_ATTRIBUTE(af_move,
+		msm_actuator_get_move, msm_actuator_set_move, "%llu\n");
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 DEFINE_MUTEX(msm_actuator_mutex);
 

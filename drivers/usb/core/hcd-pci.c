@@ -15,6 +15,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -492,15 +496,6 @@ static int hcd_pci_suspend_noirq(struct device *dev)
 		return retval;
 
 	pci_save_state(pci_dev);
-
-	/*
-	 * Some systems crash if an EHCI controller is in D3 during
-	 * a sleep transition.  We have to leave such controllers in D0.
-	 */
-	if (hcd->broken_pci_sleep) {
-		dev_dbg(dev, "Staying in PCI D0\n");
-		return retval;
-	}
 
 	/* If the root hub is dead rather than suspended, disallow remote
 	 * wakeup.  usb_hc_died() should ensure that both hosts are marked as

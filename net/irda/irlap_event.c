@@ -24,6 +24,10 @@
  *     provided "AS-IS" and at no charge.
  *
  ********************************************************************/
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/string.h>
 #include <linux/kernel.h>
@@ -766,28 +770,28 @@ static int irlap_state_conn(struct irlap_cb *self, IRLAP_EVENT event,
 		 */
 		irlap_send_ua_response_frame(self, &self->qos_rx);
 
-#if 0
-		/*
-		 * We are allowed to send two frames, but this may increase
-		 * the connect latency, so lets not do it for now.
-		 */
-		/* This is full of good intentions, but doesn't work in
-		 * practice.
-		 * After sending the first UA response, we switch the
-		 * dongle to the negotiated speed, which is usually
-		 * different than 9600 kb/s.
-		 * From there, there is two solutions :
-		 * 1) The other end has received the first UA response :
-		 * it will set up the connection, move to state LAP_NRM_P,
-		 * and will ignore and drop the second UA response.
-		 * Actually, it's even worse : the other side will almost
-		 * immediately send a RR that will likely collide with the
-		 * UA response (depending on negotiated turnaround).
-		 * 2) The other end has not received the first UA response,
-		 * will stay at 9600 and will never see the second UA response.
-		 * Jean II */
-		irlap_send_ua_response_frame(self, &self->qos_rx);
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 		/*
 		 *  The WD-timer could be set to the duration of the P-timer
@@ -1528,7 +1532,16 @@ static int irlap_state_nrm_p(struct irlap_cb *self, IRLAP_EVENT event,
 
 		/* N2 is the disconnect timer. Until we reach it, we retry */
 		if (self->retry_count < self->N2) {
-			if (skb_peek(&self->wx_list) == NULL) {
+
+
+			if ( 1 ){
+
+
+
+
+
+
+
 				/* Retry sending the pf bit to the secondary */
 				IRDA_DEBUG(4, "nrm_p: resending rr");
 				irlap_wait_min_turn_around(self, &self->qos_tx);
@@ -1911,9 +1924,9 @@ static int irlap_state_nrm_s(struct irlap_cb *self, IRLAP_EVENT event,
 				 *  Starting WD-timer here is optional, but
 				 *  not recommended. Note 6 IrLAP p. 83
 				 */
-#if 0
-				irda_start_timer(WD_TIMER, self->wd_timeout);
-#endif
+
+
+
 				/* Keep state, do not move this line */
 				irlap_next_state(self, LAP_NRM_S);
 

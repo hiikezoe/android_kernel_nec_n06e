@@ -10,6 +10,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifndef MDP_H
 #define MDP_H
@@ -105,6 +109,10 @@ struct vsync {
 };
 
 extern struct vsync vsync_cntrl;
+
+
+extern MSM_FB_REQUEST_FLAG mdp4_overlay_argb_enable;    
+
 
 /*
  * MDP Image Structure
@@ -947,4 +955,9 @@ static inline void mdp_vid_quant_set(void)
 #endif
 int mdp_preset_lut_update_lcdc(struct fb_cmap *cmap, uint32_t *internal_lut);
 #endif
+
+
+void mdp_mddi_dma_s_stop(int dma_flg);
+
+
 #endif /* MDP_H */

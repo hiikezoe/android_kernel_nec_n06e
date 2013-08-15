@@ -10,6 +10,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -34,6 +38,10 @@
 #include "mipi_dsi.h"
 #include "mdp.h"
 #include "mdp4.h"
+
+#if defined (LCD_DEVICE_S6E8AA0X01)
+#include "mipi_smd_oled_hd.h"
+#endif
 
 u32 dsi_irq;
 u32 esc_byte_ratio;
@@ -129,9 +137,15 @@ static int mipi_dsi_off(struct platform_device *pdev)
 	spin_unlock_bh(&dsi_clk_lock);
 
 	mipi_dsi_unprepare_clocks();
+#if defined (LCD_DEVICE_S6E8AA0X01)
+    if (mipi_smd_oled_hd_power_ctl(0) != 0)
+        printk(KERN_ERR "%s. Panel Power Off Failed!!\n", __func__);
+
+	MIPI_OUTP(MIPI_DSI_BASE + 0x0A8, 0x00000000);
+#else
 	if (mipi_dsi_pdata && mipi_dsi_pdata->dsi_power_save)
 		mipi_dsi_pdata->dsi_power_save(0);
-
+#endif
 	if (mdp_rev >= MDP_REV_41)
 		mutex_unlock(&mfd->dma->ov_mutex);
 	else
@@ -163,10 +177,17 @@ static int mipi_dsi_on(struct platform_device *pdev)
 	var = &fbi->var;
 	pinfo = &mfd->panel_info;
 
+#if defined (LCD_DEVICE_S6E8AA0X01)
+    if (mipi_smd_oled_hd_power_ctl(1) != 0)
+        printk(KERN_ERR "%s. Panel Power On Failed!!\n", __func__);
+#else
 	if (mipi_dsi_pdata && mipi_dsi_pdata->dsi_power_save)
 		mipi_dsi_pdata->dsi_power_save(1);
+#endif
 
+#if !defined (LCD_DEVICE_S6E8AA0X01)
 	cont_splash_clk_ctrl(0);
+#endif
 	mipi_dsi_prepare_clocks();
 
 	mipi_dsi_ahb_ctrl(1);
@@ -603,8 +624,10 @@ static int mipi_dsi_probe(struct platform_device *pdev)
 
 	esc_byte_ratio = pinfo->mipi.esc_byte_ratio;
 
+#if !defined (LCD_DEVICE_S6E8AA0X01)
 	if (!mfd->cont_splash_done)
 		cont_splash_clk_ctrl(1);
+#endif
 
 return 0;
 

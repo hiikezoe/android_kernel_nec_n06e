@@ -18,6 +18,10 @@
  *
  * Copyright (C) 1995, 1996 Olaf Kirch <okir@monad.swb.de>
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/kernel.h>
 #include <linux/sched.h>
@@ -424,14 +428,14 @@ static int svc_partial_recvfrom(struct svc_rqst *rqstp,
 static void svc_sock_setbufsize(struct socket *sock, unsigned int snd,
 				unsigned int rcv)
 {
-#if 0
-	mm_segment_t	oldfs;
-	oldfs = get_fs(); set_fs(KERNEL_DS);
-	sock_setsockopt(sock, SOL_SOCKET, SO_SNDBUF,
-			(char*)&snd, sizeof(snd));
-	sock_setsockopt(sock, SOL_SOCKET, SO_RCVBUF,
-			(char*)&rcv, sizeof(rcv));
-#else
+
+
+
+
+
+
+
+
 	/* sock_setsockopt limits use to sysctl_?mem_max,
 	 * which isn't acceptable.  Until that is made conditional
 	 * on not having CAP_SYS_RESOURCE or similar, we go direct...
@@ -442,7 +446,7 @@ static void svc_sock_setbufsize(struct socket *sock, unsigned int snd,
 	sock->sk->sk_rcvbuf = rcv * 2;
 	sock->sk->sk_write_space(sock->sk);
 	release_sock(sock->sk);
-#endif
+
 }
 /*
  * INET callback when data has been received on the socket.
@@ -1137,9 +1141,9 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
 	if (len >= 0)
 		svsk->sk_tcplen += len;
 	if (len != want) {
+		svc_tcp_save_pages(svsk, rqstp);
 		if (len < 0 && len != -EAGAIN)
 			goto err_other;
-		svc_tcp_save_pages(svsk, rqstp);
 		dprintk("svc: incomplete TCP record (%d of %d)\n",
 			svsk->sk_tcplen, svsk->sk_reclen);
 		goto err_noclose;

@@ -1,3 +1,7 @@
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #ifndef _MMC_CORE_SD_H
 #define _MMC_CORE_SD_H
 
@@ -13,5 +17,11 @@ int mmc_sd_setup_card(struct mmc_host *host, struct mmc_card *card,
 unsigned mmc_sd_get_max_clock(struct mmc_card *card);
 int mmc_sd_switch_hs(struct mmc_card *card);
 void mmc_sd_go_highspeed(struct mmc_card *card);
+
+
+
+int mmc_sd_init_card(struct mmc_host *host, u32 ocr, struct mmc_card *oldcard);
+
+
 
 #endif

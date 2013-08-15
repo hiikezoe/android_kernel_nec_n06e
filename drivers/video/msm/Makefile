@@ -1,3 +1,7 @@
+#/***********************************************************************/
+#/* Modified by                                                         */
+#/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+#/***********************************************************************/
 ifeq ($(CONFIG_FB_MSM_MDSS),y)
 obj-y += mdss/
 else
@@ -85,6 +89,11 @@ obj-$(CONFIG_FB_MSM_MIPI_DSI_NT35516) += mipi_truly_tft540960_1_e.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_NT35590) += mipi_NT35590.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_SIMULATOR) += mipi_simulator.o
 
+
+
+obj-$(CONFIG_FB_MSM_MIPI_SAMSUNG_VIDEO_OLED_720P) += mipi_smd_oled_hd.o
+
+
 # MIPI Bridge
 obj-$(CONFIG_FB_MSM_MIPI_DSI_TC358764_DSI2LVDS) += mipi_tc358764_dsi2lvds.o
 
@@ -120,6 +129,9 @@ obj-$(CONFIG_FB_MSM_MDDI_QUICKVX) += mddi_quickvx.o
 endif
 
 ifeq ($(CONFIG_FB_MSM_MIPI_PANEL_DETECT),y)
+
+obj-y += mipi_smd_video_hd_pt.o mipi_smd_oled_hd.o
+
 obj-y += mipi_toshiba_video_wvga_pt.o mipi_toshiba_video_wsvga_pt.o mipi_toshiba_video_wuxga.o
 obj-y += mipi_novatek_video_qhd_pt.o mipi_novatek_cmd_qhd_pt.o
 obj-y += mipi_orise_video_720p_pt.o mipi_orise_cmd_720p_pt.o
@@ -131,6 +143,10 @@ obj-y += mipi_chimei_wxga_pt.o
 obj-y += mipi_chimei_wuxga.o
 obj-y += mipi_truly_video_wvga_pt.o
 else
+
+
+obj-$(CONFIG_FB_MSM_MIPI_SAMSUNG_VIDEO_OLED_720P) += mipi_smd_video_hd_pt.o
+
 obj-$(CONFIG_FB_MSM_MIPI_TOSHIBA_VIDEO_WVGA_PT) += mipi_toshiba_video_wvga_pt.o
 obj-$(CONFIG_FB_MSM_MIPI_TOSHIBA_VIDEO_WSVGA_PT) += mipi_toshiba_video_wsvga_pt.o
 obj-$(CONFIG_FB_MSM_MIPI_TOSHIBA_VIDEO_WUXGA) += mipi_toshiba_video_wuxga.o
@@ -177,10 +193,11 @@ obj-$(CONFIG_FB_MSM_LCDC_TRULY_HVGA_IPS3P2335) += lcdc_truly_ips3p2335.o
 
 obj-$(CONFIG_FB_MSM_TVOUT) += tvout_msm.o
 
-ccflags-y := -I$(src)/mhl
-obj-$(CONFIG_FB_MSM_HDMI_MHL_8334) += mhl-8334.o
-mhl-8334-objs  += mhl/mhl_8334.o
-mhl-8334-objs  += mhl/mhl_i2c_utils.o
+
+
+
+
+obj-$(CONFIG_FEATURE_DVE021_MHL) += mhl/
 
 obj-$(CONFIG_FB_MSM_EXTMDDI_SVGA) += mddi_ext_lcd.o
 

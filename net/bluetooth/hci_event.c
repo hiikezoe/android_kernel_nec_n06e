@@ -21,6 +21,10 @@
    COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS
    SOFTWARE IS DISCLAIMED.
 */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 /* Bluetooth HCI event handling. */
 
@@ -44,6 +48,13 @@
 
 #include <net/bluetooth/bluetooth.h>
 #include <net/bluetooth/hci_core.h>
+
+
+#if !defined(FALSE)
+#define FALSE 0
+#define TRUE (!FALSE)
+#endif
+
 
 /* Handle HCI Event packets */
 
@@ -1757,7 +1768,38 @@ static inline void hci_conn_request_evt(struct hci_dev *hdev, struct sk_buff *sk
 			memcpy(ie->data.dev_class, ev->dev_class, 3);
 
 		conn = hci_conn_hash_lookup_ba(hdev, ev->link_type, &ev->bdaddr);
+
+		BT_DBG("cdd--ev->link_type = %d", ev->link_type);
+		BT_DBG("cdd1--conn = %p", conn);
+
 		if (!conn) {
+
+			bool is_exist_sco = FALSE;
+			if (ev->link_type == SCO_LINK) {
+				conn = hci_conn_hash_lookup_ba(hdev, ESCO_LINK, &ev->bdaddr);
+				BT_DBG("cdd2--conn = %p", conn);
+				if (conn != NULL) {
+					is_exist_sco = TRUE;
+				}
+			} else if (ev->link_type == ESCO_LINK) {
+				conn = hci_conn_hash_lookup_ba(hdev, SCO_LINK, &ev->bdaddr);
+				BT_DBG("cdd3--conn = %p", conn);
+				if (conn != NULL) {
+					is_exist_sco = TRUE;
+				}
+			}
+			BT_DBG("cdd--conn = %p, is_exist_sco = %d", conn, is_exist_sco);
+            if ( is_exist_sco == TRUE && conn != NULL) {
+                struct hci_cp_reject_conn_req rej_conn_req;
+
+				hci_dev_unlock(hdev);
+                bacpy(&rej_conn_req.bdaddr, &ev->bdaddr);
+                rej_conn_req.reason = 0x0f;
+				BT_DBG("cdd--hci_send_cmd");
+                hci_send_cmd(hdev, HCI_OP_REJECT_CONN_REQ, sizeof(rej_conn_req), &rej_conn_req);
+                return;
+            }
+
 			/* pkt_type not yet used for incoming connections */
 			conn = hci_conn_add(hdev, ev->link_type, 0, &ev->bdaddr);
 			if (!conn) {
@@ -1891,6 +1933,9 @@ static inline void hci_auth_complete_evt(struct hci_dev *hdev, struct sk_buff *s
 			} else {
 				conn->state = BT_CONNECTED;
 				hci_proto_connect_cfm(conn, ev->status);
+				
+				if(ev->status)
+				
 				conn->disc_timeout = HCI_DISCONN_AUTH_FAILED_TIMEOUT;
 				hci_conn_put(conn);
 			}
@@ -2935,6 +2980,10 @@ static inline void hci_sync_conn_complete_evt(struct hci_dev *hdev, struct sk_bu
 		conn->type = SCO_LINK;
 	}
 
+
+	BT_DBG("cdd--switch(x) x = %d", ev->status);
+	BT_DBG("cdd--conn->type = %d", conn->type);
+
 	switch (ev->status) {
 	case 0x00:
 		conn->handle = __le16_to_cpu(ev->handle);
@@ -2948,11 +2997,21 @@ static inline void hci_sync_conn_complete_evt(struct hci_dev *hdev, struct sk_bu
 	case 0x1c:	/* SCO interval rejected */
 	case 0x1a:	/* Unsupported Remote Feature */
 	case 0x1f:	/* Unspecified error */
+
+	case 0x12:  
+
 		if (conn->out && conn->attempt < 2) {
 			if (!conn->hdev->is_wbs) {
 				conn->pkt_type =
 					(hdev->esco_type & SCO_ESCO_MASK) |
 					(hdev->esco_type & EDR_ESCO_MASK);
+
+				if (ev->status == 0x12 && conn->type == ESCO_LINK) {
+					conn->type = SCO_LINK;
+					conn->pkt_type = (hdev->esco_type & SCO_ESCO_MASK);
+				}
+				BT_DBG("cdd--conn->pkt_type = %d", conn->pkt_type);
+
 				hci_setup_sync(conn, conn->link->handle);
 				goto unlock;
 			}

@@ -9,6 +9,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/slab.h>
 #include <linux/init.h>
@@ -28,6 +32,8 @@
 #include "diagchar.h"
 #include "diagfwd.h"
 #include "diagfwd_sdio.h"
+#define	D_DIAG_B_MODE		0
+extern int	g_b_mode;
 
 void __diag_sdio_send_req(void)
 {
@@ -165,8 +171,12 @@ void diag_read_mdm_work_fn(struct work_struct *work)
 		}
 		if (driver->sdio_ch && driver->usb_buf_mdm_out &&
 						 (driver->read_len_mdm > 0))
-			sdio_write(driver->sdio_ch, driver->usb_buf_mdm_out,
-							 driver->read_len_mdm);
+		{
+			if (g_b_mode != D_DIAG_B_MODE) {
+				sdio_write(driver->sdio_ch, driver->usb_buf_mdm_out,
+								 driver->read_len_mdm);
+			}
+		}
 		APPEND_DEBUG('x');
 		driver->usb_read_mdm_ptr->buf = driver->usb_buf_mdm_out;
 		driver->usb_read_mdm_ptr->length = USB_MAX_OUT_BUF;

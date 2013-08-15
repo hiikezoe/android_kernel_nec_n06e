@@ -9,6 +9,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/clk.h>
 #include <linux/delay.h>
@@ -34,8 +38,23 @@
 #include <sound/tpa2028d.h>
 #endif
 /* 8064 machine driver */
+
 #define PM8921_GPIO_BASE		NR_GPIO_IRQS
 #define PM8921_GPIO_PM_TO_SYS(pm_gpio)  (pm_gpio - 1 + PM8921_GPIO_BASE)
+
+
+#include <../codecs/es310.h>
+
+
+
+#define PM8921_IRQ_BASE (NR_MSM_IRQS + NR_GPIO_IRQS)
+#define JACK_DETECT_GPIO 5
+#define JACK_DETECT_INT  PM8921_GPIO_IRQ(PM8921_IRQ_BASE, JACK_DETECT_GPIO)
+#define SPK_SW_GPIO 45
+
+#define SUBMIC_SW_GPIO 7
+
+
 
 #define MSM8064_SPK_ON 1
 #define MSM8064_SPK_OFF 0
@@ -64,7 +83,9 @@
 #define TABLA_MBHC_DEF_BUTTONS 8
 #define TABLA_MBHC_DEF_RLOADS 5
 
-#define JACK_DETECT_GPIO 38
+
+
+
 
 /* Shared channel numbers for Slimbus ports that connect APQ to MDM. */
 enum {
@@ -85,11 +106,18 @@ enum {
 	INCALL_REC_STEREO,
 };
 
-static u32 top_spk_pamp_gpio  = PM8921_GPIO_PM_TO_SYS(18);
-static u32 bottom_spk_pamp_gpio = PM8921_GPIO_PM_TO_SYS(19);
-static int msm_spk_control;
-static int msm_ext_bottom_spk_pamp;
-static int msm_ext_top_spk_pamp;
+enum {
+	SUBMIC1,
+	SUBMIC2,
+};
+
+
+
+
+
+
+
+
 static int msm_slim_0_rx_ch = 1;
 static int msm_slim_0_tx_ch = 1;
 static int msm_slim_3_rx_ch = 1;
@@ -105,6 +133,267 @@ static int rec_mode = INCALL_REC_MONO;
 
 static struct clk *codec_clk;
 static int clk_users;
+
+
+#define YDA168_CTL1_GPIO PM8921_GPIO_PM_TO_SYS(11)
+#define YDA168_CTL2_GPIO PM8921_GPIO_PM_TO_SYS(12)
+#define EAR_AMP_GPIO PM8921_GPIO_PM_TO_SYS(29)
+static int ear_amp_gpios_config = 0;
+static int yda168_gpios_config = 0;
+static int yda168_mode = 2;
+static int yda168_pwr = 0;
+static const char *yda168_function[] = {"ZERO", "CFG1", "CFG2", "CFG3"};
+static const char *rx_sw_text[] = {"EAR", "SPK"};
+
+static const char *submic_sw_text[] = {"SUBMIC1", "SUBMIC2"};
+static const char *spk_sig_sw_text[] = {"eS310", "WCD9310"};
+
+static int rx_sw_mode = 0;
+
+static int submic_sw_mode = 0;
+static int spk_sig_sw_mode = 0;
+
+#include <linux/pm_obs_api.h>
+void yda168_set_amp( int in_mode )
+{
+	if( !yda168_gpios_config ){
+		printk(KERN_DEBUG "set_amp not gpio configured \n");
+		return;
+	}
+
+	printk(KERN_DEBUG "set_amp %x %x %x \n", in_mode, yda168_pwr, yda168_gpios_config);
+	if(yda168_pwr == in_mode) {
+		printk(KERN_DEBUG "set_amp value \n");
+		return;
+	}
+	yda168_pwr = in_mode;
+	pm_obs_a_speaker(PM_OBS_SPEAKER_MODE, (yda168_pwr) ? TRUE : FALSE);
+	switch( yda168_pwr )
+	{
+	case 0:
+		if(yda168_gpios_config & (1 << 0)) gpio_set_value_cansleep(YDA168_CTL1_GPIO, 0);
+		if(yda168_gpios_config & (1 << 1)) gpio_set_value_cansleep(YDA168_CTL2_GPIO, 0);
+		pr_debug("%s: sleep 30 ms after Ctl \n", __func__);
+		usleep_range(30000, 30000);
+		break;
+
+	case 1:
+		if(yda168_gpios_config & (1 << 0)) gpio_set_value_cansleep(YDA168_CTL1_GPIO, 0);
+		if(yda168_gpios_config & (1 << 1)) gpio_set_value_cansleep(YDA168_CTL2_GPIO, 1);
+		pr_debug("%s: sleep 20 ms after Ctl \n", __func__);
+		usleep_range(20000, 20000);
+		break;
+
+	case 2:
+		if(yda168_gpios_config & (1 << 0)) gpio_set_value_cansleep(YDA168_CTL1_GPIO, 1);
+		if(yda168_gpios_config & (1 << 1)) gpio_set_value_cansleep(YDA168_CTL2_GPIO, 0);
+		pr_debug("%s: sleep 20 ms after Ctl \n", __func__);
+		usleep_range(20000, 20000);
+		break;
+
+	case 3:
+		if(yda168_gpios_config & (1 << 0)) gpio_set_value_cansleep(YDA168_CTL1_GPIO, 1);
+		if(yda168_gpios_config & (1 << 1)) gpio_set_value_cansleep(YDA168_CTL2_GPIO, 1);
+		pr_debug("%s: sleep 20 ms after Ctl \n", __func__);
+		usleep_range(20000, 20000);
+		break;
+	default:
+		printk(KERN_DEBUG "%s err case \n", __func__);
+		break;
+	}
+}
+
+static int yda168_get_spk(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s: yda168_mode = %d", __func__, yda168_mode);
+	ucontrol->value.integer.value[0] = yda168_mode;
+	return 0;
+}
+static int yda168_set_spk(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s() %x \n", __func__, (unsigned int)ucontrol->value.integer.value[0]);
+	if (yda168_mode == ucontrol->value.integer.value[0]) {
+		printk(KERN_DEBUG "set_amp value \n");
+		return 0;
+	}
+	yda168_mode = ucontrol->value.integer.value[0];
+	if(yda168_pwr) yda168_set_amp(yda168_mode);
+	return 1;
+}
+
+static int get_rx_sw(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s: rx_sw_mode = %d", __func__, rx_sw_mode);
+	ucontrol->value.integer.value[0] = rx_sw_mode;
+	return 0;
+}
+static int set_rx_sw(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s() %x \n", __func__, (unsigned int)ucontrol->value.integer.value[0]);
+	if (rx_sw_mode == ucontrol->value.integer.value[0]) {
+		return 0;
+	}
+	rx_sw_mode = ucontrol->value.integer.value[0];
+	return 1;
+}
+
+static int get_submic_sw(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s: submic_sw_mode = %d", __func__, submic_sw_mode);
+	ucontrol->value.integer.value[0] = submic_sw_mode;
+	return 0;
+}
+static int set_submic_sw(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s() %x \n", __func__, (unsigned int)ucontrol->value.integer.value[0]);
+	if (submic_sw_mode == ucontrol->value.integer.value[0]) {
+		pr_debug("submic not changed \n");
+		return 0;
+	}
+
+	if(ucontrol->value.integer.value[0]==SUBMIC1){
+		if(es310_isactive_noisesuppressor()){
+			return 0;
+		}
+	}
+
+	submic_sw_mode = ucontrol->value.integer.value[0];
+	gpio_set_value(SUBMIC_SW_GPIO, submic_sw_mode);
+	return 1;
+}
+static int get_spk_sig_sw(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s: spk_sig_sw_mode = %d", __func__, spk_sig_sw_mode);
+	ucontrol->value.integer.value[0] = spk_sig_sw_mode;
+	return 0;
+}
+static int set_spk_sig_sw(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s() %x \n", __func__, (unsigned int)ucontrol->value.integer.value[0]);
+	if (spk_sig_sw_mode == ucontrol->value.integer.value[0]) {
+		pr_debug("speaker signal switch not changed \n");
+		return 0;
+	}
+	spk_sig_sw_mode = ucontrol->value.integer.value[0];
+	gpio_set_value(SPK_SW_GPIO, spk_sig_sw_mode);
+	return 1;
+}
+
+void ear_set_amp(int in_mode)
+{
+	pr_debug("%s() %x\n", __func__, in_mode);
+	if(ear_amp_gpios_config & (1 << 0)) gpio_set_value_cansleep(EAR_AMP_GPIO, in_mode);
+	pr_debug("%s: sleep %d ms after Ctl \n", __func__, in_mode ? 15 : 1);
+	mdelay(in_mode ? 15 : 1);
+}
+
+void rx_amp_init(void)
+{
+	int ret = 0;
+	struct pm_gpio param = {
+		.direction      = PM_GPIO_DIR_OUT,
+		.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
+		.output_value   = 0,
+		.pull           = PM_GPIO_PULL_NO,
+		.vin_sel        = PM_GPIO_VIN_S4,
+		.out_strength   = PM_GPIO_STRENGTH_HIGH,
+		.function       = PM_GPIO_FUNC_NORMAL,
+	};
+
+	struct pm_gpio ear_param = {
+		.direction      = PM_GPIO_DIR_OUT,
+		.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
+		.output_value   = 0,
+		.pull           = PM_GPIO_PULL_NO,
+		.vin_sel        = PM_GPIO_VIN_S4,
+		.out_strength   = PM_GPIO_STRENGTH_LOW,
+		.function       = PM_GPIO_FUNC_NORMAL,
+	};
+
+	ret = gpio_request(EAR_AMP_GPIO, "EAR AMP CTL");
+	if (ret) {
+		pr_err("%s: Error requesting GPIO %d\n", __func__, EAR_AMP_GPIO);
+		goto err;
+	}
+	ret = pm8xxx_gpio_config(EAR_AMP_GPIO, &ear_param);
+	if (ret){
+		pr_err("%s: Failed to configure ear amp_ctl %u\n", __func__, EAR_AMP_GPIO);
+		goto err;
+	} else {
+		pr_debug("%s: EAR AMP CTL GPIO\n", __func__);
+		gpio_direction_output(EAR_AMP_GPIO, 0);
+		ear_amp_gpios_config |= (1 << 0);
+	}
+
+	ret = gpio_request(YDA168_CTL1_GPIO, "YDA168 CTL1");
+	if (ret) {
+		pr_err("%s: Error requesting GPIO %d\n", __func__, YDA168_CTL1_GPIO);
+		goto err;
+	}
+	ret = pm8xxx_gpio_config(YDA168_CTL1_GPIO, &param);
+	if (ret){
+		pr_err("%s: Failed to configure yda168_ctl1 %u\n", __func__, YDA168_CTL1_GPIO);
+		goto err;
+	} else {
+		pr_debug("%s: YDA168_CTL1_GPIO\n", __func__);
+		gpio_direction_output(YDA168_CTL1_GPIO, 0);
+		yda168_gpios_config |= (1 << 0);
+	}
+
+	ret = gpio_request(YDA168_CTL2_GPIO, "YDA168 CTL2");
+	if (ret) {
+		pr_err("%s: Error requesting GPIO %d\n", __func__, YDA168_CTL2_GPIO);
+		goto err;
+	}
+	ret = pm8xxx_gpio_config(YDA168_CTL2_GPIO, &param);
+	if (ret){
+		pr_err("%s: Failed to configure yda168_ctl1 %u\n", __func__, YDA168_CTL1_GPIO);
+		goto err;
+	} else {
+		pr_debug("%s: YDA168_CTL2_GPIO\n", __func__);
+		gpio_direction_output(YDA168_CTL2_GPIO, 0);
+		yda168_gpios_config |= (1 << 1);
+	}
+
+err:
+	printk(KERN_DEBUG "%s config yda168 %x ear %x \n", __func__, yda168_gpios_config, ear_amp_gpios_config);
+}
+
+static int rx_amp_event(struct snd_soc_dapm_widget *w,
+	struct snd_kcontrol *k, int event)
+{
+	pr_debug("%s() %x\n", __func__, SND_SOC_DAPM_EVENT_ON(event));
+
+	if(strncmp(w->name, "RX AMP", 6)) {
+		pr_err("%s() Invalid amp event Widget = %s\n",__func__, w->name);
+		return -EINVAL;
+	}
+
+	if(SND_SOC_DAPM_EVENT_ON(event)) {
+		if(rx_sw_mode){
+			yda168_set_amp(yda168_mode);
+		}else{
+			ear_set_amp(1);
+		}
+	}else{
+		if(rx_sw_mode){
+			yda168_set_amp(0);
+		}else{
+			ear_set_amp(0);
+		}
+	}
+	return 0;
+}
+
+
 
 static struct snd_soc_jack hs_jack;
 static struct snd_soc_jack button_jack;
@@ -136,270 +425,277 @@ static struct tabla_mbhc_config mbhc_cfg = {
 	.mclk_rate = TABLA_EXT_CLK_RATE,
 	.gpio = 0,
 	.gpio_irq = 0,
-	.gpio_level_insert = 1,
+
+	.gpio_level_insert = 0,
+
+
+
+
 	.detect_extn_cable = false,
 };
 
 static struct mutex cdc_mclk_mutex;
 
-static void msm_enable_ext_spk_amp_gpio(u32 spk_amp_gpio)
-{
-	int ret = 0;
 
-	struct pm_gpio param = {
-		.direction      = PM_GPIO_DIR_OUT,
-		.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
-		.output_value   = 1,
-		.pull      = PM_GPIO_PULL_NO,
-		.vin_sel	= PM_GPIO_VIN_S4,
-		.out_strength   = PM_GPIO_STRENGTH_MED,
-		.
-			function       = PM_GPIO_FUNC_NORMAL,
-	};
 
-	if (spk_amp_gpio == bottom_spk_pamp_gpio) {
 
-		ret = gpio_request(bottom_spk_pamp_gpio, "BOTTOM_SPK_AMP");
-		if (ret) {
-			pr_err("%s: Error requesting BOTTOM SPK AMP GPIO %u\n",
-				__func__, bottom_spk_pamp_gpio);
-			return;
-		}
-		ret = pm8xxx_gpio_config(bottom_spk_pamp_gpio, &param);
-		if (ret)
-			pr_err("%s: Failed to configure Bottom Spk Ampl"
-				" gpio %u\n", __func__, bottom_spk_pamp_gpio);
-		else {
-			pr_debug("%s: enable Bottom spkr amp gpio\n", __func__);
-			gpio_direction_output(bottom_spk_pamp_gpio, 1);
-		}
 
-	} else if (spk_amp_gpio == top_spk_pamp_gpio) {
 
-		ret = gpio_request(top_spk_pamp_gpio, "TOP_SPK_AMP");
-		if (ret) {
-			pr_err("%s: Error requesting GPIO %d\n", __func__,
-				top_spk_pamp_gpio);
-			return;
-		}
-		ret = pm8xxx_gpio_config(top_spk_pamp_gpio, &param);
-		if (ret)
-			pr_err("%s: Failed to configure Top Spk Ampl"
-				" gpio %u\n", __func__, top_spk_pamp_gpio);
-		else {
-			pr_debug("%s: enable Top spkr amp gpio\n", __func__);
-			gpio_direction_output(top_spk_pamp_gpio, 1);
-		}
-	} else {
-		pr_err("%s: ERROR : Invalid External Speaker Ampl GPIO."
-			" gpio = %u\n", __func__, spk_amp_gpio);
-		return;
-	}
-}
 
-static void msm_ext_spk_power_amp_on(u32 spk)
-{
-	if (spk & (BOTTOM_SPK_AMP_POS | BOTTOM_SPK_AMP_NEG)) {
 
-		if ((msm_ext_bottom_spk_pamp & BOTTOM_SPK_AMP_POS) &&
-			(msm_ext_bottom_spk_pamp & BOTTOM_SPK_AMP_NEG)) {
 
-			pr_debug("%s() External Bottom Speaker Ampl already "
-				"turned on. spk = 0x%08x\n", __func__, spk);
-			return;
-		}
 
-		msm_ext_bottom_spk_pamp |= spk;
 
-		if ((msm_ext_bottom_spk_pamp & BOTTOM_SPK_AMP_POS) &&
-			(msm_ext_bottom_spk_pamp & BOTTOM_SPK_AMP_NEG)) {
 
-			msm_enable_ext_spk_amp_gpio(bottom_spk_pamp_gpio);
-			pr_debug("%s: slepping 4 ms after turning on external "
-				" Bottom Speaker Ampl\n", __func__);
-			usleep_range(4000, 4000);
-		}
 
-	} else if (spk & (TOP_SPK_AMP_POS | TOP_SPK_AMP_NEG | TOP_SPK_AMP)) {
 
-		pr_debug("%s():top_spk_amp_state = 0x%x spk_event = 0x%x\n",
-			__func__, msm_ext_top_spk_pamp, spk);
 
-		if (((msm_ext_top_spk_pamp & TOP_SPK_AMP_POS) &&
-			(msm_ext_top_spk_pamp & TOP_SPK_AMP_NEG)) ||
-				(msm_ext_top_spk_pamp & TOP_SPK_AMP)) {
 
-			pr_debug("%s() External Top Speaker Ampl already"
-				"turned on. spk = 0x%08x\n", __func__, spk);
-			return;
-		}
 
-		msm_ext_top_spk_pamp |= spk;
 
-		if (((msm_ext_top_spk_pamp & TOP_SPK_AMP_POS) &&
-			(msm_ext_top_spk_pamp & TOP_SPK_AMP_NEG)) ||
-				(msm_ext_top_spk_pamp & TOP_SPK_AMP)) {
 
-#ifdef CONFIG_SND_SOC_TPA2028D
-			set_amp_gain(SPK_ON);
-#else
-			msm_enable_ext_spk_amp_gpio(top_spk_pamp_gpio);
-			pr_debug("%s: sleeping 4 ms after turning on "
-				" external Top Speaker Ampl\n", __func__);
-			usleep_range(4000, 4000);
-#endif
-		}
-	} else  {
 
-		pr_err("%s: ERROR : Invalid External Speaker Ampl. spk = 0x%08x\n",
-			__func__, spk);
-		return;
-	}
-}
 
-static void msm_ext_spk_power_amp_off(u32 spk)
-{
-	if (spk & (BOTTOM_SPK_AMP_POS | BOTTOM_SPK_AMP_NEG)) {
 
-		if (!msm_ext_bottom_spk_pamp)
-			return;
 
-		gpio_direction_output(bottom_spk_pamp_gpio, 0);
-		gpio_free(bottom_spk_pamp_gpio);
-		msm_ext_bottom_spk_pamp = 0;
 
-		pr_debug("%s: sleeping 4 ms after turning off external Bottom"
-			" Speaker Ampl\n", __func__);
 
-		usleep_range(4000, 4000);
 
-	} else if (spk & (TOP_SPK_AMP_POS | TOP_SPK_AMP_NEG | TOP_SPK_AMP)) {
 
-		pr_debug("%s: top_spk_amp_state = 0x%x spk_event = 0x%x\n",
-				__func__, msm_ext_top_spk_pamp, spk);
 
-		if (!msm_ext_top_spk_pamp)
-			return;
 
-		if ((spk & TOP_SPK_AMP_POS) || (spk & TOP_SPK_AMP_NEG)) {
 
-			msm_ext_top_spk_pamp &= (~(TOP_SPK_AMP_POS |
-							TOP_SPK_AMP_NEG));
-		} else if (spk & TOP_SPK_AMP) {
-			msm_ext_top_spk_pamp &=  ~TOP_SPK_AMP;
-		}
 
-		if (msm_ext_top_spk_pamp)
-			return;
 
-#ifdef CONFIG_SND_SOC_TPA2028D
-		set_amp_gain(SPK_OFF);
-		msm_ext_top_spk_pamp = 0;
-#else
-		gpio_direction_output(top_spk_pamp_gpio, 0);
-		gpio_free(top_spk_pamp_gpio);
-		msm_ext_top_spk_pamp = 0;
 
-		pr_debug("%s: sleeping 4 ms after ext Top Spek Ampl is off\n",
-				__func__);
 
-		usleep_range(4000, 4000);
-#endif
-	} else  {
 
-		pr_err("%s: ERROR : Invalid Ext Spk Ampl. spk = 0x%08x\n",
-			__func__, spk);
-		return;
-	}
-}
 
-static void msm_ext_control(struct snd_soc_codec *codec)
-{
-	struct snd_soc_dapm_context *dapm = &codec->dapm;
 
-	pr_debug("%s: msm_spk_control = %d", __func__, msm_spk_control);
-	if (msm_spk_control == MSM8064_SPK_ON) {
-		snd_soc_dapm_enable_pin(dapm, "Ext Spk Bottom Pos");
-		snd_soc_dapm_enable_pin(dapm, "Ext Spk Bottom Neg");
-		snd_soc_dapm_enable_pin(dapm, "Ext Spk Top Pos");
-		snd_soc_dapm_enable_pin(dapm, "Ext Spk Top Neg");
-#ifdef CONFIG_SND_SOC_TPA2028D
-		snd_soc_dapm_enable_pin(dapm, "Ext Spk Top");
-#endif
-	} else {
-		snd_soc_dapm_disable_pin(dapm, "Ext Spk Bottom Pos");
-		snd_soc_dapm_disable_pin(dapm, "Ext Spk Bottom Neg");
-		snd_soc_dapm_disable_pin(dapm, "Ext Spk Top Pos");
-		snd_soc_dapm_disable_pin(dapm, "Ext Spk Top Neg");
-#ifdef CONFIG_SND_SOC_TPA2028D
-		snd_soc_dapm_disable_pin(dapm, "Ext Spk Top");
-#endif
-	}
 
-	snd_soc_dapm_sync(dapm);
-}
 
-static int msm_get_spk(struct snd_kcontrol *kcontrol,
-	struct snd_ctl_elem_value *ucontrol)
-{
-	pr_debug("%s: msm_spk_control = %d", __func__, msm_spk_control);
-	ucontrol->value.integer.value[0] = msm_spk_control;
-	return 0;
-}
-static int msm_set_spk(struct snd_kcontrol *kcontrol,
-	struct snd_ctl_elem_value *ucontrol)
-{
-	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 
-	pr_debug("%s()\n", __func__);
-	if (msm_spk_control == ucontrol->value.integer.value[0])
-		return 0;
 
-	msm_spk_control = ucontrol->value.integer.value[0];
-	msm_ext_control(codec);
-	return 1;
-}
-static int msm_spkramp_event(struct snd_soc_dapm_widget *w,
-	struct snd_kcontrol *k, int event)
-{
-	pr_debug("%s() %x\n", __func__, SND_SOC_DAPM_EVENT_ON(event));
 
-	if (SND_SOC_DAPM_EVENT_ON(event)) {
-		if (!strncmp(w->name, "Ext Spk Bottom Pos", 18))
-			msm_ext_spk_power_amp_on(BOTTOM_SPK_AMP_POS);
-		else if (!strncmp(w->name, "Ext Spk Bottom Neg", 18))
-			msm_ext_spk_power_amp_on(BOTTOM_SPK_AMP_NEG);
-		else if (!strncmp(w->name, "Ext Spk Top Pos", 15))
-			msm_ext_spk_power_amp_on(TOP_SPK_AMP_POS);
-		else if  (!strncmp(w->name, "Ext Spk Top Neg", 15))
-			msm_ext_spk_power_amp_on(TOP_SPK_AMP_NEG);
-		else if  (!strncmp(w->name, "Ext Spk Top", 12))
-			msm_ext_spk_power_amp_on(TOP_SPK_AMP);
-		else {
-			pr_err("%s() Invalid Speaker Widget = %s\n",
-					__func__, w->name);
-			return -EINVAL;
-		}
 
-	} else {
-		if (!strncmp(w->name, "Ext Spk Bottom Pos", 18))
-			msm_ext_spk_power_amp_off(BOTTOM_SPK_AMP_POS);
-		else if (!strncmp(w->name, "Ext Spk Bottom Neg", 18))
-			msm_ext_spk_power_amp_off(BOTTOM_SPK_AMP_NEG);
-		else if (!strncmp(w->name, "Ext Spk Top Pos", 15))
-			msm_ext_spk_power_amp_off(TOP_SPK_AMP_POS);
-		else if  (!strncmp(w->name, "Ext Spk Top Neg", 15))
-			msm_ext_spk_power_amp_off(TOP_SPK_AMP_NEG);
-		else if  (!strncmp(w->name, "Ext Spk Top", 12))
-			msm_ext_spk_power_amp_off(TOP_SPK_AMP);
-		else {
-			pr_err("%s() Invalid Speaker Widget = %s\n",
-					__func__, w->name);
-			return -EINVAL;
-		}
-	}
-	return 0;
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 static int msm_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
 				    bool dapm)
@@ -493,18 +789,27 @@ static const struct snd_soc_dapm_widget apq8064_dapm_widgets[] = {
 	SND_SOC_DAPM_SUPPLY("MCLK",  SND_SOC_NOPM, 0, 0,
 	msm_mclk_event, SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 
-	SND_SOC_DAPM_SPK("Ext Spk Bottom Pos", msm_spkramp_event),
-	SND_SOC_DAPM_SPK("Ext Spk Bottom Neg", msm_spkramp_event),
 
-	SND_SOC_DAPM_SPK("Ext Spk Top Pos", msm_spkramp_event),
-	SND_SOC_DAPM_SPK("Ext Spk Top Neg", msm_spkramp_event),
-	SND_SOC_DAPM_SPK("Ext Spk Top", msm_spkramp_event),
+
+
+
+
+
+
+
+
+
+	SND_SOC_DAPM_SPK("RX AMP", rx_amp_event),
+
 
 	/************ Analog MICs ************/
 	/**
 	 * Analog mic7 (Front Top) on Liquid.
 	 * Used as Handset mic on CDP.
 	 */
+
+	SND_SOC_DAPM_MIC("Handset Mic", NULL),
+
 	SND_SOC_DAPM_MIC("Analog mic7", NULL),
 
 	SND_SOC_DAPM_MIC("Headset Mic", NULL),
@@ -532,18 +837,29 @@ static const struct snd_soc_dapm_route apq8064_common_audio_map[] = {
 
 	{"HEADPHONE", NULL, "LDO_H"},
 
-	/* Speaker path */
-#ifdef CONFIG_SND_SOC_TPA2028D
-	{"Ext Spk Top", NULL, "LINEOUT1"},
-#else
-	{"Ext Spk Bottom Pos", NULL, "LINEOUT1"},
-	{"Ext Spk Bottom Neg", NULL, "LINEOUT3"},
 
-	{"Ext Spk Top Pos", NULL, "LINEOUT2"},
-	{"Ext Spk Top Neg", NULL, "LINEOUT4"},
-	{"Ext Spk Top", NULL, "LINEOUT5"},
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+	{"RX AMP", NULL, "LINEOUT1"},
+
+
 	/************   Analog MIC Paths  ************/
+
+	{"AMIC1", NULL, "MIC BIAS1 Internal1"},
+	{"MIC BIAS1 Internal1", NULL, "Handset Mic"},
+
+
 #ifdef CONFIG_SND_SOC_DUAL_AMIC
 	/* Handset Mic */
 	{"AMIC1", NULL, "MIC BIAS1 External"},
@@ -615,8 +931,10 @@ static const struct snd_soc_dapm_route apq8064_liquid_cdp_audio_map[] = {
 	 * Used as Handset mic on CDP.
 	 * Not there on MTP.
 	 */
-	{"AMIC1", NULL, "MIC BIAS1 External"},
-	{"MIC BIAS1 External", NULL, "Analog mic7"},
+
+
+
+
 
 
 	/************   Digital MIC Paths  ************/
@@ -692,6 +1010,14 @@ static const struct soc_enum msm_enum[] = {
 	SOC_ENUM_SINGLE_EXT(4, slim0_tx_ch_text),
 	SOC_ENUM_SINGLE_EXT(7, hdmi_rx_ch_text),
 	SOC_ENUM_SINGLE_EXT(2, hdmi_rate),
+
+	SOC_ENUM_SINGLE_EXT(4, yda168_function),
+	SOC_ENUM_SINGLE_EXT(2, rx_sw_text),
+
+	SOC_ENUM_SINGLE_EXT(2, submic_sw_text),
+	SOC_ENUM_SINGLE_EXT(2, spk_sig_sw_text),
+
+
 };
 
 static const char * const slim1_rate_text[] = {"8000", "16000", "48000"};
@@ -794,10 +1120,16 @@ static int msm_slim_1_rate_put(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
 {
 	switch (ucontrol->value.integer.value[0]) {
+
 	case 8000:
+
+
 		msm_slim_1_rate = SAMPLE_RATE_8KHZ;
 		break;
+
 	case 16000:
+
+
 		msm_slim_1_rate = SAMPLE_RATE_16KHZ;
 		break;
 	case 48000:
@@ -864,12 +1196,26 @@ static int msm_hdmi_rate_get(struct snd_kcontrol *kcontrol,
 }
 
 static const struct snd_kcontrol_new tabla_msm_controls[] = {
-	SOC_ENUM_EXT("Speaker Function", msm_enum[0], msm_get_spk,
-		msm_set_spk),
+
+
+
+
 	SOC_ENUM_EXT("SLIM_0_RX Channels", msm_enum[1],
 		msm_slim_0_rx_ch_get, msm_slim_0_rx_ch_put),
 	SOC_ENUM_EXT("SLIM_0_TX Channels", msm_enum[2],
 		msm_slim_0_tx_ch_get, msm_slim_0_tx_ch_put),
+
+	SOC_ENUM_EXT("SpeakerConfig", msm_enum[5], yda168_get_spk,
+		yda168_set_spk),
+	SOC_ENUM_EXT("RX Switch", msm_enum[6], get_rx_sw,
+		set_rx_sw),
+
+	SOC_ENUM_EXT("SUBMIC Switch", msm_enum[7], get_submic_sw,
+		set_submic_sw),
+	SOC_ENUM_EXT("SpeakerSignal Switch", msm_enum[8], get_spk_sig_sw,
+		set_spk_sig_sw),
+
+
 	SOC_ENUM_EXT("SLIM_1_TX Channels", msm_slim_1_tx_ch_enum[0],
 		      msm_slim_1_tx_ch_get, msm_slim_1_tx_ch_put),
 	SOC_ENUM_EXT("SLIM_1 SampleRate", msm_slim_1_rate_enum[0],
@@ -933,22 +1279,41 @@ static void *def_tabla_mbhc_cal(void)
 	btn_cfg = TABLA_MBHC_CAL_BTN_DET_PTR(tabla_cal);
 	btn_low = tabla_mbhc_cal_btn_det_mp(btn_cfg, TABLA_BTN_DET_V_BTN_LOW);
 	btn_high = tabla_mbhc_cal_btn_det_mp(btn_cfg, TABLA_BTN_DET_V_BTN_HIGH);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	btn_low[0] = -50;
-	btn_high[0] = 10;
-	btn_low[1] = 11;
-	btn_high[1] = 52;
-	btn_low[2] = 53;
-	btn_high[2] = 94;
-	btn_low[3] = 95;
-	btn_high[3] = 133;
-	btn_low[4] = 134;
-	btn_high[4] = 171;
-	btn_low[5] = 172;
-	btn_high[5] = 208;
-	btn_low[6] = 209;
-	btn_high[6] = 244;
-	btn_low[7] = 245;
+	btn_high[0] = 330;
+	btn_low[1] = 330;
+	btn_high[1] = 330;
+	btn_low[2] = 330;
+	btn_high[2] = 330;
+	btn_low[3] = 330;
+	btn_high[3] = 330;
+	btn_low[4] = 330;
+	btn_high[4] = 330;
+	btn_low[5] = 330;
+	btn_high[5] = 330;
+	btn_low[6] = 330;
+	btn_high[6] = 330;
+	btn_low[7] = 330;
 	btn_high[7] = 330;
+
 	n_ready = tabla_mbhc_cal_btn_det_mp(btn_cfg, TABLA_BTN_DET_N_READY);
 	n_ready[0] = 80;
 	n_ready[1] = 68;
@@ -1246,6 +1611,16 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 
+
+	struct pm_gpio headset_gpio_cfg = {
+		.direction   = PM_GPIO_DIR_IN,
+		.pull        = PM_GPIO_PULL_UP_30,
+		.function    = PM_GPIO_FUNC_NORMAL,
+		.vin_sel     = PM_GPIO_VIN_S4,
+		.inv_int_pol = 0,
+	};
+
+
 	pr_debug("%s(), dev_name%s\n", __func__, dev_name(cpu_dai->dev));
 
 	/*if (machine_is_msm_liquid()) {
@@ -1267,16 +1642,31 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 			ARRAY_SIZE(apq8064_liquid_cdp_audio_map));
 	}
 
-#ifdef CONFIG_SND_SOC_TPA2028D
-	snd_soc_dapm_enable_pin(dapm, "Ext Spk Top");
-#else
-	snd_soc_dapm_enable_pin(dapm, "Ext Spk Bottom Pos");
-	snd_soc_dapm_enable_pin(dapm, "Ext Spk Bottom Neg");
-	snd_soc_dapm_enable_pin(dapm, "Ext Spk Top Pos");
-	snd_soc_dapm_enable_pin(dapm, "Ext Spk Top Neg");
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+	rx_amp_init();
+	snd_soc_dapm_enable_pin(dapm, "RX AMP");
+
 
 	snd_soc_dapm_sync(dapm);
+
+
+	err = es310_add_controls(codec);
+	if (err < 0)
+	{
+		pr_debug("es310_add_controls register fail \n");
+	}
+
 
 	err = snd_soc_jack_new(codec, "Headset Jack",
 			       (SND_JACK_HEADSET |  SND_JACK_LINEOUT |
@@ -1324,17 +1714,34 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 		apq8064_hs_detect_use_gpio = 1;
 	}
 
+
+	apq8064_hs_detect_use_gpio = 1;
+
+
 	if (apq8064_hs_detect_use_gpio == 1) {
 		pr_debug("%s: Using MBHC mechanical switch\n", __func__);
-		mbhc_cfg.gpio = JACK_DETECT_GPIO;
-		mbhc_cfg.gpio_irq = gpio_to_irq(JACK_DETECT_GPIO);
-		err = gpio_request(mbhc_cfg.gpio, "MBHC_HS_DETECT");
-		if (err < 0) {
-			pr_err("%s: gpio_request %d failed %d\n", __func__,
-			       mbhc_cfg.gpio, err);
-			return err;
+
+		mbhc_cfg.gpio = PM8921_GPIO_PM_TO_SYS(JACK_DETECT_GPIO);
+		mbhc_cfg.gpio_irq = JACK_DETECT_INT;
+		if (mbhc_cfg.gpio) {
+			err = pm8xxx_gpio_config(mbhc_cfg.gpio, &headset_gpio_cfg);
+			if (err) {
+				pr_err("%s: pm8xxx_gpio_config  headset setting failed %d\n", __func__,
+				       err);
+				return err;
+			}
 		}
-		gpio_direction_input(JACK_DETECT_GPIO);
+
+
+
+
+
+
+
+
+
+
+
 		if (apq8064_hs_detect_extn_cable)
 			mbhc_cfg.detect_extn_cable = true;
 	} else
@@ -1565,7 +1972,6 @@ static int msm_aux_pcm_get_gpios(void)
 	int ret = 0;
 
 	pr_debug("%s\n", __func__);
-
 #ifdef CONFIG_SND_SOC_MSM_QDSP6_HDMI_AUDIO
 	ret = gpio_request(GPIO_AUX_PCM_DOUT, "AUX PCM DOUT");
 	if (ret < 0) {
@@ -1605,6 +2011,7 @@ fail_din:
 	gpio_free(GPIO_AUX_PCM_DOUT);
 fail_dout:
 #endif
+
 	return ret;
 }
 
@@ -2243,8 +2650,10 @@ static int __init msm_audio_init(void)
 		return -ENODEV;
 	}
 
-	if (socinfo_get_pmic_model() == PMIC_MODEL_PM8917)
-		bottom_spk_pamp_gpio = PM8921_GPIO_PM_TO_SYS(16);
+
+
+
+
 
 	mbhc_cfg.calibration = def_tabla_mbhc_cal();
 	if (!mbhc_cfg.calibration) {

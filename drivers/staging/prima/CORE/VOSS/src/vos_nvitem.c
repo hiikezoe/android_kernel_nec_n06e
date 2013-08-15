@@ -27,6 +27,10 @@
                 All Rights Reserved.
                 Qualcomm Confidential and Proprietary
 ============================================================================*/
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 /*============================================================================
   EDIT HISTORY FOR MODULE
 ============================================================================*/
@@ -343,6 +347,60 @@ static CountryInfoTable_t countryInfoTable =
         { REGDOMAIN_NO_5GHZ, {'Z', 'W'}},  //ZIMBABWE
     }
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+static CountryInfoTable_t countryInfoTableForDVE021 =
+{
+
+    16,
+    {
+        { REGDOMAIN_FCC,         {'U', 'S'}},   
+        { REGDOMAIN_FCC,         {'N', 'A'}},   
+        { REGDOMAIN_ANY_COUNTRY, {'J', 'E'}},   
+        { REGDOMAIN_ANY_COUNTRY, {'J', 'M'}},   
+        { REGDOMAIN_ANY_COUNTRY, {'J', 'O'}},   
+        { REGDOMAIN_KOREA,       {'K', 'R'}},   
+        { REGDOMAIN_KOREA,       {'K', '1'}},   
+        { REGDOMAIN_KOREA,       {'K', '2'}},   
+        { REGDOMAIN_KOREA,       {'K', '3'}},   
+        { REGDOMAIN_KOREA,       {'K', '4'}},   
+        { REGDOMAIN_KOREA,       {'C', 'N'}},   
+        { REGDOMAIN_KOREA,       {'T', 'W'}},   
+        { REGDOMAIN_KOREA,       {'I', 'D'}},    
+        { REGDOMAIN_NO_COUNTRY,  {'Z', 'Z'}},    
+        { REGDOMAIN_NO_COUNTRY,  {'F', 'F'}},    
+        { REGDOMAIN_NO_COUNTRY,  {'Y', 'Y'}}    
+
+    }
+};
+
+
+
 typedef struct nvEFSTable_s
 {
    v_U32_t    nvValidityBitmap;
@@ -448,6 +506,11 @@ const sRegulatoryChannel * regChannels = nvDefaults.tables.regDomains[0].channel
    Function Definitions and Documentation
  * -------------------------------------------------------------------------*/
 VOS_STATUS wlan_write_to_efs (v_U8_t *pData, v_U16_t data_len);
+
+
+VOS_STATUS vos_DVE022_nv_mac_read(v_U8_t *pMacAddress, v_U8_t  macCount);
+
+
 /**------------------------------------------------------------------------
   \brief vos_nv_init() - initialize the NV module
   The \a vos_nv_init() initializes the NV module.  This read the binary
@@ -715,34 +778,71 @@ VOS_STATUS vos_nv_getRegDomainFromCountryCode( v_REGDOMAIN_t *pRegDomain,
             ("Country code array is NULL\r\n") );
       return VOS_STATUS_E_FAULT;
    }
-   if (0 == countryInfoTable.countryCount)
-   {
-      VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-            ("Reg domain table is empty\r\n") );
-      return VOS_STATUS_E_EMPTY;
-   }
-   // iterate the country info table until end of table or the country code
-   // is found
-   for (i = 0; i < countryInfoTable.countryCount &&
-         REGDOMAIN_COUNT == *pRegDomain; i++)
-   {
-      if (memcmp(countryCode, countryInfoTable.countryInfo[i].countryCode,
-               VOS_COUNTRY_CODE_LEN) == 0)
-      {
-         // country code is found
-         *pRegDomain = countryInfoTable.countryInfo[i].regDomain;
-      }
-   }
-   if (REGDOMAIN_COUNT != *pRegDomain)
-   {
-      return VOS_STATUS_SUCCESS;
-   }
-   else
-   {
-      VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
-            ("country code is not found\r\n"));
-      return VOS_STATUS_E_EXISTS;
-   }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    if (0 == countryInfoTableForDVE021.countryCount)
+    {
+       VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+             ("Reg domain table is empty\r\n") );
+       return VOS_STATUS_E_EMPTY;
+    }
+    
+    
+    for (i = 0; i < countryInfoTableForDVE021.countryCount &&
+          REGDOMAIN_COUNT == *pRegDomain; i++)
+    {
+       if (memcmp(countryCode, countryInfoTableForDVE021.countryInfo[i].countryCode,
+                VOS_COUNTRY_CODE_LEN) == 0)
+       {
+          
+          *pRegDomain = countryInfoTableForDVE021.countryInfo[i].regDomain;
+       }
+    }
+
+    if (REGDOMAIN_COUNT == *pRegDomain)
+    {
+       VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN, ("country code is not found\r\n"));
+       *pRegDomain = REGDOMAIN_ANY_COUNTRY;
+       if(*countryCode == 'J')
+       {
+           VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO, ("a first charctor of country code is J \r\n"));
+           *pRegDomain = REGDOMAIN_JAPAN;
+       }
+    }
+
+    VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO, "wlan: vos_nv_getRegDomainFromCountryCode :pRegDomain is %d \n",*pRegDomain);
+    return VOS_STATUS_SUCCESS;
+
+
 }
 /**------------------------------------------------------------------------
   \brief vos_nv_getSupportedCountryCode() - get the list of supported
@@ -874,6 +974,22 @@ VOS_STATUS vos_nv_readMultiMacAddress( v_U8_t *pMacAddress,
           " Invalid Parameter from NV Client macCount %d, pMacAddress 0x%x",
           macCount, pMacAddress);
    }
+
+   
+   status = vos_DVE022_nv_mac_read(pMacAddress, macCount);
+   if(VOS_STATUS_SUCCESS != status )
+   {
+      VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                 "vos_nv_readMultiMacAddress Get DVE021 NV Field Fail");
+   }
+   else
+   {
+      VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                 "vos_nv_readMultiMacAddress Get DVE021 NV Field OK");
+      return status;
+   }
+   
+
 
    status = vos_nv_read( VNV_FIELD_IMAGE, &fieldImage, NULL,
                          sizeof(fieldImage) );
@@ -1686,3 +1802,85 @@ eNVChannelEnabledType vos_nv_getChannelEnabledState
    return regChannels[channelEnum].enabled;
 }
 #endif /* FEATURE_WLAN_NON_INTEGRATED_SOC */
+
+
+
+
+
+
+
+
+
+
+
+VOS_STATUS vos_DVE022_nv_mac_read(v_U8_t *pMacAddress, v_U8_t  macCount)
+{
+    VOS_STATUS status = VOS_STATUS_SUCCESS;
+    v_CONTEXT_t pVosContext= NULL;
+    v_SIZE_t bufSize;
+    v_U8_t * pMac = NULL;
+    int i;
+    tANI_U8 * pcMacAddr;
+    int macAddrOffset = 6;
+    
+    VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO, "%s : start \n",__func__);
+
+    
+    pVosContext = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
+    status = hdd_request_firmware(WLAN_DVE021_NV_FILE,
+                                  ((VosContextType*)(pVosContext))->pHDDContext,
+                                  (v_VOID_t**)&pMac, &bufSize);
+
+    if ( (!VOS_IS_STATUS_SUCCESS( status )) || !pMac || bufSize != VOS_MAC_ADDRESS_LEN)
+    {
+         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
+                   "%s: unable to download DVE021 NV file %s",
+                   __FUNCTION__, WLAN_DVE021_NV_FILE);
+         return VOS_STATUS_E_RESOURCES;
+    }
+
+    VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO, "%s : mac is %02x-%02x-%02x-%02x-%02x-%02x \n",__func__, *(pMac + 0), *(pMac + 1), *(pMac + 2), *(pMac + 3), *(pMac + 4), *(pMac + 5));
+    
+    for(i = 0; i < macCount; i++)
+    {
+    	vos_mem_copy(pMacAddress + (i * VOS_MAC_ADDRESS_LEN), pMac, VOS_MAC_ADDRESS_LEN);
+    }
+
+    if(macCount >= 2)
+    {
+        pcMacAddr = pMacAddress + VOS_MAC_ADDRESS_LEN;
+        do{
+            macAddrOffset--;
+            *(pcMacAddr + macAddrOffset) =  *(pcMacAddr + macAddrOffset) + 1;
+            if(macAddrOffset == 0)
+            {
+                break;
+            }
+        }while(*(pcMacAddr + macAddrOffset) == 0 );
+    }
+        
+    status = hdd_release_firmware(WLAN_DVE021_NV_FILE, ((VosContextType*)(pVosContext))->pHDDContext);
+    if ( !VOS_IS_STATUS_SUCCESS( status ))
+    {
+        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
+                         "%s : hdd_release_firmware failed %s \n",__func__, WLAN_DVE021_NV_FILE);
+        return VOS_STATUS_E_FAILURE;
+    }
+    
+    status = VOS_STATUS_E_FAILURE;
+    for(i =0; i < VOS_MAC_ADDRESS_LEN; i++)
+    {
+        if(*(pMacAddress + i) != 0)
+        {
+         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+                         "%s : mac is not 0: %02x-%02x-%02x-%02x-%02x-%02x \n",__func__, *(pMacAddress + 0), *(pMacAddress + 1), *(pMacAddress + 2), *(pMacAddress + 3), *(pMacAddress + 4), *(pMacAddress + 5));
+            status = VOS_STATUS_SUCCESS;
+            break;
+        }
+    }
+    VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO, "%s : end %s \n",__func__, status);
+    return status;
+
+}
+
+

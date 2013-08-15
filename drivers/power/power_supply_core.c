@@ -1,3 +1,8 @@
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
 /*
  *  Universal power supply monitor class
  *
@@ -10,6 +15,16 @@
  *  You may use this code as per GPL version 2
  */
 
+
+
+
+
+
+
+
+
+
+
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/init.h>
@@ -17,6 +32,9 @@
 #include <linux/device.h>
 #include <linux/err.h>
 #include <linux/power_supply.h>
+
+#include <linux/reboot.h>
+
 #include "power_supply.h"
 
 /* exported for the APM Power driver, APM emulation */
@@ -24,6 +42,14 @@ struct class *power_supply_class;
 EXPORT_SYMBOL_GPL(power_supply_class);
 
 static struct device_type power_supply_dev_type;
+
+
+#if defined(CONFIG_FEATURE_DVE021_ONLY_FOR_PRODUCTION_PROCESS_DVE082)
+const bool factory_mode_flag_core = true;
+#else
+const bool factory_mode_flag_core = false;
+#endif
+
 
 /**
  * power_supply_set_current_limit - set current limit
@@ -134,11 +160,18 @@ static void power_supply_changed_work(struct work_struct *work)
 	unsigned long flags;
 	struct power_supply *psy = container_of(work, struct power_supply,
 						changed_work);
+	
+	union power_supply_propval ret = {0,};
+	bool changed = false;
+	
 
 	dev_dbg(psy->dev, "%s\n", __func__);
 
 	spin_lock_irqsave(&psy->changed_lock, flags);
 	if (psy->changed) {
+		
+		changed = true;
+		
 		psy->changed = false;
 		spin_unlock_irqrestore(&psy->changed_lock, flags);
 
@@ -153,6 +186,21 @@ static void power_supply_changed_work(struct work_struct *work)
 	if (!psy->changed)
 		wake_unlock(&psy->work_wake_lock);
 	spin_unlock_irqrestore(&psy->changed_lock, flags);
+
+	
+	if (factory_mode_flag_core) {
+		return;
+	}
+	if (psy->type == POWER_SUPPLY_TYPE_BATTERY && changed) {
+		if (psy->get_property(psy, POWER_SUPPLY_PROP_PRESENT, &ret)) {
+			return;
+		}
+		if (ret.intval == 0) {
+			pr_info("%s: Battery removed\n", __func__);
+			kernel_power_off();
+		}
+	}
+	
 }
 
 void power_supply_changed(struct power_supply *psy)

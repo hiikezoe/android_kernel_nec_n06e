@@ -1,3 +1,7 @@
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #ifndef __LINUX_MFD_MSM_ADIE_CODEC_H
 #define __LINUX_MFD_MSM_ADIE_CODEC_H
 
@@ -130,6 +134,25 @@ int adie_codec_open(struct adie_codec_dev_profile *profile,
 int adie_codec_setpath(struct adie_codec_path *path_ptr,
 	u32 freq_plan, u32 osr);
 int adie_codec_proceed_stage(struct adie_codec_path *path_ptr, u32 state);
+
+
+
+void            adie_codec_set_rx_device_name( unsigned char* name );
+unsigned char*  adie_codec_get_rx_device_name( void );
+
+
+void            adie_codec_set_tx_device_name( unsigned char* name );
+unsigned char*  adie_codec_get_tx_device_name( void );
+
+
+signed int  adie_codec_get_profile_rx_gain( void );
+signed int  adie_codec_get_profile_tx_gain( void );
+
+void adie_rx_gain_adjust(signed char data);
+void adie_tx_gain_adjust(signed char data);
+
+
+
 int adie_codec_close(struct adie_codec_path *path_ptr);
 u32 adie_codec_freq_supported(struct adie_codec_dev_profile *profile,
 							u32 requested_freq);

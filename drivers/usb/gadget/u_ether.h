@@ -10,6 +10,10 @@
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifndef __U_ETHER_H
 #define __U_ETHER_H
@@ -20,6 +24,13 @@
 #include <linux/usb/cdc.h>
 
 #include "gadget_chips.h"
+
+#undef USB_ANDROID_NCM
+
+
+#define USB_ANDROID_NCM
+
+#define USE_ETHER_XMIT_FOR_NCM
 
 
 /*
@@ -65,6 +76,12 @@ struct gether {
 	/* called on network open/close */
 	void				(*open)(struct gether *);
 	void				(*close)(struct gether *);
+#if defined(USB_ANDROID_NCM)
+
+	struct net_device*		net;
+	atomic_t			pending_writes;	
+
+#endif 
 };
 
 #define	DEFAULT_FILTER	(USB_CDC_PACKET_TYPE_BROADCAST \
@@ -76,10 +93,15 @@ struct gether {
 /* netdev setup/teardown as directed by the gadget driver */
 int gether_setup(struct usb_gadget *g, u8 ethaddr[ETH_ALEN]);
 void gether_cleanup(void);
+#if !defined(USB_ANDROID_NCM)
 /* variant of gether_setup that allows customizing network device name */
 int gether_setup_name(struct usb_gadget *g, u8 ethaddr[ETH_ALEN],
 		const char *netname);
+#else 
 
+int gether_setup_name_mtu(struct usb_gadget *g, u8 ethaddr[ETH_ALEN],
+		const char *netname, unsigned int mtu);
+#endif 
 /* connect/disconnect is handled by individual functions */
 struct net_device *gether_connect(struct gether *);
 void gether_disconnect(struct gether *);
@@ -125,5 +147,55 @@ rndis_bind_config_vendor(struct usb_configuration *c, u8 ethaddr[ETH_ALEN],
 }
 
 #endif
+
+#if defined(USB_ANDROID_NCM)
+
+
+#if !defined(USE_ETHER_XMIT_FOR_NCM)
+#else
+netdev_tx_t eth_start_xmit(struct sk_buff *skb,
+					struct net_device *net);
+#endif
+
+struct eth_dev {
+	
+
+
+	spinlock_t		lock;
+	struct gether		*port_usb;
+
+	struct net_device	*net;
+	struct usb_gadget	*gadget;
+
+	spinlock_t		req_lock;	
+	struct list_head	tx_reqs, rx_reqs;
+
+	unsigned		tx_qlen;
+
+
+#define TX_REQ_THRESHOLD	5
+	int			no_tx_req_used;
+	int			tx_skb_hold_count;
+	u32			tx_req_bufsize;
+
+	struct sk_buff_head	rx_frames;
+
+	unsigned		header_len;
+	struct sk_buff		*(*wrap)(struct gether *, struct sk_buff *skb);
+	int			(*unwrap)(struct gether *,
+						struct sk_buff *skb,
+						struct sk_buff_head *list);
+
+	struct work_struct	work;
+	struct work_struct	rx_work;
+
+	unsigned long		todo;
+#define	WORK_RX_MEMORY		0
+
+	bool			zlp;
+	u8			host_mac[ETH_ALEN];
+};
+
+#endif 
 
 #endif /* __U_ETHER_H */

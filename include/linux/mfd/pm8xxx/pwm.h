@@ -9,6 +9,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifndef __PM8XXX_PWM_H__
 #define __PM8XXX_PWM_H__
@@ -136,6 +140,20 @@ int pm8xxx_pwm_lut_config(struct pwm_device *pwm, int period_us,
  * @start: to start (1), or stop (0)
  */
 int pm8xxx_pwm_lut_enable(struct pwm_device *pwm, int start);
+
+
+
+
+
+
+
+int pm8xxx_pwm_haptics_config( struct pwm_device *pwm, int pwm_value, int period_us );
+
+
+
+
+
+
 
 /* Standard APIs supported */
 /**

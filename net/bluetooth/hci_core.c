@@ -21,6 +21,10 @@
    COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS
    SOFTWARE IS DISCLAIMED.
 */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 /* Bluetooth HCI core. */
 
@@ -245,17 +249,17 @@ static void hci_init_req(struct hci_dev *hdev, unsigned long opt)
 	/* Read Data Block Size (ACL mtu, max pkt, etc.) */
 	hci_send_cmd(hdev, HCI_OP_READ_DATA_BLOCK_SIZE, 0, NULL);
 
-#if 0
-	/* Host buffer size */
-	{
-		struct hci_cp_host_buffer_size cp;
-		cp.acl_mtu = cpu_to_le16(HCI_MAX_ACL_SIZE);
-		cp.sco_mtu = HCI_MAX_SCO_SIZE;
-		cp.acl_max_pkt = cpu_to_le16(0xffff);
-		cp.sco_max_pkt = cpu_to_le16(0xffff);
-		hci_send_cmd(hdev, HCI_OP_HOST_BUFFER_SIZE, sizeof(cp), &cp);
-	}
-#endif
+
+
+
+
+
+
+
+
+
+
+
 
 	if (hdev->dev_type == HCI_BREDR) {
 		/* BR-EDR initialization */
@@ -548,6 +552,12 @@ int hci_dev_open(__u16 dev)
 	BT_DBG("%s %p", hdev->name, hdev);
 
 	hci_req_lock(hdev);
+
+
+	if (test_bit(HCI_UNREGISTER, &hdev->flags)) {
+		ret = -ENODEV;
+		goto done;
+	}
 
 	if (hdev->rfkill && rfkill_blocked(hdev->rfkill)) {
 		ret = -ERFKILL;
@@ -1564,6 +1574,9 @@ int hci_unregister_dev(struct hci_dev *hdev)
 	int i;
 
 	BT_DBG("%p name %s bus %d", hdev, hdev->name, hdev->bus);
+	
+
+	set_bit(HCI_UNREGISTER, &hdev->flags);
 
 	write_lock_bh(&hci_dev_list_lock);
 	list_del(&hdev->list);

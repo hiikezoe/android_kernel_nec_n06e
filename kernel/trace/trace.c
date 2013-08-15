@@ -11,6 +11,10 @@
  *  Copyright (C) 2004-2006 Ingo Molnar
  *  Copyright (C) 2004 William Lee Irwin III
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #include <linux/ring_buffer.h>
 #include <generated/utsrelease.h>
 #include <linux/stacktrace.h>
@@ -384,7 +388,7 @@ EXPORT_SYMBOL_GPL(tracing_on);
 void tracing_off(void)
 {
 	if (global_trace.buffer)
-		ring_buffer_record_on(global_trace.buffer);
+		ring_buffer_record_off(global_trace.buffer);
 	/*
 	 * This flag is only looked at when buffers haven't been
 	 * allocated yet. We don't really care about the race
@@ -2650,10 +2654,12 @@ tracing_cpumask_write(struct file *filp, const char __user *ubuf,
 		if (cpumask_test_cpu(cpu, tracing_cpumask) &&
 				!cpumask_test_cpu(cpu, tracing_cpumask_new)) {
 			atomic_inc(&global_trace.data[cpu]->disabled);
+			ring_buffer_record_disable_cpu(global_trace.buffer, cpu);
 		}
 		if (!cpumask_test_cpu(cpu, tracing_cpumask) &&
 				cpumask_test_cpu(cpu, tracing_cpumask_new)) {
 			atomic_dec(&global_trace.data[cpu]->disabled);
+			ring_buffer_record_enable_cpu(global_trace.buffer, cpu);
 		}
 	}
 	arch_spin_unlock(&ftrace_max_lock);
@@ -3565,6 +3571,7 @@ static ssize_t tracing_splice_read_pipe(struct file *filp,
 		.pages		= pages_def,
 		.partial	= partial_def,
 		.nr_pages	= 0, /* This gets updated below. */
+		.nr_pages_max	= PIPE_DEF_BUFFERS,
 		.flags		= flags,
 		.ops		= &tracing_pipe_buf_ops,
 		.spd_release	= tracing_spd_release_pipe,
@@ -3636,7 +3643,7 @@ static ssize_t tracing_splice_read_pipe(struct file *filp,
 
 	ret = splice_to_pipe(pipe, &spd);
 out:
-	splice_shrink_spd(pipe, &spd);
+	splice_shrink_spd(&spd);
 	return ret;
 
 out_err:
@@ -4128,6 +4135,7 @@ tracing_buffers_splice_read(struct file *file, loff_t *ppos,
 	struct splice_pipe_desc spd = {
 		.pages		= pages_def,
 		.partial	= partial_def,
+		.nr_pages_max	= PIPE_DEF_BUFFERS,
 		.flags		= flags,
 		.ops		= &buffer_pipe_buf_ops,
 		.spd_release	= buffer_spd_release,
@@ -4215,7 +4223,7 @@ tracing_buffers_splice_read(struct file *file, loff_t *ppos,
 	}
 
 	ret = splice_to_pipe(pipe, &spd);
-	splice_shrink_spd(pipe, &spd);
+	splice_shrink_spd(&spd);
 out:
 	return ret;
 }

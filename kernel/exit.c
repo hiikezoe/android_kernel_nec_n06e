@@ -3,6 +3,10 @@
  *
  *  Copyright (C) 1991, 1992  Linus Torvalds
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/mm.h>
 #include <linux/slab.h>
@@ -58,6 +62,10 @@
 #include <asm/unistd.h>
 #include <asm/pgtable.h>
 #include <asm/mmu_context.h>
+
+
+extern struct task_struct *thermald_tsk;
+
 
 static void exit_mm(struct task_struct * tsk);
 
@@ -644,6 +652,7 @@ static void exit_mm(struct task_struct * tsk)
 	mm_release(tsk, mm);
 	if (!mm)
 		return;
+	sync_mm_rss(mm);
 	/*
 	 * Serialize with any possible pending coredump.
 	 * We must hold mmap_sem around checking core_state
@@ -903,6 +912,15 @@ void do_exit(long code)
 {
 	struct task_struct *tsk = current;
 	int group_dead;
+
+
+	if (strcmp(current->comm,"thermald") == 0) {
+		if (thermald_tsk == current) {
+			thermald_tsk = NULL;
+			printk(KERN_INFO "current process:[%s] set NULL to thermald_tsk\n", current->comm);
+		}
+	}
+
 
 	profile_task_exit(tsk);
 

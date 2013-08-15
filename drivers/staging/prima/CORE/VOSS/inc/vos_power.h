@@ -54,6 +54,10 @@
   written permission of QUALCOMM Incorporated.
 
 ===========================================================================*/
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 /*===========================================================================
 
@@ -610,6 +614,17 @@ VOS_STATUS vos_chipVoteFreqFor1p3VSupply
   v_PVOID_t             user_data,
   v_U32_t               freq
 );
+
+
+
+typedef enum {
+	PM_OBS_WLAN_OFF_MODE,
+	PM_OBS_WLAN_SLEEP_MODE,
+	PM_OBS_WLAN_TR_ON_MODE
+} pm_obs_mode_wlan_type;
+
+extern void pm_obs_a_wlan(pm_obs_mode_wlan_type mode);
+
 
 
 #endif /* _VOS_POWER_H_ */

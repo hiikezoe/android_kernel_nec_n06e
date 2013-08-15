@@ -10,6 +10,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
 #include <linux/io.h>
@@ -1160,10 +1164,10 @@ static struct platform_device qseecom_device = {
 };
 #endif
 
-#if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || \
-		defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE) || \
-		defined(CONFIG_CRYPTO_DEV_QCEDEV) || \
-		defined(CONFIG_CRYPTO_DEV_QCEDEV_MODULE)
+#if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || 		defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE) || 		defined(CONFIG_CRYPTO_DEV_QCEDEV) || 		defined(CONFIG_CRYPTO_DEV_QCEDEV_MODULE)
+
+
+
 
 #define QCE_SIZE		0x10000
 #define QCE_0_BASE		0x18500000
@@ -1276,8 +1280,8 @@ static struct resource qcedev_resources[] = {
 
 #endif
 
-#if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || \
-		defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE)
+#if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || 		defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE)
+
 
 static struct msm_ce_hw_support qcrypto_ce_hw_suppport = {
 	.ce_shared = QCE_CE_SHARED,
@@ -1299,8 +1303,8 @@ static struct platform_device qcrypto_device = {
 };
 #endif
 
-#if defined(CONFIG_CRYPTO_DEV_QCEDEV) || \
-		defined(CONFIG_CRYPTO_DEV_QCEDEV_MODULE)
+#if defined(CONFIG_CRYPTO_DEV_QCEDEV) || 		defined(CONFIG_CRYPTO_DEV_QCEDEV_MODULE)
+
 
 static struct msm_ce_hw_support qcedev_ce_hw_suppport = {
 	.ce_shared = QCE_CE_SHARED,
@@ -2790,13 +2794,13 @@ static struct platform_device *common_devices[] __initdata = {
 #if defined(CONFIG_QSEECOM)
 	&qseecom_device,
 #endif
-#if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || \
-		defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE)
+#if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || 		defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE)
+
 	&qcrypto_device,
 #endif
 
-#if defined(CONFIG_CRYPTO_DEV_QCEDEV) || \
-		defined(CONFIG_CRYPTO_DEV_QCEDEV_MODULE)
+#if defined(CONFIG_CRYPTO_DEV_QCEDEV) || 		defined(CONFIG_CRYPTO_DEV_QCEDEV_MODULE)
+
 	&qcedev_device,
 #endif
 #ifdef CONFIG_MSM_ROTATOR
@@ -2974,12 +2978,14 @@ static struct msm_rpmrs_level msm_rpmrs_levels[] = {
 		415, 715, 340827, 475,
 	},
 
-	{
-		MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE,
-		MSM_RPMRS_LIMITS(ON, ACTIVE, MAX, ACTIVE),
-		true,
-		1300, 228, 1200000, 2000,
-	},
+
+
+
+
+
+
+
+
 
 	{
 		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,

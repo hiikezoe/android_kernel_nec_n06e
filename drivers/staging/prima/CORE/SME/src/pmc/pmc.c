@@ -31,6 +31,10 @@
 *
 *
 ******************************************************************************/
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include "palTypes.h"
 #include "aniGlobal.h"
@@ -180,6 +184,9 @@ eHalStatus pmcEnterFullPowerState (tHalHandle hHal)
         /* Change state. */
         pMac->pmc.pmcState = FULL_POWER;
         pMac->pmc.requestFullPowerPending = FALSE;
+
+        
+        pm_obs_a_wlan(PM_OBS_WLAN_TR_ON_MODE);
 
         if(pmcShouldBmpsTimerRun(pMac))
             (void)pmcStartTrafficTimer(hHal, pMac->pmc.bmpsConfig.trafficMeasurePeriod);
@@ -444,6 +451,9 @@ eHalStatus pmcEnterImpsState (tHalHandle hHal)
     /* Change state. */
     pMac->pmc.pmcState = IMPS;
 
+    
+    pm_obs_a_wlan(PM_OBS_WLAN_SLEEP_MODE);
+
     /* If we have a reqeust for full power pending then we have to go
        directly into full power. */
     if (pMac->pmc.requestFullPowerPending)
@@ -592,6 +602,9 @@ eHalStatus pmcEnterBmpsState (tHalHandle hHal)
 
     /* Change state. */
     pMac->pmc.pmcState = BMPS;
+
+    
+    pm_obs_a_wlan(PM_OBS_WLAN_SLEEP_MODE);
 
    /* Update registerd modules that we are entering BMPS. This is
       only way to inform modules if PMC entered BMPS power save mode
@@ -1026,15 +1039,17 @@ void pmcTrafficTimerExpired (tHalHandle hHal)
     /* Untill DHCP is not completed remain in power active */
     if(pMac->pmc.remainInPowerActiveTillDHCP)
     {
-        smsLog(pMac, LOG2, FL("BMPS Traffic Timer expired before DHCP completion ignore enter BMPS\n"));
-        pMac->pmc.remainInPowerActiveThreshold++;
-        if( pMac->pmc.remainInPowerActiveThreshold >= DHCP_REMAIN_POWER_ACTIVE_THRESHOLD)
-        {
-           smsLog(pMac, LOGE, FL("Remain in power active DHCP threshold reached FALLBACK to enable enter BMPS\n"));
-           /*FALLBACK: reset the flag to make BMPS entry possible*/
-           pMac->pmc.remainInPowerActiveTillDHCP = FALSE;
-           pMac->pmc.remainInPowerActiveThreshold = 0;
-        }
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         //Activate the Traffic Timer again for entering into BMPS
         vosStatus = vos_timer_start(&pMac->pmc.hTrafficTimer, pMac->pmc.bmpsConfig.trafficMeasurePeriod);
         if ( !VOS_IS_STATUS_SUCCESS(vosStatus) && (VOS_STATUS_E_ALREADY != vosStatus) )
@@ -1341,6 +1356,9 @@ eHalStatus pmcEnterUapsdState (tHalHandle hHal)
    /* Change state. */
    pMac->pmc.pmcState = UAPSD;
 
+   
+   pm_obs_a_wlan(PM_OBS_WLAN_SLEEP_MODE);
+
    /* Update registerd modules that we are entering UAPSD. This is
       only way to inform modules if PMC resumed UAPSD power save mode
       on its own after full power mode */
@@ -1487,6 +1505,9 @@ eHalStatus pmcEnterStandbyState (tHalHandle hHal)
 
    /* Change state. */
    pMac->pmc.pmcState = STANDBY;
+
+   
+   pm_obs_a_wlan(PM_OBS_WLAN_SLEEP_MODE);
 
    /* If we have a reqeust for full power pending then we have to go
       directly into full power. */

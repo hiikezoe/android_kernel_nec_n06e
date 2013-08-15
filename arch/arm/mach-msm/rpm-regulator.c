@@ -10,6 +10,20 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
+
+
+
+
+
+
+
+
+
 
 #define pr_fmt(fmt) "%s: " fmt, __func__
 
@@ -18,6 +32,7 @@
 #include <linux/err.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
+#include <linux/mfd/pm8xxx/pm8921.h>  
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/platform_device.h>
@@ -89,6 +104,11 @@ static int consumer_map_len;
 #define vreg_err(vreg, fmt, ...) \
 	pr_err("%s: " fmt, vreg->rdesc.name, ##__VA_ARGS__)
 
+
+#define nc_vreg_dbg(vreg, fmt, ...) \
+	pr_debug("[PM] %s: " fmt, vreg->rdesc.name, ##__VA_ARGS__)
+
+
 #define RPM_VREG_PIN_CTRL_EN0		0x01
 #define RPM_VREG_PIN_CTRL_EN1		0x02
 #define RPM_VREG_PIN_CTRL_EN2		0x04
@@ -127,6 +147,8 @@ static const char *label_corner[] = {
  * hpm_min_load of a regulator.  It has units of uA.
  */
 #define LOAD_THRESHOLD_STEP		1000
+
+#define NC_PM8921_L9_CTRL       0xBE  
 
 /* rpm_version keeps track of the version for the currently running driver. */
 enum rpm_vreg_version rpm_version = -1;
@@ -1326,11 +1348,21 @@ static int vreg_set_mode(struct regulator_dev *rdev, unsigned int mode)
 	unsigned int mask[2] = {0}, val[2] = {0};
 	int rc = 0;
 	int peak_uA;
+	u8  reg  = 0;	
 
 	mutex_lock(&vreg->pc_lock);
 
 	peak_uA = MILLI_TO_MICRO((vreg->req[vreg->part->ip.word].value
 				& vreg->part->ip.mask) >> vreg->part->ip.shift);
+
+	
+	if(vreg->id==8) {
+		vreg_err(vreg, "[PM] id:%d  mode:%d\n", vreg->id, mode);
+		nc_pm8921_readb(NC_PM8921_L9_CTRL, &reg);
+		vreg_err(vreg, "[PM] addr:%02x  data:%02x", NC_PM8921_L9_CTRL, reg);
+		WARN_ON(1);
+	}
+	
 
 	if (mode == config->mode_hpm) {
 		/* Make sure that request currents are in HPM range. */
@@ -1522,6 +1554,58 @@ static int vreg_enable_time(struct regulator_dev *rdev)
 	return vreg->pdata.enable_time;
 }
 
+
+
+static int nc_vreg_set_vreg_pull_down(struct regulator_dev *rdev, unsigned int enable)
+{
+    struct vreg *vreg = rdev_get_drvdata(rdev);
+    int rc = 0;
+
+
+
+
+    unsigned prev = 0;
+
+    nc_vreg_dbg(vreg, "start.\n");
+
+    prev = GET_PART(vreg, pd);
+    SET_PART(vreg, pd, (enable ? 1 : 0));
+
+
+    if (vreg->pdata.sleep_selectable) 
+    {
+
+
+        mutex_lock(&rpm_sleep_sel_lock);
+
+        rc = msm_rpmrs_set_noirq(MSM_RPM_CTX_SET_0, vreg->req, vreg->part->request_len);
+
+
+        mutex_unlock(&rpm_sleep_sel_lock);
+
+        pr_info("%s : msm_rpmrs_set_noirq() set pull down to %s\n",vreg->rdesc.name, (enable ? "enable" : "disable"));
+    }
+    else
+    {
+        rc = msm_rpm_set(MSM_RPM_CTX_SET_0, vreg->req, vreg->part->request_len);
+        pr_info("%s : msm_rpm_set() set pull down to %s\n",vreg->rdesc.name, (enable ? "enable" : "disable"));
+    }
+    
+    if (rc) {
+        SET_PART(vreg, pd, prev);
+        vreg_err(vreg, "msm_rpm_set failed, set=active, id=%d, rc=%d\n", vreg->req[0].id, rc);
+    } else {
+        if (msm_rpm_vreg_debug_mask & MSM_RPM_VREG_DEBUG_REQUEST)
+            rpm_regulator_req(vreg, MSM_RPM_CTX_SET_0);
+        vreg->prev_active_req[0].value = vreg->req[0].value;
+        vreg->prev_active_req[1].value = vreg->req[1].value;
+    }
+    
+    return rc;
+}
+
+
+
 /* Real regulator operations. */
 static struct regulator_ops ldo_ops = {
 	.enable			= rpm_vreg_enable,
@@ -1534,6 +1618,11 @@ static struct regulator_ops ldo_ops = {
 	.get_mode		= vreg_get_mode,
 	.get_optimum_mode	= vreg_get_optimum_mode,
 	.enable_time		= vreg_enable_time,
+
+
+    .set_pull_down      = nc_vreg_set_vreg_pull_down,
+
+
 };
 
 static struct regulator_ops smps_ops = {
@@ -1547,6 +1636,11 @@ static struct regulator_ops smps_ops = {
 	.get_mode		= vreg_get_mode,
 	.get_optimum_mode	= vreg_get_optimum_mode,
 	.enable_time		= vreg_enable_time,
+
+
+    .set_pull_down      = nc_vreg_set_vreg_pull_down,
+
+
 };
 
 static struct regulator_ops switch_ops = {
@@ -1554,6 +1648,11 @@ static struct regulator_ops switch_ops = {
 	.disable		= rpm_vreg_disable,
 	.is_enabled		= vreg_is_enabled,
 	.enable_time		= vreg_enable_time,
+
+
+    .set_pull_down  = nc_vreg_set_vreg_pull_down,
+
+
 };
 
 static struct regulator_ops ncp_ops = {
@@ -1564,6 +1663,11 @@ static struct regulator_ops ncp_ops = {
 	.get_voltage		= vreg_get_voltage,
 	.list_voltage		= vreg_list_voltage,
 	.enable_time		= vreg_enable_time,
+
+
+    .set_pull_down      = nc_vreg_set_vreg_pull_down,
+
+
 };
 
 static struct regulator_ops corner_ops = {
@@ -1574,6 +1678,11 @@ static struct regulator_ops corner_ops = {
 	.get_voltage		= vreg_get_voltage,
 	.list_voltage		= vreg_list_voltage,
 	.enable_time		= vreg_enable_time,
+
+
+    .set_pull_down      = nc_vreg_set_vreg_pull_down,
+
+
 };
 
 /* Pin control regulator operations. */
@@ -1723,6 +1832,25 @@ rpm_vreg_init_regulator(const struct rpm_regulator_init_data *pdata,
 		else
 			vreg->rdev_pc = rdev;
 	}
+
+	
+
+	
+	if ((pdata->id == RPM_VREG_ID_PM8921_L6 )	
+	 || (pdata->id == RPM_VREG_ID_PM8921_L7 )	
+	 || (pdata->id == RPM_VREG_ID_PM8921_L11)) {
+		rc = rpm_vreg_disable(rdev);
+
+		if (rc < 0) {
+			pr_err("[PM] %s: id:%d  failed to disable!!\n",
+				rdev->desc->name, pdata->id);
+		} else {
+			pr_info("[PM] %s: id:%d  success in disable.\n",
+				rdev->desc->name, pdata->id);
+		}
+	}
+
+	
 
 bail:
 	if (rc)

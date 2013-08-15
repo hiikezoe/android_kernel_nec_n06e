@@ -10,6 +10,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 #include <linux/workqueue.h>
@@ -35,6 +39,11 @@
 
 static unsigned msm_camera_v4l2_nr = -1;
 static int vnode_count;
+
+
+
+int i2c_error_flag;
+
 
 module_param(msm_camera_v4l2_nr, uint, 0644);
 MODULE_PARM_DESC(msm_camera_v4l2_nr, "videoX start number, -1 is autodetect");
@@ -915,6 +924,11 @@ static int msm_open(struct file *f)
 		pr_err("%s: error, daemon not yet started.", __func__);
 		return -EINVAL;
 	}
+
+
+	i2c_error_flag = false;
+
+
 	mutex_lock(&pcam->vid_lock);
 	for (i = 0; i < MSM_DEV_INST_MAX; i++) {
 		if (pcam->dev_inst[i] == NULL)
@@ -1113,6 +1127,10 @@ void msm_release_ion_client(struct kref *ref)
 static int msm_close(struct file *f)
 {
 	int rc = 0;
+
+	int i = 0;
+	int image_mode_use_count = 0;
+
 	struct msm_cam_v4l2_device *pcam;
 	struct msm_cam_v4l2_dev_inst *pcam_inst;
 	struct msm_cam_media_controller *pmctl;
@@ -1143,7 +1161,24 @@ static int msm_close(struct file *f)
 
 	pcam_inst->streamon = 0;
 	pcam->use_count--;
-	pcam->dev_inst_map[pcam_inst->image_mode] = NULL;
+
+    for( i = 0; i < MSM_DEV_INST_MAX; i++) {
+        if(pcam->dev_inst[i] != NULL) {
+            if( pcam->dev_inst[i]->image_mode == pcam_inst->image_mode ) {
+                image_mode_use_count++;
+                D("image_mode_use_count increment %d\n",image_mode_use_count);
+            }
+        }
+    }
+
+    if( image_mode_use_count <= 1 )
+    {
+        D("pcam->dev_inst_map[%d] set NULL\n",pcam_inst->image_mode);
+    	pcam->dev_inst_map[pcam_inst->image_mode] = NULL;
+
+    }
+
+
 	if (pcam_inst->vbqueue_initialized)
 		vb2_queue_release(&pcam_inst->vid_bufq);
 	D("%s Closing down instance %p ", __func__, pcam_inst);

@@ -10,11 +10,25 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 /*
  * Qualcomm PMIC8XXX gpio driver header file
  *
  */
+
+
+
+
+
+
+
+
+
+
 
 #ifndef __PM8XXX_GPIO_H
 #define __PM8XXX_GPIO_H
@@ -104,6 +118,56 @@ struct pm8xxx_gpio_platform_data {
 #define	PM_GPIO_DTEST3			6
 #define	PM_GPIO_DTEST4			7
 
+
+
+
+
+#define PM_DIAG_GPIO_1         0
+#define PM_DIAG_GPIO_2         1
+#define PM_DIAG_GPIO_3         2
+#define PM_DIAG_GPIO_4         3
+#define PM_DIAG_GPIO_5         4
+#define PM_DIAG_GPIO_6         5
+#define PM_DIAG_GPIO_7         6
+#define PM_DIAG_GPIO_8         7
+#define PM_DIAG_GPIO_9         8
+#define PM_DIAG_GPIO_10        9
+#define PM_DIAG_GPIO_11       10
+#define PM_DIAG_GPIO_12       11
+#define PM_DIAG_GPIO_13       12
+#define PM_DIAG_GPIO_14       13
+#define PM_DIAG_GPIO_15       14
+#define PM_DIAG_GPIO_16       15
+#define PM_DIAG_GPIO_17       16
+#define PM_DIAG_GPIO_18       17
+#define PM_DIAG_GPIO_19       18
+#define PM_DIAG_GPIO_20       19
+#define PM_DIAG_GPIO_21       20
+#define PM_DIAG_GPIO_22       21
+#define PM_DIAG_GPIO_23       22
+#define PM_DIAG_GPIO_24       23
+#define PM_DIAG_GPIO_25       24
+#define PM_DIAG_GPIO_26       25
+#define PM_DIAG_GPIO_27       26
+#define PM_DIAG_GPIO_28       27
+#define PM_DIAG_GPIO_29       28
+#define PM_DIAG_GPIO_30       29
+#define PM_DIAG_GPIO_31       30
+#define PM_DIAG_GPIO_32       31
+#define PM_DIAG_GPIO_33       32
+#define PM_DIAG_GPIO_34       33
+#define PM_DIAG_GPIO_35       34
+#define PM_DIAG_GPIO_36       35
+#define PM_DIAG_GPIO_37       36
+#define PM_DIAG_GPIO_38       37
+#define PM_DIAG_GPIO_39       38
+#define PM_DIAG_GPIO_40       39
+#define PM_DIAG_GPIO_41       40
+#define PM_DIAG_GPIO_42       41
+#define PM_DIAG_GPIO_43       42
+#define PM_DIAG_GPIO_44       43
+
+
 /**
  * struct pm_gpio - structure to specify gpio configurtion values
  * @direction:		indicates whether the gpio should be input, output, or
@@ -152,11 +216,35 @@ struct pm_gpio {
  * RETURNS: an appropriate -ERRNO error value on error, or zero for success.
  */
 int pm8xxx_gpio_config(int gpio, struct pm_gpio *param);
+
+
+
+
+
+
+
+
+
+
+int nc_pm8921_gpio_get_state(int gpio, int *state);
+
+
+
 #else
 static inline int pm8xxx_gpio_config(int gpio, struct pm_gpio *param)
 {
 	return -ENXIO;
 }
+
+
+
+int nc_pm8921_gpio_get_state(int gpio, int *state)
+{
+	return -ENXIO;
+}
+
+
+
 #endif
 
 #endif

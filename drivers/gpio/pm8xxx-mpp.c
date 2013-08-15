@@ -12,6 +12,17 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
+
+
+
+
+
+
 
 #define pr_fmt(fmt) "%s: " fmt, __func__
 
@@ -198,6 +209,90 @@ int pm8xxx_mpp_config(unsigned mpp, struct pm8xxx_mpp_config_data *config)
 	return rc;
 }
 EXPORT_SYMBOL_GPL(pm8xxx_mpp_config);
+
+
+
+
+int nc_pm8xxx_mpp_config_digital_in(unsigned mpp, unsigned level,
+                                               unsigned control)
+{
+    struct pm8xxx_mpp_config_data pm8xxx_mpp_config_data;
+    pm8xxx_mpp_config_data.type = PM8XXX_MPP_TYPE_D_INPUT;
+    pm8xxx_mpp_config_data.level = level;
+    pm8xxx_mpp_config_data.control = control;
+
+	pr_debug("[PM] mpp:%d is configured to digital input.\n", mpp);
+    return pm8xxx_mpp_config(mpp, &pm8xxx_mpp_config_data);
+}
+EXPORT_SYMBOL_GPL(nc_pm8xxx_mpp_config_digital_in);
+
+int nc_pm8xxx_mpp_config_digital_out(unsigned mpp, unsigned level,
+                                                unsigned control)
+{
+    struct pm8xxx_mpp_config_data pm8xxx_mpp_config_data;
+    pm8xxx_mpp_config_data.type = PM8XXX_MPP_TYPE_D_OUTPUT;
+    pm8xxx_mpp_config_data.level = level;
+    pm8xxx_mpp_config_data.control = control;
+
+	pr_debug("[PM] mpp:%d is configured to digital output.\n", mpp);
+    return pm8xxx_mpp_config(mpp, &pm8xxx_mpp_config_data);
+}
+EXPORT_SYMBOL_GPL(nc_pm8xxx_mpp_config_digital_out);
+
+int nc_pm8xxx_mpp_config_bi_dir(unsigned mpp, unsigned level,
+                                           unsigned control)
+{
+    struct pm8xxx_mpp_config_data pm8xxx_mpp_config_data;
+    pm8xxx_mpp_config_data.type = PM8XXX_MPP_TYPE_D_BI_DIR;
+    pm8xxx_mpp_config_data.level = level;
+    pm8xxx_mpp_config_data.control = control;
+
+	pr_debug("[PM] mpp:%d is configured to bi-direction.\n", mpp);
+    return pm8xxx_mpp_config(mpp, &pm8xxx_mpp_config_data);
+}
+EXPORT_SYMBOL_GPL(nc_pm8xxx_mpp_config_bi_dir);
+
+int nc_pm8xxx_mpp_config_analog_input(unsigned mpp, unsigned level,
+                                                 unsigned control)
+{
+    struct pm8xxx_mpp_config_data pm8xxx_mpp_config_data;
+    pm8xxx_mpp_config_data.type = PM8XXX_MPP_TYPE_A_INPUT;
+    pm8xxx_mpp_config_data.level = level;
+    pm8xxx_mpp_config_data.control = control;
+
+	pr_debug("[PM] mpp:%d is configured to analog input.\n", mpp);
+    return pm8xxx_mpp_config(mpp, &pm8xxx_mpp_config_data);
+}
+EXPORT_SYMBOL_GPL(nc_pm8xxx_mpp_config_analog_input);
+
+int nc_pm8xxx_mpp_config_analog_output(unsigned mpp, unsigned level,
+                                                  unsigned control)
+{
+    struct pm8xxx_mpp_config_data pm8xxx_mpp_config_data;
+    pm8xxx_mpp_config_data.type = PM8XXX_MPP_TYPE_A_OUTPUT;
+    pm8xxx_mpp_config_data.level = level;
+    pm8xxx_mpp_config_data.control = control;
+
+	pr_debug("[PM] mpp:%d is configured to analog output.\n", mpp);
+    return pm8xxx_mpp_config(mpp, &pm8xxx_mpp_config_data);
+}
+EXPORT_SYMBOL_GPL(nc_pm8xxx_mpp_config_analog_output);
+
+int nc_pm8xxx_mpp_config_current_sink(unsigned mpp, unsigned level,
+                                                 unsigned control)
+{
+    struct pm8xxx_mpp_config_data pm8xxx_mpp_config_data;
+    pm8xxx_mpp_config_data.type = PM8XXX_MPP_TYPE_SINK;
+    pm8xxx_mpp_config_data.level = level;
+    pm8xxx_mpp_config_data.control = control;
+
+	pr_debug("[PM] mpp:%d is configured to sink.\n", mpp);
+    return pm8xxx_mpp_config(mpp, &pm8xxx_mpp_config_data);
+}
+EXPORT_SYMBOL_GPL(nc_pm8xxx_mpp_config_current_sink);
+
+
+
 
 static int __devinit pm8xxx_mpp_reg_init(struct pm8xxx_mpp_chip *mpp_chip)
 {

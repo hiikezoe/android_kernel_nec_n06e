@@ -12,6 +12,27 @@
  *
  * Qualcomm's PM8921/PM8018 ADC Arbiter driver
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #define pr_fmt(fmt) "%s: " fmt, __func__
 
 #include <linux/kernel.h>
@@ -124,6 +145,17 @@
 #define PM8XXX_ADC_HWMON_NAME_LENGTH			32
 #define PM8XXX_ADC_BTM_INTERVAL_MAX			0x14
 #define PM8XXX_ADC_COMPLETION_TIMEOUT			(2 * HZ)
+
+#define PM8XXX_ADC_SETTLE_TIME_MIN_TEST			10000
+#define PM8XXX_ADC_SETTLE_TIME_MAX_TEST			10100
+
+
+
+
+
+
+
+
 
 struct pm8xxx_adc {
 	struct device				*dev;
@@ -711,11 +743,33 @@ uint32_t pm8xxx_adc_read(enum pm8xxx_adc_channels channel,
 			break;
 	}
 
+	
+	msm_xo_mode_vote(adc_pmic->adc_voter, MSM_XO_MODE_ON);
+	
+
 	if (i == adc_pmic->adc_num_board_channel ||
 		(pm8xxx_adc_check_channel_valid(channel) != 0)) {
 		rc = -EBADF;
 		goto fail_unlock;
 	}
+
+	
+	switch (channel) {
+	case CHANNEL_BATT_THERM_UV:
+		channel = CHANNEL_BATT_THERM;
+		break;
+	case CHANNEL_MUXOFF_UV:
+		channel = CHANNEL_MUXOFF;
+		break;
+	
+	case ADC_MPP_1_AMUX3_UV:
+		channel = ADC_MPP_1_AMUX3;
+		break;
+	
+	default:
+		break;
+	}
+	
 
 	if (channel < PM8XXX_CHANNEL_MPP_SCALE1_IDX) {
 		mpp_scale = PREMUX_MPP_SCALE_0;
@@ -792,6 +846,33 @@ uint32_t pm8xxx_adc_read(enum pm8xxx_adc_channels channel,
 		goto fail_unlock;
 	}
 
+	
+	msm_xo_mode_vote(adc_pmic->adc_voter, MSM_XO_MODE_OFF);
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	mutex_unlock(&adc_pmic->adc_lock);
 
 	return 0;
@@ -800,6 +881,9 @@ fail:
 	if (rc_fail)
 		pr_err("pm8xxx adc power disable failed\n");
 fail_unlock:
+	
+	msm_xo_mode_vote(adc_pmic->adc_voter, MSM_XO_MODE_OFF);
+	
 	mutex_unlock(&adc_pmic->adc_lock);
 	pr_err("pm8xxx adc error with %d\n", rc);
 	return rc;

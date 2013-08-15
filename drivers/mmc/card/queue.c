@@ -9,6 +9,10 @@
  * published by the Free Software Foundation.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/blkdev.h>
@@ -19,6 +23,13 @@
 #include <linux/mmc/card.h>
 #include <linux/mmc/host.h>
 #include "queue.h"
+
+
+
+#include "block.h"
+#include "../core/core.h"
+
+
 
 #define MMC_QUEUE_BOUNCESZ	65536
 
@@ -61,6 +72,19 @@ static int mmc_queue_thread(void *d)
 	struct request *req;
 	struct mmc_card *card = mq->card;
 
+
+
+
+
+
+
+
+
+	int sd_error = 0;
+	int sd_power_off = 0;
+
+
+
 	current->flags |= PF_MEMALLOC;
 
 	down(&mq->thread_sem);
@@ -76,7 +100,17 @@ static int mmc_queue_thread(void *d)
 
 		if (req || mq->mqrq_prev->req) {
 			set_current_state(TASK_RUNNING);
+
+
+
+
+
+
+
+
 			mq->issue_fn(mq, req);
+
+
 		} else {
 			if (kthread_should_stop()) {
 				set_current_state(TASK_RUNNING);
@@ -94,6 +128,22 @@ static int mmc_queue_thread(void *d)
 		tmp = mq->mqrq_prev;
 		mq->mqrq_prev = mq->mqrq_cur;
 		mq->mqrq_cur = tmp;
+
+
+
+		if (mmc_card_sd(mq->card) && !sd_power_off) {
+			mmc_err_info_get(&sd_error);
+			if (sd_error) {
+				if (!mq->card->host->ops->get_cd ||
+						mq->card->host->ops->get_cd(mq->card->host)) {
+					pr_err("%s: Error card!!\n", __func__);
+					mmc_power_off(mq->card->host);
+					sd_power_off ++;
+				}
+			}
+		}
+
+
 	} while (1);
 	up(&mq->thread_sem);
 

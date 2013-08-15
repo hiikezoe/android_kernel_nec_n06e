@@ -10,6 +10,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #ifndef __MHL_SPEC_DEFS_H__
 #define __MHL_SPEC_DEFS_H__
 
@@ -57,7 +61,7 @@ enum DevCapOffset_e {
 /* bits 4..7 */
 #define	MHL_VER_MAJOR           (0x01 << 4)
 /* bits 0..3 */
-#define	MHL_VER_MINOR		0x01
+#define	MHL_VER_MINOR		0x02
 #define MHL_VERSION		(MHL_VER_MAJOR | MHL_VER_MINOR)
 
 /*Device Category*/
@@ -150,6 +154,13 @@ enum {
 #define	RCPE_NO_ERROR				0x00
 #define	RCPE_INEEFECTIVE_KEY_CODE	0x01
 #define	RCPE_BUSY					0x02
+
+
+#define RAPK_NO_ERROR                      0x00
+#define RAPK_INEEFECTIVE_ACTION_CODE       0x01
+#define RAPK_BUSY                          0x02
+
+
 /* MHL spec related defines*/
 enum {
 	/* Command or Data byte acknowledge */
@@ -189,6 +200,10 @@ enum {
 	/* Get channel 3 command error code. */
 	MHL_GET_SC3_ERRORCODE		= 0x6D,
 };
+
+
+
+#define MHL_RAP_CONTENT_POLL	0x00
 
 /* Turn content streaming ON. */
 #define	MHL_RAP_CONTENT_ON		0x10

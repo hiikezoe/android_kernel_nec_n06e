@@ -1,6 +1,10 @@
 #
 # Makefile for the touchscreen drivers.
 #
+#/***********************************************************************/
+#/* Modified by                                                         */
+#/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+#/***********************************************************************/
 
 # Each configuration option enables a list of files.
 
@@ -86,3 +90,8 @@ obj-$(CONFIG_TOUCHSCREEN_FT5X06)	+= ft5x06_ts.o
 obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI4)		+= synaptics_i2c_rmi4.o
 obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_RMI4_DEV)	+= synaptics_rmi_dev.o
 obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE) 	+= synaptics_fw_update.o
+
+
+
+obj-$(CONFIG_TOUCHSCREEN_MELFAS_NCM)       += melfas_ncm.o mms100_cfg_update.o
+

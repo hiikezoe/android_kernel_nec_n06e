@@ -1,3 +1,7 @@
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #ifndef _SCSI_DISK_H
 #define _SCSI_DISK_H
 
@@ -77,6 +81,14 @@ struct scsi_disk {
 	unsigned	lbpws : 1;
 	unsigned	lbpws10 : 1;
 	unsigned	lbpvpd : 1;
+
+	wait_queue_head_t	 delay_wait;
+	struct completion	scanning_done;
+	struct task_struct *th;
+	int		thread_remove;
+	int		async_end;
+	int		prv_media_present;
+
 };
 #define to_scsi_disk(obj) container_of(obj,struct scsi_disk,dev)
 

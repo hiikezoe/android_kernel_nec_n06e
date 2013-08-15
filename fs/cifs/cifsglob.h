@@ -16,6 +16,10 @@
  *   the GNU Lesser General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #ifndef _CIFS_GLOB_H
 #define _CIFS_GLOB_H
 
@@ -43,6 +47,7 @@
 
 #define CIFS_MIN_RCV_POOL 4
 
+#define MAX_REOPEN_ATT	5 
 /*
  * default attribute cache timeout (jiffies)
  */

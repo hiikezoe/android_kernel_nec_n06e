@@ -10,6 +10,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #include <linux/kernel.h>
 #include <linux/bitops.h>
 #include <linux/platform_device.h>
@@ -65,14 +69,30 @@
 #include <mach/msm_dsps.h>
 #include <mach/msm_bus_board.h>
 #include <mach/cpuidle.h>
+
+#include <linux/mfd/pm8xxx/pm8921-charger.h>
+
 #include <mach/mdm2.h>
 #include <linux/msm_tsens.h>
 #include <mach/msm_xo.h>
 #include <mach/msm_rtb.h>
 #include <mach/msm_serial_hs.h>
 #include <sound/cs8427.h>
+
+#include <linux/usb/msm_hsusb.h>
+
 #include <media/gpio-ir-recv.h>
 #include <linux/fmem.h>
+
+
+#include <linux/melfas_ncm.h>
+
+
+
+
+#include <linux/leds-adp8861.h>
+
+
 #include <mach/msm_pcie.h>
 #include <mach/restart.h>
 #include <mach/msm_iomap.h>
@@ -90,6 +110,31 @@
 #include "smd_private.h"
 #include "sysmon.h"
 
+#include <linux/mhl_8334.h>
+
+#define MHL_GPIO_RESET			37
+#define MHL_GPIO_IRQ			38
+#define MHL_GPIO_POWER_33V		18
+#define MHL_GPIO_POWER_12V		81
+
+
+
+
+
+
+#include <linux/i2c/i2c_sensors.h>
+
+
+
+#include <sound/es310_i2c.h>
+
+
+
+
+#include <linux/anadev_ncm_haptics_common.h>
+
+
+
 #define MSM_PMEM_ADSP_SIZE         0x7800000
 #define MSM_PMEM_AUDIO_SIZE        0x4CF000
 #ifdef CONFIG_FB_MSM_HDMI_AS_PRIMARY
@@ -103,7 +148,8 @@
 #define MSM_ION_MFC_META_SIZE  0x40000 /* 256 Kbytes */
 #define MSM_CONTIG_MEM_SIZE  0x65000
 #ifdef CONFIG_MSM_IOMMU
-#define MSM_ION_MM_SIZE		0x3800000
+
+#define MSM_ION_MM_SIZE		0x8200000
 #define MSM_ION_SF_SIZE		0
 #define MSM_ION_QSECOM_SIZE	0x780000 /* (7.5MB) */
 #define MSM_ION_HEAP_NUM	8
@@ -139,6 +185,11 @@
 #define PCIE_WAKE_N_PMIC_GPIO 12
 #define PCIE_PWR_EN_PMIC_GPIO 13
 #define PCIE_RST_N_PMIC_MPP 1
+
+
+int gpio_mhl_power_12v = MHL_GPIO_POWER_12V;
+int gpio_mhl_power_33v = PM8921_GPIO_PM_TO_SYS(MHL_GPIO_POWER_33V);
+
 
 #ifdef CONFIG_KERNEL_MSM_CONTIG_MEM_REGION
 static unsigned msm_contig_mem_size = MSM_CONTIG_MEM_SIZE;
@@ -296,7 +347,9 @@ static struct ion_cp_heap_pdata cp_mm_apq8064_ion_pdata = {
 	.reusable = FMEM_ENABLED,
 	.mem_is_fmem = FMEM_ENABLED,
 	.fixed_position = FIXED_MIDDLE,
-	.is_cma = 1,
+	
+	
+	.is_cma = 0,
 	.no_nonsecure_alloc = 1,
 };
 
@@ -899,6 +952,9 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 	.power_budget		= 750,
 	.bus_scale_table	= &usb_bus_scale_pdata,
 	.phy_init_seq		= phy_init_seq,
+
+	.mhl_dev_name       = MHL_DEVICE_NAME,
+
 	.mpm_otgsessvld_int	= MSM_MPM_PIN_USB1_OTGSESSVLD,
 };
 
@@ -1013,7 +1069,12 @@ static struct wcd9xxx_pdata apq8064_tabla_platform_data = {
 	.irq = MSM_GPIO_TO_INT(42),
 	.irq_base = TABLA_INTERRUPT_BASE,
 	.num_irqs = NR_WCD9XXX_IRQS,
-	.reset_gpio = PM8921_GPIO_PM_TO_SYS(34),
+
+	.reset_gpio = PM8921_GPIO_PM_TO_SYS(7),
+
+
+
+
 	.micbias = {
 		.ldoh_v = TABLA_LDOH_2P85_V,
 		.cfilt1_mv = 1800,
@@ -1080,7 +1141,11 @@ static struct wcd9xxx_pdata apq8064_tabla20_platform_data = {
 	.irq = MSM_GPIO_TO_INT(42),
 	.irq_base = TABLA_INTERRUPT_BASE,
 	.num_irqs = NR_WCD9XXX_IRQS,
-	.reset_gpio = PM8921_GPIO_PM_TO_SYS(34),
+
+	.reset_gpio = PM8921_GPIO_PM_TO_SYS(7),
+
+
+
 	.micbias = {
 		.ldoh_v = TABLA_LDOH_2P85_V,
 		.cfilt1_mv = 1800,
@@ -1139,145 +1204,280 @@ static struct slim_device apq8064_slim_tabla20 = {
 	},
 };
 
-/* enable the level shifter for cs8427 to make sure the I2C
- * clock is running at 100KHz and voltage levels are at 3.3
- * and 5 volts
- */
-static int enable_100KHz_ls(int enable)
+
+static struct clk *es310_clk_gp1;
+#define ES310_WAKEUP_GPIO    PM8921_GPIO_PM_TO_SYS(23)
+#define ES310_RESET_GPIO     PM8921_GPIO_PM_TO_SYS(30)
+#define ES310_UART_SOUT_GPIO PM8921_GPIO_PM_TO_SYS(35)
+static int es310_dev_setup(int in_on)
 {
-	int ret = 0;
-	if (enable) {
-		ret = gpio_request(SX150X_GPIO(1, 10),
-					"cs8427_100KHZ_ENABLE");
-		if (ret) {
-			pr_err("%s: Failed to request gpio %d\n", __func__,
-				SX150X_GPIO(1, 10));
-			return ret;
-		}
-		gpio_direction_output(SX150X_GPIO(1, 10), 1);
-	} else {
-		gpio_direction_output(SX150X_GPIO(1, 10), 0);
-		gpio_free(SX150X_GPIO(1, 10));
-	}
-	return ret;
-}
-
-static struct cs8427_platform_data cs8427_i2c_platform_data = {
-	.irq = SX150X_GPIO(1, 4),
-	.reset_gpio = SX150X_GPIO(1, 6),
-	.enable = enable_100KHz_ls,
-};
-
-static struct i2c_board_info cs8427_device_info[] __initdata = {
-	{
-		I2C_BOARD_INFO("cs8427", CS8427_ADDR4),
-		.platform_data = &cs8427_i2c_platform_data,
-	},
-};
-
-#define HAP_SHIFT_LVL_OE_GPIO		PM8921_MPP_PM_TO_SYS(8)
-#define ISA1200_HAP_EN_GPIO		PM8921_GPIO_PM_TO_SYS(33)
-#define ISA1200_HAP_LEN_GPIO		PM8921_GPIO_PM_TO_SYS(20)
-#define ISA1200_HAP_CLK_PM8921		PM8921_GPIO_PM_TO_SYS(44)
-#define ISA1200_HAP_CLK_PM8917		PM8921_GPIO_PM_TO_SYS(38)
-
-static int isa1200_clk_enable(bool on)
-{
-	unsigned int gpio = ISA1200_HAP_CLK_PM8921;
 	int rc = 0;
+	pr_debug("%s %d \n",__func__, in_on);
 
-	if (socinfo_get_pmic_model() == PMIC_MODEL_PM8917)
-		gpio = ISA1200_HAP_CLK_PM8917;
+	if ( in_on ) {
+		
 
-	gpio_set_value_cansleep(gpio, on);
 
-	if (on) {
-		rc = pm8xxx_aux_clk_control(CLK_MP3_2, XO_DIV_1, true);
+
+
+
+
+
+		rc = gpio_request(ES310_UART_SOUT_GPIO, "es310_uart_sout");
 		if (rc) {
-			pr_err("%s: unable to write aux clock register(%d)\n",
-				__func__, rc);
-			goto err_gpio_dis;
+			pr_err("%s: unable to request gpio %d (%d)\n",
+					__func__, ES310_UART_SOUT_GPIO, rc);
+			return rc;
+		}
+		rc = gpio_request(ES310_RESET_GPIO, "s310_reset");
+		if (rc) {
+			pr_err("%s: unable to request gpio %d (%d)\n",
+					__func__, ES310_RESET_GPIO, rc);
+			return rc;
+		}
+	}
+	else {
+		gpio_free(ES310_WAKEUP_GPIO);
+		gpio_free(ES310_UART_SOUT_GPIO);
+		gpio_free(ES310_RESET_GPIO);
+	}
+
+	return rc;
+}
+
+static int es310_clk_on(int in_on)
+{
+	int rc = 0;
+	pr_debug("%s %d \n",__func__, in_on);
+	es310_clk_gp1 = clk_get(NULL, "gp1_clk");
+	if (IS_ERR(es310_clk_gp1)) {
+		pr_err("es310_clk_on: could not get gp1_clk\n");
+		es310_clk_gp1 = NULL;
+	}
+	if(in_on) {
+		pr_debug("%s %d clk_set_rate enable \n",__func__, in_on);
+		clk_set_rate(es310_clk_gp1, 19200000);
+		rc = clk_prepare_enable(es310_clk_gp1);
+		if (rc) {
+			pr_err("%s: gp1_clk enable fail %d \n",__func__, rc);
+			return rc;
 		}
 	} else {
-		rc = pm8xxx_aux_clk_control(CLK_MP3_2, XO_DIV_NONE, true);
-		if (rc)
-			pr_err("%s: unable to write aux clock register(%d)\n",
-				__func__, rc);
+		pr_debug("%s %d disable \n",__func__, in_on);
+		clk_disable_unprepare(es310_clk_gp1);
 	}
-
-	return rc;
-
-err_gpio_dis:
-	gpio_set_value_cansleep(gpio, !on);
-	return rc;
+	return 0;
 }
 
-static int isa1200_dev_setup(bool enable)
+static int es310_pwr_on(int in_on)
 {
-	unsigned int gpio = ISA1200_HAP_CLK_PM8921;
+	static struct regulator *vreg_l8 = NULL;
 	int rc = 0;
 
-	if (socinfo_get_pmic_model() == PMIC_MODEL_PM8917)
-		gpio = ISA1200_HAP_CLK_PM8917;
-
-	if (!enable)
-		goto free_gpio;
-
-	rc = gpio_request(gpio, "haptics_clk");
-	if (rc) {
-		pr_err("%s: unable to request gpio %d config(%d)\n",
-			__func__, gpio, rc);
-		return rc;
+	pr_debug("%s %d \n",__func__, in_on);
+	if (in_on&& vreg_l8 == NULL) {
+		
+		pr_debug("vreg_l8 get\n");
+		vreg_l8 = regulator_get(NULL, "8921_l8");
+		if (IS_ERR(vreg_l8)) {
+			pr_err("%s: VREG_L8 failed\n", __func__);
+			rc = PTR_ERR(vreg_l8);
+			return rc;
+		}
+		rc = regulator_set_voltage(vreg_l8, 2800000, 2800000);
+		if (rc) {
+			pr_err("VREG_L8 set voltage failed.\n");
+			return rc;
+		}
 	}
-
-	rc = gpio_direction_output(gpio, 0);
-	if (rc) {
-		pr_err("%s: unable to set direction\n", __func__);
-		goto free_gpio;
+	pr_debug("vreg_l8 func %d \n", in_on);
+	if(in_on){
+		if (vreg_l8) {
+			rc = regulator_enable(vreg_l8);
+			if (rc) {
+				pr_err("vreg_l8 enable failed\n");
+				return rc;
+			}
+		}
+	} else {
+		if (vreg_l8) {
+			pr_debug("vreg_l8 disable\n");
+			if (regulator_is_enabled(vreg_l8)) {
+				regulator_disable(vreg_l8);
+			}
+			regulator_put(vreg_l8);
+		}
 	}
-
 	return 0;
-
-free_gpio:
-	gpio_free(gpio);
-	return rc;
 }
 
-static struct isa1200_regulator isa1200_reg_data[] = {
+
+static struct es310_platform_data es310_pdata = {
+	.dev_setup      = es310_dev_setup,
+	.clk_on         = es310_clk_on,
+	.pwr_on         = es310_pwr_on,
+	.reset_gpio     = ES310_RESET_GPIO,
+	.uart_sin_gpio  = ES310_WAKEUP_GPIO,
+	.uart_sout_gpio = ES310_UART_SOUT_GPIO,
+};
+
+static struct i2c_board_info es310_i2c_info[] __initdata = {
 	{
-		.name = "vddp",
-		.min_uV = ISA_I2C_VTG_MIN_UV,
-		.max_uV = ISA_I2C_VTG_MAX_UV,
-		.load_uA = ISA_I2C_CURR_UA,
+		I2C_BOARD_INFO("es310", 0x3E),
+		.platform_data = &es310_pdata,
 	},
 };
 
-static struct isa1200_platform_data isa1200_1_pdata = {
-	.name = "vibrator",
-	.dev_setup = isa1200_dev_setup,
-	.clk_enable = isa1200_clk_enable,
-	.need_pwm_clk = true,
-	.hap_en_gpio = ISA1200_HAP_EN_GPIO,
-	.hap_len_gpio = ISA1200_HAP_LEN_GPIO,
-	.max_timeout = 15000,
-	.mode_ctrl = PWM_GEN_MODE,
-	.pwm_fd = {
-		.pwm_div = 256,
-	},
-	.is_erm = false,
-	.smart_en = true,
-	.ext_clk_en = true,
-	.chip_en = 1,
-	.regulator_info = isa1200_reg_data,
-	.num_regulators = ARRAY_SIZE(isa1200_reg_data),
-};
 
-static struct i2c_board_info isa1200_board_info[] __initdata = {
-	{
-		I2C_BOARD_INFO("isa1200_1", 0x90>>1),
-		.platform_data = &isa1200_1_pdata,
-	},
-};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /* configuration data for mxt1386e using V2.1 firmware */
 static const u8 mxt1386e_config_data_v2_1[] = {
 	/* T6 Object */
@@ -1334,6 +1534,45 @@ static const u8 mxt1386e_config_data_v2_1[] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0,
 };
+
+
+
+static struct apds990x_platform_data apds990x_data = {
+	.intr = 22,
+};
+
+static struct akm8977_platform_data compass_platform_data = {
+	.reset = 85,			
+	.intr =  23,			
+};
+
+
+
+
+
+
+static struct i2c_board_info apq_i2c_sensor_board_info[] = {
+	{
+		
+		I2C_BOARD_INFO("apds9900", 0x39),
+		.platform_data	 = &apds990x_data,
+		.irq = MSM_GPIO_TO_INT(22),
+	},
+	{
+		
+		I2C_BOARD_INFO("akm8977", 0x1C),
+		.platform_data = &compass_platform_data,
+		.irq = MSM_GPIO_TO_INT(23),
+	},
+
+
+
+
+
+
+};
+
+
 
 #define MXT_TS_GPIO_IRQ			6
 #define MXT_TS_PWR_EN_GPIO		PM8921_GPIO_PM_TO_SYS(23)
@@ -1496,6 +1735,149 @@ static struct i2c_board_info cyttsp_info[] __initdata = {
 		.irq = MSM_GPIO_TO_INT(CYTTSP_TS_GPIO_IRQ),
 	},
 };
+
+
+
+
+static struct regulator *vreg_pm8921_l15 = NULL;
+#define MELFAS_NCM_GPIO_IRQ		6
+
+static int melfas_ncm_poweron(struct device *dev)
+{
+	int rc;
+
+	vreg_pm8921_l15 = regulator_get(NULL, "8921_l15");
+
+	if (IS_ERR(vreg_pm8921_l15)) {
+		pr_err("%s: Unable to get 8921_l15\n", __func__);
+		return -ENODEV;
+	}
+
+	rc = regulator_set_voltage(vreg_pm8921_l15, 3300000, 3300000);
+	if (rc) {
+		pr_err("%s: unable to set 8921 L15 voltage to 3.3V\n", __func__);
+		goto fail_put;
+	}
+
+	rc = regulator_enable(vreg_pm8921_l15);
+	if (rc < 0) {
+		printk(KERN_ERR "%s: regulator l15 enable failed (%d)\n",
+					__func__, rc);
+		goto fail_put;
+	}
+
+	rc = gpio_request( MELFAS_NCM_GPIO_IRQ , "tp_attn1" );
+	if (rc) {
+		printk(KERN_ERR "%s: gpio_request failed (%d)\n",
+					__func__, rc);
+		goto fail_put;
+	}
+
+	msleep(100);
+
+	return 0;
+
+fail_put:
+		vreg_pm8921_l15 = NULL;
+	return rc;
+}
+
+static void melfas_ncm_powerdown(struct device *dev)
+{
+	int rc = 0;
+
+	if (vreg_pm8921_l15 != NULL) {
+		rc = regulator_disable(vreg_pm8921_l15);
+		if (rc < 0) {
+			printk(KERN_ERR "%s: regulator l15 disable (%d)\n",
+							__func__, rc);
+		}
+		vreg_pm8921_l15 = NULL;
+	}
+
+	gpio_free( MELFAS_NCM_GPIO_IRQ );
+}
+
+static struct melfas_ncm_ts_platform_data melfas_ncm_ts_data = {
+	.poweron    = melfas_ncm_poweron,
+	.powerdown  = melfas_ncm_powerdown
+};
+
+static struct i2c_board_info melfas_ncm_ts_info[] __initdata = {
+	{
+		I2C_BOARD_INFO(MELFAS_NCM_TS_NAME, 0x48),
+		.platform_data = &melfas_ncm_ts_data,
+		.irq = MSM_GPIO_TO_INT(MELFAS_NCM_GPIO_IRQ),
+	},
+};
+
+
+
+
+
+static struct i2c_board_info adp8861_i2c_board_info[] = {
+	{
+		I2C_BOARD_INFO("led_adp8861", 0x2A)
+	}
+};
+
+static struct i2c_board_info adp8861_1_i2c_board_info[] = {
+	{
+		I2C_BOARD_INFO("led_adp8861_1", 0x2A)
+	}
+};
+
+static struct platform_device led_adp8861_if_leds = {
+	.name   = "leds-adp8861_if",
+	.id = -1,
+};
+
+
+
+
+
+static struct i2c_board_info anadev_ncm_info[] __initdata = {
+    {
+        I2C_BOARD_INFO( ANADEV_NCM_HAPTICS_DEV_NAME, 0x14 ),
+    },
+};
+
+
+
+
+
+
+
+static struct i2c_board_info nim_boardinfo[] __initdata = {
+    {
+        I2C_BOARD_INFO("nim_main1", 0x65),
+    },
+    {
+        I2C_BOARD_INFO("nim_main2", 0x61),
+    },
+    {
+        I2C_BOARD_INFO("nim_sub", 0x63),
+    }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+static struct i2c_board_info felica_i2c_info[] = {
+	{
+		I2C_BOARD_INFO("AK6921AF", 0x57),
+	},
+};
+
+
 
 #define MSM_WCNSS_PHYS	0x03000000
 #define MSM_WCNSS_SIZE	0x280000
@@ -1664,10 +2046,10 @@ static struct platform_device qseecom_device = {
 };
 #endif
 
-#if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || \
-		defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE) || \
-		defined(CONFIG_CRYPTO_DEV_QCEDEV) || \
-		defined(CONFIG_CRYPTO_DEV_QCEDEV_MODULE)
+#if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || 		defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE) || 		defined(CONFIG_CRYPTO_DEV_QCEDEV) || 		defined(CONFIG_CRYPTO_DEV_QCEDEV_MODULE)
+
+
+
 
 #define QCE_SIZE		0x10000
 #define QCE_0_BASE		0x11000000
@@ -1731,8 +2113,8 @@ static struct resource qcedev_resources[] = {
 
 #endif
 
-#if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || \
-		defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE)
+#if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || 		defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE)
+
 
 static struct msm_ce_hw_support qcrypto_ce_hw_suppport = {
 	.ce_shared = QCE_CE_SHARED,
@@ -1754,8 +2136,8 @@ static struct platform_device qcrypto_device = {
 };
 #endif
 
-#if defined(CONFIG_CRYPTO_DEV_QCEDEV) || \
-		defined(CONFIG_CRYPTO_DEV_QCEDEV_MODULE)
+#if defined(CONFIG_CRYPTO_DEV_QCEDEV) || 		defined(CONFIG_CRYPTO_DEV_QCEDEV_MODULE)
+
 
 static struct msm_ce_hw_support qcedev_ce_hw_suppport = {
 	.ce_shared = QCE_CE_SHARED,
@@ -1796,6 +2178,7 @@ static struct mdm_platform_data mdm_platform_data = {
 	.ramdump_delay_ms = 2000,
 	.early_power_on = 1,
 	.sfr_query = 1,
+	.send_shdn = 1,
 	.vddmin_resource = &mdm_vddmin_rscs,
 	.peripheral_platform_device = &apq8064_device_hsic_host,
 	.ramdump_timeout_ms = 120000,
@@ -1914,6 +2297,212 @@ static void __init apq8064_init_irq(void)
 						(void *)MSM_QGIC_CPU_BASE);
 }
 
+
+static int mhl_8334_charging_enable(int enable, int max_curr)
+{
+        int ret;
+
+        printk(KERN_INFO "mhl_8334_charging_enable (%s)\n",
+                enable ? "enable" : "disable");
+
+        if (enable) {
+                ret = pm8921_set_usb_power_supply_type
+                        (POWER_SUPPLY_TYPE_USB);
+                if (ret)
+                        return ret;
+                pm8921_charger_vbus_draw(max_curr);
+        } else {
+                ret = pm8921_set_usb_power_supply_type
+                        (POWER_SUPPLY_TYPE_BATTERY);
+                pm8921_charger_vbus_draw(0);
+        }
+
+        return 0;
+}
+
+
+
+static int mhl_regulator_enable(void)
+{   
+	static struct regulator *reg_8334_s4 = NULL;
+	static struct regulator *reg_8334_l25 = NULL;
+	int rc = -1;
+
+	pr_debug("Inside %s\n", __func__);
+	
+	if (!reg_8334_s4) {
+		reg_8334_s4 = regulator_get(NULL, "mhl_s4");
+		if (IS_ERR(reg_8334_s4)) {
+			pr_err("could not get reg_8334_s4, rc = %ld\n",
+					PTR_ERR(reg_8334_s4));
+			return -ENODEV;
+		}
+		rc = regulator_enable(reg_8334_s4);
+		if (rc) { 
+			pr_err("'%s' regulator enable failed, rc=%d\n",
+					"mhl_s4", rc);
+			return rc;
+		} else
+			pr_debug("MHL regulator S4 is enabled\n");
+	}
+
+	if (!reg_8334_l25) {
+		reg_8334_l25 = regulator_get(NULL, "mhl_l25");
+		if (IS_ERR(reg_8334_l25)) {
+			pr_err("could not get reg_8334_l25, rc = %ld\n",
+					PTR_ERR(reg_8334_l25));
+			return -ENODEV;
+		}
+		rc = regulator_enable(reg_8334_l25);
+		if (rc) {
+			pr_err("'%s' regulator enable failed, rc=%d\n",
+					"mhl_l25", rc);
+			return rc;
+		} else
+			pr_debug("MHL regulator L25 is enabled\n");
+	}
+
+	pr_debug("%s X\n", __func__);
+	return rc;
+}
+
+static int mhl_setup_power(int on)
+{
+	int ret; 
+	pr_debug("MHL : %s\n", __func__);
+	if (!gpio_mhl_power_12v || !gpio_mhl_power_33v) {
+		pr_warn("%s: no power reqd for this platform\n", __func__);
+		return -1;
+	}    
+	
+	if (mhl_regulator_enable())
+		pr_err("Regulator enable failed\n");
+
+	ret = gpio_request(gpio_mhl_power_12v, "mhl_1.2v");
+	if (ret < 0) { 
+		pr_err("MHL_POWER_GPIO 1.2v req failed: %d\n",
+				ret);
+		return -1;
+	}    
+	ret = gpio_direction_output(gpio_mhl_power_12v, 1);  
+	if (ret < 0) { 
+		pr_err("set MHL power gpio pins' direction failed: %d\n", ret);
+		gpio_free(gpio_mhl_power_12v);
+		return -1;
+	}    
+	gpio_set_value(gpio_mhl_power_12v, 1);
+
+	
+	ret = gpio_request(gpio_mhl_power_33v, "mhl_3.3v");
+	if (ret < 0) { 
+		pr_err("MHL_POWER_GPIO 3.3v req failed: %d\n",
+				ret);
+		return -1;
+	}    
+	ret = gpio_direction_output(gpio_mhl_power_33v, 1);  
+	if (ret < 0) { 
+		pr_err("SET GPIO MHL_POWER_GPIO direction failed: %d\n", ret);
+		gpio_free(gpio_mhl_power_33v);
+		return -1;
+	}    
+	gpio_set_value(gpio_mhl_power_33v, 1);
+
+	pr_debug("mhl chip power on successfully !\n");
+
+	return 0;
+}
+
+static int mhl_setup_gpio(int on)
+{
+	int rc;
+
+	pr_debug("MHL : %s\n", __func__);
+
+	rc = gpio_request(MHL_GPIO_RESET, "mhl_reset_gpio");
+	if (rc)
+		goto ERROR;
+
+	rc = gpio_request(MHL_GPIO_IRQ, "mhl_irq_gpio");
+	if (rc) 
+		goto ERROR1;
+
+	return 0;
+ERROR1:
+	pr_err("%s: MHL set irq gpio failed !!!\n", __func__);
+	gpio_free(MHL_GPIO_RESET);
+ERROR:
+	pr_err("%s: MHL set reset gpio failed !!!\n", __func__);
+	return rc;
+}
+
+static inline void mhl_chip_reset_pin(int on)
+{
+	gpio_set_value(MHL_GPIO_RESET, on);
+	return;
+}
+
+static int mhl_chip_reset(int enable)
+{
+	
+	if (enable) {
+		mhl_chip_reset_pin(1);
+		msleep(20);
+		mhl_chip_reset_pin(0);
+		msleep(20);
+		mhl_chip_reset_pin(1);
+		
+		msleep(100);
+	} else {
+		mhl_chip_reset_pin(0);
+	}
+
+	return 0;
+}
+
+static struct mhl_platform_data mhl_pdata = {
+	.mhl_chip_reset = mhl_chip_reset,
+	.mhl_power_on = mhl_setup_power,
+	.mhl_setup_gpio = mhl_setup_gpio,
+
+	.charging_enable = mhl_8334_charging_enable,
+
+
+};
+
+static struct i2c_board_info sii_device_info[] __initdata = {
+	{
+		
+
+
+
+		I2C_BOARD_INFO(MHL_DEVICE_NAME, 0x39),
+		.platform_data = &mhl_pdata,
+		.irq = MSM_GPIO_TO_INT(MHL_GPIO_IRQ),
+		.flags = I2C_CLIENT_WAKE,
+	},
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 static struct platform_device msm8064_device_saw_regulator_core0 = {
 	.name	= "saw-regulator",
 	.id	= 0,
@@ -1962,12 +2551,14 @@ static struct msm_rpmrs_level msm_rpmrs_levels[] = {
 		415, 715, 340827, 475,
 	},
 
-	{
-		MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE,
-		MSM_RPMRS_LIMITS(ON, ACTIVE, MAX, ACTIVE),
-		true,
-		1300, 228, 1200000, 2000,
-	},
+
+
+
+
+
+
+
+
 
 	{
 		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,
@@ -2376,13 +2967,27 @@ static struct platform_device gpio_ir_recv_pdev = {
 
 static struct platform_device *common_not_mpq_devices[] __initdata = {
 	&apq8064_device_qup_i2c_gsbi1,
+
+	&apq8064_device_qup_i2c_gsbi2,
+
 	&apq8064_device_qup_i2c_gsbi3,
+
+
+	&apq8064_device_qup_i2c_gsbi5,
+
+
+
+	&msm_device_gsbi7_uart_dm,
+
+
 };
 
 static struct platform_device *early_common_devices[] __initdata = {
 	&apq8064_device_acpuclk,
 	&apq8064_device_dmov,
-	&apq8064_device_qup_spi_gsbi5,
+
+
+
 };
 
 static struct platform_device *pm8921_common_devices[] __initdata = {
@@ -2428,16 +3033,18 @@ static struct platform_device *common_devices[] __initdata = {
 	&qseecom_device,
 #endif
 
-	&msm_8064_device_tsif[0],
-	&msm_8064_device_tsif[1],
 
-#if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || \
-		defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE)
+
+
+
+
+#if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || 		defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE)
+
 	&qcrypto_device,
 #endif
 
-#if defined(CONFIG_CRYPTO_DEV_QCEDEV) || \
-		defined(CONFIG_CRYPTO_DEV_QCEDEV_MODULE)
+#if defined(CONFIG_CRYPTO_DEV_QCEDEV) || 		defined(CONFIG_CRYPTO_DEV_QCEDEV_MODULE)
+
 	&qcedev_device,
 #endif
 
@@ -2514,8 +3121,24 @@ static struct platform_device *common_devices[] __initdata = {
 #endif
 	&apq8064_iommu_domain_device,
 	&msm_tsens_device,
+
+
+	&led_adp8861_if_leds,
+
+
+
+
+
+
+
+	&apq8064_device_tsif[0],
+
+
+
 	&apq8064_cache_dump_device,
-	&msm_8064_device_tspp,
+
+
+
 #ifdef CONFIG_BATTERY_BCL
 	&battery_bcl_device,
 #endif
@@ -2523,8 +3146,16 @@ static struct platform_device *common_devices[] __initdata = {
 };
 
 static struct platform_device *cdp_devices[] __initdata = {
-	&apq8064_device_uart_gsbi1,
-	&apq8064_device_uart_gsbi7,
+
+
+
+
+
+
+
+
+
+
 	&msm_device_sps_apq8064,
 #ifdef CONFIG_MSM_ROTATOR
 	&msm_rotator_device,
@@ -2632,7 +3263,11 @@ static struct msm_serial_hs_platform_data msm_uart_dm9_pdata;
 
 static struct platform_device *mpq_devices[] __initdata = {
 	&msm_device_sps_apq8064,
-	&mpq8064_device_qup_i2c_gsbi5,
+
+
+
+
+
 #ifdef CONFIG_MSM_ROTATOR
 	&msm_rotator_device,
 #endif
@@ -2648,29 +3283,37 @@ static struct platform_device *mpq_devices[] __initdata = {
 	&rc_input_loopback_pdev,
 };
 
-static struct msm_spi_platform_data apq8064_qup_spi_gsbi5_pdata = {
-	.max_clock_speed = 1100000,
-};
 
-#define KS8851_IRQ_GPIO		43
 
-static struct spi_board_info spi_board_info[] __initdata = {
-	{
-		.modalias               = "ks8851",
-		.irq                    = MSM_GPIO_TO_INT(KS8851_IRQ_GPIO),
-		.max_speed_hz           = 19200000,
-		.bus_num                = 0,
-		.chip_select            = 2,
-		.mode                   = SPI_MODE_0,
-	},
-	{
-		.modalias		= "epm_adc",
-		.max_speed_hz		= 1100000,
-		.bus_num		= 0,
-		.chip_select		= 3,
-		.mode			= SPI_MODE_0,
-	},
-};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 static struct slim_boardinfo apq8064_slim_devices[] = {
 	{
@@ -2684,28 +3327,67 @@ static struct slim_boardinfo apq8064_slim_devices[] = {
 	/* add more slimbus slaves as needed */
 };
 
+
+
 static struct msm_i2c_platform_data apq8064_i2c_qup_gsbi1_pdata = {
-	.clk_freq = 100000,
+
+
+
+	.clk_freq = 360000,
 	.src_clk_rate = 24000000,
 };
 
 static struct msm_i2c_platform_data apq8064_i2c_qup_gsbi3_pdata = {
-	.clk_freq = 384000,
+
+
+
+	.clk_freq = 360000,
 	.src_clk_rate = 24000000,
 };
+
+
+static struct msm_i2c_platform_data apq8064_i2c_qup_gsbi2_pdata = {
+
+	.clk_freq = 360000,
+	.src_clk_rate = 24000000,
+};
+
 
 static struct msm_i2c_platform_data apq8064_i2c_qup_gsbi4_pdata = {
-	.clk_freq = 100000,
+
+
+
+	.clk_freq = 360000,
 	.src_clk_rate = 24000000,
 };
 
-static struct msm_i2c_platform_data mpq8064_i2c_qup_gsbi5_pdata = {
-	.clk_freq = 100000,
+
+static struct msm_i2c_platform_data apq8064_i2c_qup_gsbi5_pdata = {
+
+
+
+
+	.clk_freq = 360000,
+
 	.src_clk_rate = 24000000,
 };
+
+
+
+
+
+
+
+
+
+
 
 #define GSBI_DUAL_MODE_CODE 0x60
 #define MSM_GSBI1_PHYS		0x12440000
+
+
+#define MSM_GSBI2_PHYS		0x12480000
+
 static void __init apq8064_i2c_init(void)
 {
 	void __iomem *gsbi_mem;
@@ -2717,6 +3399,17 @@ static void __init apq8064_i2c_init(void)
 	/* Ensure protocol code is written before proceeding */
 	wmb();
 	iounmap(gsbi_mem);
+
+
+	apq8064_device_qup_i2c_gsbi2.dev.platform_data =
+					&apq8064_i2c_qup_gsbi2_pdata;
+	gsbi_mem = ioremap_nocache(MSM_GSBI2_PHYS, 4);
+	writel_relaxed(GSBI_DUAL_MODE_CODE, gsbi_mem);
+	
+	wmb();
+	iounmap(gsbi_mem);
+
+	
 	apq8064_i2c_qup_gsbi1_pdata.use_gsbi_shared_mode = 1;
 	apq8064_device_qup_i2c_gsbi3.dev.platform_data =
 					&apq8064_i2c_qup_gsbi3_pdata;
@@ -2729,50 +3422,50 @@ static void __init apq8064_i2c_init(void)
 		apq8064_device_qup_i2c_gsbi4.dev.platform_data =
 					&apq8064_i2c_qup_gsbi4_pdata;
 	}
-	mpq8064_device_qup_i2c_gsbi5.dev.platform_data =
-					&mpq8064_i2c_qup_gsbi5_pdata;
+
+	apq8064_device_qup_i2c_gsbi5.dev.platform_data =
+					&apq8064_i2c_qup_gsbi5_pdata;
+
+
+
+
+
+
+
 }
 
-#if defined(CONFIG_KS8851) || defined(CONFIG_KS8851_MODULE)
-static int ethernet_init(void)
-{
-	int ret;
-	ret = gpio_request(KS8851_IRQ_GPIO, "ks8851_irq");
-	if (ret) {
-		pr_err("ks8851 gpio_request failed: %d\n", ret);
-		goto fail;
-	}
 
-	return 0;
-fail:
-	return ret;
-}
-#else
-static int ethernet_init(void)
-{
-	return 0;
-}
-#endif
 
-#define GPIO_KEY_HOME			PM8921_GPIO_PM_TO_SYS(27)
-#define GPIO_KEY_VOLUME_UP		PM8921_GPIO_PM_TO_SYS(35)
-#define GPIO_KEY_VOLUME_DOWN_PM8921	PM8921_GPIO_PM_TO_SYS(38)
-#define GPIO_KEY_VOLUME_DOWN_PM8917	PM8921_GPIO_PM_TO_SYS(30)
-#define GPIO_KEY_CAM_FOCUS		PM8921_GPIO_PM_TO_SYS(3)
-#define GPIO_KEY_CAM_SNAP		PM8921_GPIO_PM_TO_SYS(4)
-#define GPIO_KEY_ROTATION_PM8921	PM8921_GPIO_PM_TO_SYS(42)
-#define GPIO_KEY_ROTATION_PM8917	PM8921_GPIO_PM_TO_SYS(8)
 
-static struct gpio_keys_button cdp_keys_pm8921[] = {
-	{
-		.code           = KEY_HOME,
-		.gpio           = GPIO_KEY_HOME,
-		.desc           = "home_key",
-		.active_low     = 1,
-		.type		= EV_KEY,
-		.wakeup		= 1,
-		.debounce_interval = 15,
-	},
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#define GPIO_KEY_VOLUME_UP		PM8921_GPIO_PM_TO_SYS(1)
+#define GPIO_KEY_VOLUME_DOWN	PM8921_GPIO_PM_TO_SYS(2)
+#define GPIO_KEY_DISPLAYTOGGLE	PM8921_GPIO_PM_TO_SYS(6)
+
+static struct gpio_keys_button ncm_keys[] = {
 	{
 		.code           = KEY_VOLUMEUP,
 		.gpio           = GPIO_KEY_VOLUME_UP,
@@ -2784,7 +3477,7 @@ static struct gpio_keys_button cdp_keys_pm8921[] = {
 	},
 	{
 		.code           = KEY_VOLUMEDOWN,
-		.gpio           = GPIO_KEY_VOLUME_DOWN_PM8921,
+		.gpio           = GPIO_KEY_VOLUME_DOWN,
 		.desc           = "volume_down_key",
 		.active_low     = 1,
 		.type		= EV_KEY,
@@ -2792,202 +3485,264 @@ static struct gpio_keys_button cdp_keys_pm8921[] = {
 		.debounce_interval = 15,
 	},
 	{
-		.code           = SW_ROTATE_LOCK,
-		.gpio           = GPIO_KEY_ROTATION_PM8921,
-		.desc           = "rotate_key",
-		.active_low     = 1,
-		.type		= EV_SW,
-		.debounce_interval = 15,
-	},
-};
-
-static struct gpio_keys_button cdp_keys_pm8917[] = {
-	{
-		.code           = KEY_HOME,
-		.gpio           = GPIO_KEY_HOME,
-		.desc           = "home_key",
+		.code           = KEY_DISPLAYTOGGLE,
+		.gpio           = GPIO_KEY_DISPLAYTOGGLE,
+		.desc           = "display_toggle_key",
 		.active_low     = 1,
 		.type		= EV_KEY,
 		.wakeup		= 1,
 		.debounce_interval = 15,
 	},
-	{
-		.code           = KEY_VOLUMEUP,
-		.gpio           = GPIO_KEY_VOLUME_UP,
-		.desc           = "volume_up_key",
-		.active_low     = 1,
-		.type		= EV_KEY,
-		.wakeup		= 1,
-		.debounce_interval = 15,
-	},
-	{
-		.code           = KEY_VOLUMEDOWN,
-		.gpio           = GPIO_KEY_VOLUME_DOWN_PM8917,
-		.desc           = "volume_down_key",
-		.active_low     = 1,
-		.type		= EV_KEY,
-		.wakeup		= 1,
-		.debounce_interval = 15,
-	},
-	{
-		.code           = SW_ROTATE_LOCK,
-		.gpio           = GPIO_KEY_ROTATION_PM8917,
-		.desc           = "rotate_key",
-		.active_low     = 1,
-		.type		= EV_SW,
-		.debounce_interval = 15,
-	},
 };
 
-static struct gpio_keys_platform_data cdp_keys_data = {
-	.buttons        = cdp_keys_pm8921,
-	.nbuttons       = ARRAY_SIZE(cdp_keys_pm8921),
+static struct gpio_keys_platform_data ncm_keys_data = {
+	.buttons        = ncm_keys,
+	.nbuttons       = ARRAY_SIZE(ncm_keys),
 };
 
-static struct platform_device cdp_kp_pdev = {
+static struct platform_device ncm_kp_pdev = {
 	.name           = "gpio-keys",
 	.id             = -1,
 	.dev            = {
-		.platform_data  = &cdp_keys_data,
+		.platform_data  = &ncm_keys_data,
 	},
 };
 
-static struct gpio_keys_button mtp_keys[] = {
-	{
-		.code           = KEY_CAMERA_FOCUS,
-		.gpio           = GPIO_KEY_CAM_FOCUS,
-		.desc           = "cam_focus_key",
-		.active_low     = 1,
-		.type		= EV_KEY,
-		.wakeup		= 1,
-		.debounce_interval = 15,
-	},
-	{
-		.code           = KEY_VOLUMEUP,
-		.gpio           = GPIO_KEY_VOLUME_UP,
-		.desc           = "volume_up_key",
-		.active_low     = 1,
-		.type		= EV_KEY,
-		.wakeup		= 1,
-		.debounce_interval = 15,
-	},
-	{
-		.code           = KEY_VOLUMEDOWN,
-		.gpio           = GPIO_KEY_VOLUME_DOWN_PM8921,
-		.desc           = "volume_down_key",
-		.active_low     = 1,
-		.type		= EV_KEY,
-		.wakeup		= 1,
-		.debounce_interval = 15,
-	},
-	{
-		.code           = KEY_CAMERA_SNAPSHOT,
-		.gpio           = GPIO_KEY_CAM_SNAP,
-		.desc           = "cam_snap_key",
-		.active_low     = 1,
-		.type		= EV_KEY,
-		.debounce_interval = 15,
-	},
-};
 
-static struct gpio_keys_platform_data mtp_keys_data = {
-	.buttons        = mtp_keys,
-	.nbuttons       = ARRAY_SIZE(mtp_keys),
-};
 
-static struct platform_device mtp_kp_pdev = {
-	.name           = "gpio-keys",
-	.id             = -1,
-	.dev            = {
-		.platform_data  = &mtp_keys_data,
-	},
-};
 
-static struct gpio_keys_button mpq_keys[] = {
-	{
-		.code           = KEY_VOLUMEDOWN,
-		.gpio           = GPIO_KEY_VOLUME_DOWN_PM8921,
-		.desc           = "volume_down_key",
-		.active_low     = 1,
-		.type		= EV_KEY,
-		.wakeup		= 1,
-		.debounce_interval = 15,
-	},
-	{
-		.code           = KEY_VOLUMEUP,
-		.gpio           = GPIO_KEY_VOLUME_UP,
-		.desc           = "volume_up_key",
-		.active_low     = 1,
-		.type		= EV_KEY,
-		.wakeup		= 1,
-		.debounce_interval = 15,
-	},
-};
 
-static struct gpio_keys_platform_data mpq_keys_data = {
-	.buttons        = mpq_keys,
-	.nbuttons       = ARRAY_SIZE(mpq_keys),
-};
 
-static struct platform_device mpq_gpio_keys_pdev = {
-	.name           = "gpio-keys",
-	.id             = -1,
-	.dev            = {
-		.platform_data  = &mpq_keys_data,
-	},
-};
 
-#define MPQ_KP_ROW_BASE		SX150X_EXP2_GPIO_BASE
-#define MPQ_KP_COL_BASE		(SX150X_EXP2_GPIO_BASE + 4)
 
-static unsigned int mpq_row_gpios[] = {MPQ_KP_ROW_BASE, MPQ_KP_ROW_BASE + 1,
-				MPQ_KP_ROW_BASE + 2, MPQ_KP_ROW_BASE + 3};
-static unsigned int mpq_col_gpios[] = {MPQ_KP_COL_BASE, MPQ_KP_COL_BASE + 1,
-				MPQ_KP_COL_BASE + 2};
 
-static const unsigned int mpq_keymap[] = {
-	KEY(0, 0, KEY_UP),
-	KEY(0, 1, KEY_ENTER),
-	KEY(0, 2, KEY_3),
 
-	KEY(1, 0, KEY_DOWN),
-	KEY(1, 1, KEY_EXIT),
-	KEY(1, 2, KEY_4),
 
-	KEY(2, 0, KEY_LEFT),
-	KEY(2, 1, KEY_1),
-	KEY(2, 2, KEY_5),
 
-	KEY(3, 0, KEY_RIGHT),
-	KEY(3, 1, KEY_2),
-	KEY(3, 2, KEY_6),
-};
 
-static struct matrix_keymap_data mpq_keymap_data = {
-	.keymap_size	= ARRAY_SIZE(mpq_keymap),
-	.keymap		= mpq_keymap,
-};
 
-static struct matrix_keypad_platform_data mpq_keypad_data = {
-	.keymap_data		= &mpq_keymap_data,
-	.row_gpios		= mpq_row_gpios,
-	.col_gpios		= mpq_col_gpios,
-	.num_row_gpios		= ARRAY_SIZE(mpq_row_gpios),
-	.num_col_gpios		= ARRAY_SIZE(mpq_col_gpios),
-	.col_scan_delay_us	= 32000,
-	.debounce_ms		= 20,
-	.wakeup			= 1,
-	.active_low		= 1,
-	.no_autorepeat		= 1,
-};
 
-static struct platform_device mpq_keypad_device = {
-	.name           = "matrix-keypad",
-	.id             = -1,
-	.dev            = {
-		.platform_data  = &mpq_keypad_data,
-	},
-};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* Sensors DSPS platform data */
 #define DSPS_PIL_GENERIC_NAME		"dsps"
@@ -3025,30 +3780,132 @@ static struct i2c_registry apq8064_i2c_devices[] __initdata = {
 		smb349_charger_i2c_info,
 		ARRAY_SIZE(smb349_charger_i2c_info)
 	},
+
+	{
+		I2C_SURF | I2C_FFA | I2C_LIQUID,
+
+
+
+
+		APQ_8064_GSBI3_QUP_I2C_BUS_ID,
+
+		apq_i2c_sensor_board_info,
+		ARRAY_SIZE(apq_i2c_sensor_board_info),
+	},
+
+
 	{
 		I2C_SURF | I2C_LIQUID,
 		APQ_8064_GSBI3_QUP_I2C_BUS_ID,
 		mxt_device_info,
 		ARRAY_SIZE(mxt_device_info),
 	},
+
 	{
 		I2C_FFA,
 		APQ_8064_GSBI3_QUP_I2C_BUS_ID,
 		cyttsp_info,
 		ARRAY_SIZE(cyttsp_info),
 	},
+
+
+
+
+
+
+
+
+
+
+
+
 	{
-		I2C_FFA | I2C_LIQUID,
+		I2C_FFA | I2C_LIQUID | I2C_SURF,
+		APQ_8064_GSBI2_QUP_I2C_BUS_ID,
+		melfas_ncm_ts_info,
+		ARRAY_SIZE(melfas_ncm_ts_info),
+	},
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	{
+		I2C_SURF | I2C_FFA | I2C_LIQUID | I2C_RUMI,
 		APQ_8064_GSBI1_QUP_I2C_BUS_ID,
-		isa1200_board_info,
-		ARRAY_SIZE(isa1200_board_info),
+		adp8861_i2c_board_info,
+		ARRAY_SIZE(adp8861_i2c_board_info),
 	},
+
+
 	{
-		I2C_MPQ_CDP,
-		APQ_8064_GSBI5_QUP_I2C_BUS_ID,
-		cs8427_device_info,
-		ARRAY_SIZE(cs8427_device_info),
+		I2C_SURF | I2C_FFA | I2C_LIQUID | I2C_RUMI,
+		APQ_8064_GSBI3_QUP_I2C_BUS_ID,
+		adp8861_1_i2c_board_info,
+		ARRAY_SIZE(adp8861_1_i2c_board_info),
 	},
+
+
+
+
+
+	{
+		I2C_FFA | I2C_LIQUID | I2C_SURF,
+
+		APQ_8064_GSBI1_QUP_I2C_BUS_ID,
+
+		anadev_ncm_info,
+		ARRAY_SIZE(anadev_ncm_info),
+	},
+
+
+
+
+	{
+		I2C_FFA | I2C_LIQUID | I2C_SURF,
+		APQ_8064_GSBI1_QUP_I2C_BUS_ID,
+		nim_boardinfo,
+		ARRAY_SIZE(nim_boardinfo),
+	},
+
+
+
+
+	{
+		I2C_FFA | I2C_LIQUID | I2C_SURF,
+		APQ_8064_GSBI1_QUP_I2C_BUS_ID,
+		felica_i2c_info,
+		ARRAY_SIZE(felica_i2c_info),
+	},
+
+
+
+
+	{
+		I2C_SURF | I2C_FFA | I2C_LIQUID,
+		APQ_8064_GSBI1_QUP_I2C_BUS_ID,
+		sii_device_info,
+		ARRAY_SIZE(sii_device_info),
+	},
+
+
+
+	{
+		I2C_FFA | I2C_LIQUID | I2C_SURF,
+		APQ_8064_GSBI1_QUP_I2C_BUS_ID,
+		es310_i2c_info,
+		ARRAY_SIZE(es310_i2c_info),
+	},
+
 };
 
 #define SX150X_EXP1_INT_N	PM8921_MPP_IRQ(PM8921_IRQ_BASE, 9)
@@ -3186,12 +4043,14 @@ static void enable_avc_i2c_bus(void)
 		gpio_set_value_cansleep(avc_i2c_en_mpp, 1);
 }
 
-/* Modify platform data values to match requirements for PM8917. */
-static void __init apq8064_pm8917_pdata_fixup(void)
-{
-	cdp_keys_data.buttons = cdp_keys_pm8917;
-	cdp_keys_data.nbuttons = ARRAY_SIZE(cdp_keys_pm8917);
-}
+
+
+
+
+
+
+
+
 
 #ifdef CONFIG_SERIAL_MSM_HS
 static struct msm_serial_hs_platform_data apq8064_uartdm_gsbi4_pdata = {
@@ -3226,8 +4085,10 @@ static void __init apq8064_common_init(void)
 {
 	u32 platform_version = socinfo_get_platform_version();
 
-	if (socinfo_get_pmic_model() == PMIC_MODEL_PM8917)
-		apq8064_pm8917_pdata_fixup();
+
+
+
+
 	platform_device_register(&msm_gpio_device);
 	if (cpu_is_apq8064ab())
 		apq8064ab_update_krait_spm();
@@ -3258,8 +4119,13 @@ static void __init apq8064_common_init(void)
 	apq8064_i2c_init();
 	register_i2c_devices();
 
-	apq8064_device_qup_spi_gsbi5.dev.platform_data =
-						&apq8064_qup_spi_gsbi5_pdata;
+
+
+
+
+
+
+
 	apq8064_init_pmic();
 	if (machine_is_apq8064_liquid())
 		msm_otg_pdata.mhl_enable = true;
@@ -3360,6 +4226,14 @@ static void __init apq8064_allocate_memory_regions(void)
 
 static void __init apq8064_cdp_init(void)
 {
+	int i;
+	static uint32_t reserved_test_msm_gpio_config_data[] = {
+		GPIO_CFG(51, 0, GPIO_CFG_INPUT,
+				GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+		GPIO_CFG(52, 0, GPIO_CFG_INPUT,
+				GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+	};
+
 	if (meminfo_init(SYS_MEMORY, SZ_256M) < 0)
 		pr_err("meminfo_init() failed!\n");
 	if (machine_is_apq8064_mtp() &&
@@ -3373,11 +4247,19 @@ static void __init apq8064_cdp_init(void)
 		platform_add_devices(mpq_devices, ARRAY_SIZE(mpq_devices));
 		mpq8064_pcie_init();
 	} else {
-		ethernet_init();
+
+
+
+
+
 		msm_rotator_set_split_iommu_domain();
 		platform_add_devices(cdp_devices, ARRAY_SIZE(cdp_devices));
-		spi_register_board_info(spi_board_info,
-						ARRAY_SIZE(spi_board_info));
+
+
+
+
+
+
 	}
 	apq8064_init_fb();
 	apq8064_init_gpu();
@@ -3396,15 +4278,25 @@ static void __init apq8064_cdp_init(void)
 		platform_device_register(&mpq8064_device_uartdm_gsbi6);
 	}
 
-	if (machine_is_apq8064_cdp() || machine_is_apq8064_liquid())
-		platform_device_register(&cdp_kp_pdev);
 
-	if (machine_is_apq8064_mtp())
-		platform_device_register(&mtp_kp_pdev);
+	platform_device_register(&ncm_kp_pdev);
 
-	if (machine_is_mpq8064_cdp()) {
-		platform_device_register(&mpq_gpio_keys_pdev);
-		platform_device_register(&mpq_keypad_device);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	for (i = 0; i < ARRAY_SIZE(reserved_test_msm_gpio_config_data); i++) {
+		gpio_tlmm_config(reserved_test_msm_gpio_config_data[i], 0);
 	}
 }
 
@@ -3479,4 +4371,51 @@ MACHINE_START(MPQ8064_DTV, "QCT MPQ8064 DTV")
 	.init_very_early = apq8064_early_reserve,
 	.restart = msm_restart,
 MACHINE_END
+
+
+
+
+int GPIO_request(unsigned gpio, const char *label)
+{
+    return gpio_request(gpio, label);
+}
+EXPORT_SYMBOL(GPIO_request);
+
+void GPIO_free(unsigned gpio)
+{
+    gpio_free(gpio);
+}
+EXPORT_SYMBOL(GPIO_free);
+
+int GPIO_direction_input(unsigned gpio)
+{
+    return gpio_direction_input(gpio);
+}
+EXPORT_SYMBOL(GPIO_direction_input);
+
+int GPIO_direction_output(unsigned gpio, int value)
+{
+    return gpio_direction_output(gpio, value);
+}
+EXPORT_SYMBOL(GPIO_direction_output);
+
+int GPIO_get_value(unsigned gpio)
+{
+    return gpio_get_value(gpio);
+}
+EXPORT_SYMBOL(GPIO_get_value);
+
+void GPIO_set_value(unsigned gpio, int value)
+{
+    gpio_set_value(gpio, value);
+}
+EXPORT_SYMBOL(GPIO_set_value);
+
+int GPIO_to_irq(unsigned gpio)
+{
+    return gpio_to_irq(gpio);
+}
+EXPORT_SYMBOL(GPIO_to_irq);
+
+
 

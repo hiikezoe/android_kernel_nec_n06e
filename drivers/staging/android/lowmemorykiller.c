@@ -29,6 +29,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -307,6 +311,22 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 			continue;
 		}
 		tasksize = get_mm_rss(p->mm);
+
+                
+		
+#define GNG_HOME_ADJ (6)
+#define GNG_VISIBLE_APP_ADJ (1)
+		if (oom_score_adj == GNG_HOME_ADJ){
+			if (min_score_adj > GNG_VISIBLE_APP_ADJ)
+			{
+				lowmem_print(2, "check %s (%d) %d %d\n", p->comm, p->pid, oom_score_adj, tasksize);
+				task_unlock(p);
+				continue;
+			}
+		}
+		
+                
+
 		task_unlock(p);
 		if (tasksize <= 0)
 			continue;

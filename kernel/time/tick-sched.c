@@ -11,6 +11,10 @@
  *
  *  Distribute under GPLv2.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #include <linux/cpu.h>
 #include <linux/err.h>
 #include <linux/hrtimer.h>
@@ -151,6 +155,7 @@ static void tick_nohz_update_jiffies(ktime_t now)
 	tick_do_update_jiffies64(now);
 	local_irq_restore(flags);
 
+	calc_load_exit_idle();
 	touch_softlockup_watchdog();
 }
 
@@ -407,6 +412,7 @@ static void tick_nohz_stop_sched_tick(struct tick_sched *ts)
 		 */
 		if (!ts->tick_stopped) {
 			select_nohz_load_balancer(1);
+			calc_load_enter_idle();
 
 			ts->idle_tick = hrtimer_get_expires(&ts->sched_timer);
 			ts->tick_stopped = 1;
@@ -596,6 +602,7 @@ void tick_nohz_idle_exit(void)
 		account_idle_ticks(ticks);
 #endif
 
+	calc_load_exit_idle();
 	touch_softlockup_watchdog();
 	/*
 	 * Cancel the scheduled timer and restore the tick
@@ -711,22 +718,22 @@ static void tick_nohz_switch_to_nohz(void)
  */
 static void tick_nohz_kick_tick(int cpu, ktime_t now)
 {
-#if 0
-	/* Switch back to 2.6.27 behaviour */
 
-	struct tick_sched *ts = &per_cpu(tick_cpu_sched, cpu);
-	ktime_t delta;
 
-	/*
-	 * Do not touch the tick device, when the next expiry is either
-	 * already reached or less/equal than the tick period.
-	 */
-	delta =	ktime_sub(hrtimer_get_expires(&ts->sched_timer), now);
-	if (delta.tv64 <= tick_period.tv64)
-		return;
 
-	tick_nohz_restart(ts, now);
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
 }
 
 static inline void tick_check_nohz(int cpu)

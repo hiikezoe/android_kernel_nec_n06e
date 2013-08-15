@@ -3,6 +3,10 @@
  *
  *  Copyright (C) 1991, 1992  Linus Torvalds
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 /*
  * This function is used through-out the kernel (including mm and fs)
@@ -27,6 +31,25 @@
 
 #define PANIC_TIMER_STEP 100
 #define PANIC_BLINK_SPD 18
+
+
+
+#define OEM_DVE021_FATAL_MODE_INIT    0x494E4954   
+#define OEM_DVE021_FATAL_MODE_APPS    0x41505053   
+#define OEM_DVE021_FATAL_MODE_MODEM   0x6D6F6431   
+#define OEM_DVE021_FATAL_MODE_DSP     0x64737073   
+#define OEM_DVE021_FATAL_MODE_LPASS   0x4C704173   
+#define OEM_DVE021_FATAL_MODE_RIVA    0x52495641   
+
+#define OEM_DVE021_FATAL_MODE_MDM     0x394D444D   
+
+#define OEM_DVE021_FATAL_MODE_ERR     0x65727258   
+
+
+int DVE022_set_fatal_mode(int mode);
+int DVE022_get_fatal_mode(void);
+void DVE022_handle_fatalA(char *message,int message_len);
+
 
 /* Machine specific panic information string */
 char *mach_panic_string;
@@ -81,6 +104,26 @@ void panic(const char *fmt, ...)
 	long i, i_next = 0;
 	int state = 0;
 
+    int mode = OEM_DVE021_FATAL_MODE_INIT;
+
+    mode = DVE022_get_fatal_mode();
+    
+    if( mode != OEM_DVE021_FATAL_MODE_MODEM
+    &&  mode != OEM_DVE021_FATAL_MODE_DSP
+    &&  mode != OEM_DVE021_FATAL_MODE_LPASS
+
+
+    &&  mode != OEM_DVE021_FATAL_MODE_RIVA
+    &&  mode != OEM_DVE021_FATAL_MODE_MDM
+      )
+
+    {
+        DVE022_set_fatal_mode(OEM_DVE021_FATAL_MODE_APPS);
+        printk(KERN_ERR "[T][ARM]Event:0x3C Info:0x07");
+    }
+    
+
+
 	coresight_abort();
 	/*
 	 * Disable local interrupts. This will prevent panic_smp_self_stop
@@ -131,8 +174,6 @@ void panic(const char *fmt, ...)
 	 */
 	crash_kexec(NULL);
 
-	kmsg_dump(KMSG_DUMP_PANIC);
-
 	/*
 	 * Note smp_send_stop is the usual smp shutdown function, which
 	 * unfortunately means it may not be hardened to work in a panic
@@ -140,7 +181,13 @@ void panic(const char *fmt, ...)
 	 */
 	smp_send_stop();
 
+	kmsg_dump(KMSG_DUMP_PANIC);
+
 	atomic_notifier_call_chain(&panic_notifier_list, 0, buf);
+
+
+	DVE022_handle_fatalA(buf,strlen(buf));
+
 
 	bust_spinlocks(0);
 

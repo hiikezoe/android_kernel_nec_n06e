@@ -14,6 +14,25 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #include <linux/module.h>
 #include <linux/init.h>
@@ -26,6 +45,9 @@
 #include <linux/types.h>
 #include <linux/device.h>
 #include <linux/miscdevice.h>
+
+#include <linux/usb/oem_usb_common.h>
+
 
 #define ADB_BULK_BUFFER_SIZE           4096
 #define DEBUG 1
@@ -57,6 +79,25 @@ struct adb_dev {
 	int rx_done;
 	bool notify_close;
 	bool close_notified;
+};
+
+
+
+#define INTERFACE_STRING_INDEX	0
+
+static struct usb_string adb_string_defs[] = {
+	[INTERFACE_STRING_INDEX].s	= DVE021_USB_IF_DESC_NAME_ADB,
+	{  },	
+};
+
+static struct usb_gadget_strings adb_string_table = {
+	.language		= 0x0409,	
+	.strings		= adb_string_defs,
+};
+
+static struct usb_gadget_strings *adb_strings[] = {
+	&adb_string_table,
+	NULL,
 };
 
 static struct usb_interface_descriptor adb_interface_desc = {
@@ -612,10 +653,25 @@ static int adb_bind_config(struct usb_configuration *c)
 {
 	struct adb_dev *dev = _adb_dev;
 
+	int		status;
+
+
 	printk(KERN_INFO "adb_bind_config\n");
+
+
+	if (adb_string_defs[INTERFACE_STRING_INDEX].id == 0) {
+		status = usb_string_id(c->cdev);
+		if (status < 0)
+			return status;
+		adb_string_defs[INTERFACE_STRING_INDEX].id = status;
+		adb_interface_desc.iInterface = status;
+	}
 
 	dev->cdev = c->cdev;
 	dev->function.name = "adb";
+
+	dev->function.strings = adb_strings;
+
 	dev->function.descriptors = fs_adb_descs;
 	dev->function.hs_descriptors = hs_adb_descs;
 	dev->function.bind = adb_function_bind;

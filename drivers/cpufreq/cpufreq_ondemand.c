@@ -9,6 +9,10 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -66,6 +70,7 @@ static unsigned int min_sampling_rate;
 static void do_dbs_timer(struct work_struct *work);
 static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 				unsigned int event);
+static int cpufreq_set_byOndemand(struct cpufreq_policy *policy, unsigned int freq);
 
 #ifndef CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND
 static
@@ -74,6 +79,7 @@ struct cpufreq_governor cpufreq_gov_ondemand = {
        .name                   = "ondemand",
        .governor               = cpufreq_governor_dbs,
        .max_transition_latency = TRANSITION_LATENCY_LIMIT,
+       .store_setspeed         = cpufreq_set_byOndemand,
        .owner                  = THIS_MODULE,
 };
 
@@ -104,6 +110,7 @@ struct cpu_dbs_info_s {
 	struct mutex timer_mutex;
 };
 static DEFINE_PER_CPU(struct cpu_dbs_info_s, od_cpu_dbs_info);
+static DEFINE_PER_CPU(unsigned int, cpu_is_managed);
 
 static inline void dbs_timer_init(struct cpu_dbs_info_s *dbs_info);
 static inline void dbs_timer_exit(struct cpu_dbs_info_s *dbs_info);
@@ -144,6 +151,46 @@ static struct dbs_tuners {
 	.sync_freq = 0,
 	.optimal_freq = 0,
 };
+
+static unsigned int compOverTime = (1*10);
+static unsigned int totalDirecTime = 0;
+
+struct loadAvg {
+	cputime64_t wall_time;
+	cputime64_t iowait_time;
+	cputime64_t idle_time;
+};
+static struct loadAvg prev_loadAvg;
+
+static int cpuLoad_for_govOndemand;
+module_param_named(cpuLoad_for_govOndemand, cpuLoad_for_govOndemand, int, S_IRUGO | S_IWUSR | S_IWGRP);
+
+
+static int cpufreq_set_byOndemand(struct cpufreq_policy *policy, unsigned int freq)
+{
+        int ret = -EINVAL;
+       struct cpu_dbs_info_s *dbs_info;
+
+        pr_debug("cpufreq_set for cpu %u, freq %u kHz\n", policy->cpu, freq);
+
+       dbs_info = &per_cpu(od_cpu_dbs_info, policy->cpu);
+
+        mutex_lock(&dbs_info->timer_mutex);
+        if (!per_cpu(cpu_is_managed, policy->cpu))
+                goto err;
+
+        ret = __cpufreq_driver_target(policy, freq, CPUFREQ_RELATION_L);
+       pr_debug("##after __cpufreq_driver_target ret:%d\n", ret);
+
+ err:
+        mutex_unlock(&dbs_info->timer_mutex);
+        return ret;
+}
+
+
+
+module_param_named(compOverTime, compOverTime, int, S_IRUGO | S_IWUSR | S_IWGRP);
+
 
 static inline u64 get_cpu_idle_time_jiffy(unsigned int cpu, u64 *wall)
 {
@@ -687,6 +734,38 @@ static void dbs_freq_increase(struct cpufreq_policy *p, unsigned int freq)
 			CPUFREQ_RELATION_L : CPUFREQ_RELATION_H);
 }
 
+static void maxFrq_ctl(cputime64_t cur_idle_time, cputime64_t cur_iowait_time, unsigned int wall_time, unsigned int j)
+{
+	unsigned int a_idle_time, a_wall_time, a_iowait_time;
+	static int firstTime = 0;
+
+	if( j !=0 ) {
+		
+		return;
+	}
+
+	totalDirecTime += usecs_to_jiffies(wall_time);
+
+	if ( compOverTime < totalDirecTime ) {
+
+		a_wall_time = jiffies_to_usecs(totalDirecTime);
+		a_idle_time = (unsigned int)(cur_idle_time - prev_loadAvg.idle_time);
+		a_iowait_time = (unsigned int)(cur_iowait_time - prev_loadAvg.iowait_time);
+		if (firstTime) {
+			cpuLoad_for_govOndemand = 100 * (a_wall_time - a_idle_time) / a_wall_time;
+		} else {
+			firstTime = 1;
+		}
+
+
+
+
+		totalDirecTime = 0;
+		prev_loadAvg.idle_time = cur_idle_time;
+		prev_loadAvg.iowait_time = cur_iowait_time;
+	}
+}
+
 static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 {
 	/* Extrapolated load of this CPU */
@@ -771,6 +850,10 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 			continue;
 
 		cur_load = 100 * (wall_time - idle_time) / wall_time;
+
+
+		maxFrq_ctl(cur_idle_time, cur_iowait_time, wall_time, j);
+
 		j_dbs_info->max_load  = max(cur_load, j_dbs_info->prev_load);
 		j_dbs_info->prev_load = cur_load;
 		freq_avg = __cpufreq_driver_getavg(policy, j);
@@ -1094,6 +1177,7 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 		mutex_lock(&dbs_mutex);
 
 		dbs_enable++;
+		per_cpu(cpu_is_managed, cpu) = 1;
 		for_each_cpu(j, policy->cpus) {
 			struct cpu_dbs_info_s *j_dbs_info;
 			j_dbs_info = &per_cpu(od_cpu_dbs_info, j);
@@ -1158,6 +1242,7 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 		mutex_lock(&dbs_mutex);
 		mutex_destroy(&this_dbs_info->timer_mutex);
 		dbs_enable--;
+		per_cpu(cpu_is_managed, cpu) = 0;
 		/* If device is being removed, policy is no longer
 		 * valid. */
 		this_dbs_info->cur_policy = NULL;

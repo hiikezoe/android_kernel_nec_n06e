@@ -12,6 +12,10 @@
  *
  * This file is released under the GPL.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #include <linux/errno.h>
 #include <linux/stddef.h>
 #include <linux/slab.h>
@@ -1235,6 +1239,7 @@ static ssize_t subbuf_splice_actor(struct file *in,
 	struct splice_pipe_desc spd = {
 		.pages = pages,
 		.nr_pages = 0,
+		.nr_pages_max = PIPE_DEF_BUFFERS,
 		.partial = partial,
 		.flags = flags,
 		.ops = &relay_pipe_buf_ops,
@@ -1302,8 +1307,8 @@ static ssize_t subbuf_splice_actor(struct file *in,
                 ret += padding;
 
 out:
-	splice_shrink_spd(pipe, &spd);
-        return ret;
+	splice_shrink_spd(&spd);
+	return ret;
 }
 
 static ssize_t relay_file_splice_read(struct file *in,

@@ -19,6 +19,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/gfp.h>
 #include <asm/unaligned.h>
@@ -472,6 +476,42 @@ void xhci_test_and_clear_bit(struct xhci_hcd *xhci, __le32 __iomem **port_array,
 	}
 }
 
+
+static void xhci_hub_report_link_state(u32 *status, u32 status_reg)
+{
+	u32 pls = status_reg & PORT_PLS_MASK;
+
+	
+
+
+	if (pls == XDEV_RESUME)
+		return;
+
+	
+
+
+	if (status_reg & PORT_CAS) {
+		
+
+
+
+
+
+
+		if (pls != USB_SS_PORT_LS_COMP_MOD &&
+		    pls != USB_SS_PORT_LS_SS_INACTIVE) {
+			pls = USB_SS_PORT_LS_COMP_MOD;
+		}
+		
+
+
+
+		pls |= USB_PORT_STAT_CONNECTION;
+	}
+	
+	*status |= pls;
+}
+
 int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 		u16 wIndex, char *buf, u16 wLength)
 {
@@ -614,13 +654,9 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			else
 				status |= USB_PORT_STAT_POWER;
 		}
-		/* Port Link State */
+		
 		if (hcd->speed == HCD_USB3) {
-			/* resume state is a xHCI internal state.
-			 * Do not report it to usb core.
-			 */
-			if ((temp & PORT_PLS_MASK) != XDEV_RESUME)
-				status |= (temp & PORT_PLS_MASK);
+			xhci_hub_report_link_state(&status, temp);
 		}
 		if (bus_state->port_c_suspend & (1 << wIndex))
 			status |= 1 << USB_PORT_FEAT_C_SUSPEND;

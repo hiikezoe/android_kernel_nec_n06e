@@ -10,6 +10,23 @@
  *
  *  You may use this code as per GPL version 2
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #include <linux/ctype.h>
 #include <linux/device.h>
@@ -167,7 +184,10 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(capacity),
 	POWER_SUPPLY_ATTR(capacity_level),
 	POWER_SUPPLY_ATTR(temp),
+	POWER_SUPPLY_ATTR(temp_xo), 
+	POWER_SUPPLY_ATTR(temp_threshold_pmic), 
 	POWER_SUPPLY_ATTR(temp_ambient),
+	POWER_SUPPLY_ATTR(thermal_trip), 
 	POWER_SUPPLY_ATTR(time_to_empty_now),
 	POWER_SUPPLY_ATTR(time_to_empty_avg),
 	POWER_SUPPLY_ATTR(time_to_full_now),

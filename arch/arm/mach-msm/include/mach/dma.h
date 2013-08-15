@@ -13,6 +13,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifndef __ASM_ARCH_MSM_DMA_H
 #define __ASM_ARCH_MSM_DMA_H
@@ -194,6 +198,16 @@ int msm_dmov_exec_cmd(unsigned id, unsigned int cmdptr);
 #define DMOV_HSUART_GSBI8_RX_CHAN	8
 #define DMOV_HSUART_GSBI8_RX_CRCI	9
 
+
+
+#define DMOV_HSUART_GSBI7_TX_CHAN	10
+#define DMOV_HSUART_GSBI7_TX_CRCI	8
+
+#define DMOV_HSUART_GSBI7_RX_CHAN	11
+#define DMOV_HSUART_GSBI7_RX_CRCI	7
+
+
+
 #define DMOV_HSUART_GSBI9_TX_CHAN	4
 #define DMOV_HSUART_GSBI9_TX_CRCI	13
 
@@ -269,8 +283,17 @@ int msm_dmov_exec_cmd(unsigned id, unsigned int cmdptr);
 #define DMOV8064_CE_OUT_CHAN       1
 #define DMOV8064_CE_OUT_CRCI       15
 
-#define DMOV8064_TSIF_CHAN         2
-#define DMOV8064_TSIF_CRCI         1
+
+
+
+
+
+
+
+#define DMOV8064_TSIF_CHAN 2
+#define DMOV8064_TSIF_CRCI 11
+
+
 
 /* channels for APQ8064 SGLTE*/
 #define DMOV_APQ8064_HSUART_GSBI4_TX_CHAN	11

@@ -9,6 +9,17 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
+
+
+
+
+
+
 
 #ifndef __PM8XXX_BMS_H
 #define __PM8XXX_BMS_H
@@ -26,6 +37,7 @@ struct pm8xxx_bms_core_data {
 	unsigned int	ref1p25v_channel;
 	unsigned int	batt_id_channel;
 };
+
 
 /**
  * struct pm8921_bms_platform_data -
@@ -81,6 +93,7 @@ struct pm8921_bms_platform_data {
 	int				low_ocv_correction_limit_uv;
 	int				hold_soc_est;
 };
+
 
 #if defined(CONFIG_PM8921_BMS) || defined(CONFIG_PM8921_BMS_MODULE)
 /**

@@ -12,6 +12,25 @@
  * Public License ("GPL") as published by the Free Software Foundation,
  * either version 2 of that License or (at your option) any later version.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* #define VERBOSE_DEBUG */
 
@@ -80,6 +99,9 @@ struct f_acm {
 static unsigned int no_acm_tty_ports;
 static unsigned int no_acm_sdio_ports;
 static unsigned int no_acm_smd_ports;
+
+static unsigned int no_acm_hsic_sports;
+
 static unsigned int nr_acm_ports;
 static unsigned int no_acm_hsic_sports;
 
@@ -986,7 +1008,11 @@ int acm_bind_config(struct usb_configuration *c, u8 port_num)
 /**
  * acm_init_port - bind a acm_port to its transport
  */
-static int acm_init_port(int port_num, const char *name)
+
+
+
+static int acm_init_port(int port_num, const char *name, const char *port_name)
+
 {
 	enum transport_type transport;
 
@@ -1015,6 +1041,10 @@ static int acm_init_port(int port_num, const char *name)
 		break;
 	case USB_GADGET_XPORT_HSIC:
 		/*client port number will be updated in acm_port_setup*/
+                
+                ghsic_ctrl_set_port_name(port_name, name);
+                ghsic_data_set_port_name(port_name, name);
+                
 		no_acm_hsic_sports++;
 		break;
 	default:

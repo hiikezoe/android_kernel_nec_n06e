@@ -9,6 +9,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #include <linux/bitops.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -313,8 +317,10 @@ int wcd9xxx_irq_init(struct wcd9xxx *wcd9xxx)
 	}
 
 	if (ret)
+        {
 		mutex_destroy(&wcd9xxx->irq_lock);
 		mutex_destroy(&wcd9xxx->nested_irq_lock);
+        }
 
 	return ret;
 }

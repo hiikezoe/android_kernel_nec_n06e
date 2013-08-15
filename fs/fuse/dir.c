@@ -5,6 +5,10 @@
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
 */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include "fuse_i.h"
 
@@ -863,6 +867,7 @@ int fuse_update_attributes(struct inode *inode, struct kstat *stat,
 		if (stat) {
 			generic_fillattr(inode, stat);
 			stat->mode = fi->orig_i_mode;
+			stat->ino = fi->orig_ino;
 		}
 	}
 

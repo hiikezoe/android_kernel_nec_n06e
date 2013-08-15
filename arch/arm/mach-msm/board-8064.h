@@ -9,6 +9,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifndef __ARCH_ARM_MACH_MSM_BOARD_APQ8064_H
 #define __ARCH_ARM_MACH_MSM_BOARD_APQ8064_H
@@ -87,6 +91,9 @@ extern struct msm_camera_board_info apq8064_camera_board_info;
 void apq8064_init_cam(void);
 
 #define APQ_8064_GSBI1_QUP_I2C_BUS_ID 0
+
+#define APQ_8064_GSBI2_QUP_I2C_BUS_ID 2
+
 #define APQ_8064_GSBI3_QUP_I2C_BUS_ID 3
 #define APQ_8064_GSBI4_QUP_I2C_BUS_ID 4
 #define APQ_8064_GSBI5_QUP_I2C_BUS_ID 5

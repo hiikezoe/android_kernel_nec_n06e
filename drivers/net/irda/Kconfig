@@ -1,3 +1,7 @@
+#/***********************************************************************/
+#/* Modified by                                                         */
+#/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+#/***********************************************************************/
 menu "Infrared-port device drivers"
 	depends on IRDA!=n
 
@@ -195,6 +199,18 @@ config ACT200L_DONGLE
 	  port connector, and can currently only be used by IrTTY.
 	  To activate support for ACTiSYS IR-200L dongle you will have to
 	  start irattach like this: "irattach -d act200l".
+
+
+
+config MSM_SIR
+		tristate "msm7x30 sir"
+		depends on IRTTY_SIR && DONGLE && IRDA && EXPERIMENTAL
+		help
+		  Say Y here if you want to build support for the msms7x30 sir.
+		  If you want to compile it as a module, choose M here.
+
+
+
 
 config KINGSUN_DONGLE
 	tristate "KingSun/DonShine DS-620 IrDA-USB dongle"

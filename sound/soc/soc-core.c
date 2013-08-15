@@ -21,6 +21,10 @@
  *   o Add more codecs and platforms to ensure good API coverage.
  *   o Support TDM on PCM and I2S
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 #include <linux/moduleparam.h>
@@ -1884,6 +1888,19 @@ static struct platform_driver soc_driver = {
 	.remove		= soc_remove,
 };
 
+
+int snd_soc_codec_cal_volume(struct snd_soc_codec *codec,
+				    unsigned int reg)
+{
+	if (codec->cal_volume) {
+		return codec->cal_volume(codec, reg);
+	} else {
+		return 0;
+	}
+}
+EXPORT_SYMBOL_GPL(snd_soc_codec_cal_volume);
+
+
 /**
  * snd_soc_codec_volatile_register: Report if a register is volatile.
  *
@@ -2791,6 +2808,21 @@ int snd_soc_put_volsw_s8(struct snd_kcontrol *kcontrol,
 	unsigned int val, val2, val_mask;
 
 	val = ((ucontrol->value.integer.value[0]+min) & 0xff) << shift;
+
+{
+	signed char adj;
+	adj = (signed char)snd_soc_codec_cal_volume(codec, reg);
+	val += (adj & 0xff);
+	if((signed char)val > (signed char)mc->max) {
+		pr_debug("MAX OVER \n");
+		val = mc->max;
+	}else if((signed char)val < (signed char)mc->min) {
+		pr_debug("MIN UNDER \n");
+		val = mc->min;
+	}
+	pr_debug("%s adj:%d v:%d", __func__, adj, val);
+}
+
 	val_mask = 0xff << shift;
 	if (shift != rshift) {
 		val2 = (ucontrol->value.integer.value[1]+min) & 0xff;
@@ -3598,6 +3630,10 @@ int snd_soc_register_codec(struct device *dev,
 	codec->volatile_register = codec_drv->volatile_register;
 	codec->readable_register = codec_drv->readable_register;
 	codec->writable_register = codec_drv->writable_register;
+
+	codec->cal_volume = codec_drv->cal_volume;
+
+
 	codec->dapm.bias_level = SND_SOC_BIAS_OFF;
 	codec->dapm.dev = dev;
 	codec->dapm.codec = codec;
@@ -3635,6 +3671,10 @@ int snd_soc_register_codec(struct device *dev,
 			codec->readable_register = snd_soc_default_readable_register;
 		if (!codec->writable_register)
 			codec->writable_register = snd_soc_default_writable_register;
+
+		if (!codec->cal_volume)
+			codec->cal_volume = snd_soc_codec_cal_volume;
+
 	}
 
 	for (i = 0; i < num_dai; i++) {

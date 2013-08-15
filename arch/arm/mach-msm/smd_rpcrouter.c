@@ -14,6 +14,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 /* TODO: handle cases where smd_write() will tempfail due to full fifo */
 /* TODO: thread priority? schedule a work to bump it? */
@@ -1350,10 +1354,21 @@ static int msm_rpc_write_pkt(
 
 	mutex_lock(&xprt_info_list_lock);
 	xprt_info = rpcrouter_get_xprt_info(hdr->dst_pid);
-	if (!xprt_info) {
+
+
+	if (xprt_info == NULL) {
+		printk("%s : xprt_info = NULL, dst_pid = %d\n", __func__, hdr->dst_pid);
+		needed = sizeof(*hdr) + hdr->size;
 		mutex_unlock(&xprt_info_list_lock);
-		return -ENETRESET;
+		return needed;
 	}
+
+
+
+
+
+
+
 	spin_lock_irqsave(&xprt_info->lock, flags);
 	mutex_unlock(&xprt_info_list_lock);
 	spin_lock(&ept->restart_lock);

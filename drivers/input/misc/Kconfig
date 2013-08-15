@@ -1,6 +1,10 @@
 #
 # Input misc drivers configuration
 #
+#/***********************************************************************/
+#/* Modified by                                                         */
+#/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+#/***********************************************************************/
 menuconfig INPUT_MISC
 	bool "Miscellaneous devices"
 	help
@@ -673,5 +677,11 @@ config BMP18X_I2C
 
          To compile this driver as a module, choose M here: the
          module will be called bmp18x-i2c.
+
+config INPUT_ANALOGDEVICE_ADUX1001_NCM
+	tristate "ANALOGDEVICES haptics device support driver."
+	depends on I2C_QUP
+	help
+	  Say Y here if you have a I2C/PWM haptics.
 
 endif

@@ -29,6 +29,10 @@
  *     MA 02111-1307 USA
  *
  ********************************************************************/
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/export.h>
 
@@ -322,14 +326,38 @@ void irda_init_max_qos_capabilies(struct qos_info *qos)
 	sysctl_max_noreply_time = index_value(i, link_disc_times);
 
 	/* LSB is first byte, MSB is second byte */
-	qos->baud_rate.bits    &= 0x03ff;
 
-	qos->window_size.bits     = 0x7f;
-	qos->min_turn_time.bits   = 0xff;
-	qos->max_turn_time.bits   = 0x0f;
+
+
+
+	qos->baud_rate.bits    &= 0x003e;
+							
+							
+							
+							
+							
+
+	qos->window_size.bits     = 0x01; 
+	qos->min_turn_time.bits   = 0x07;
+	qos->max_turn_time.bits   = 0x01;
 	qos->data_size.bits       = 0x3f;
-	qos->link_disc_time.bits &= 0xff;
-	qos->additional_bofs.bits = 0xff;
+	qos->link_disc_time.bits &= 0x03;
+	qos->additional_bofs.bits = 0x80;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }
 EXPORT_SYMBOL(irda_init_max_qos_capabilies);
 

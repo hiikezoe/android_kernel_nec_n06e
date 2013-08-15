@@ -7,8 +7,13 @@
  *  Copyright (c) 1999 Martin Mares <mj@ucw.cz>
  *  (and others)
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/types.h>
+#include <linux/kconfig.h>
 #include <linux/kernel.h>
 #include <linux/pci.h>
 #include <linux/init.h>
@@ -74,7 +79,9 @@
 #define	NB_PIF0_PWRDOWN_1	0x01100013
 
 #define USB_INTEL_XUSB2PR      0xD0
+#define USB_INTEL_USB2PRM      0xD4
 #define USB_INTEL_USB3_PSSEN   0xD8
+#define USB_INTEL_USB3PRM      0xDC
 
 static struct amd_chipset_info {
 	struct pci_dev	*nb_dev;
@@ -564,19 +571,19 @@ static void __devinit ehci_bios_handoff(struct pci_dev *pdev,
 	if (try_handoff && (cap & EHCI_USBLEGSUP_BIOS)) {
 		dev_dbg(&pdev->dev, "EHCI: BIOS handoff\n");
 
-#if 0
-/* aleksey_gorelov@phoenix.com reports that some systems need SMI forced on,
- * but that seems dubious in general (the BIOS left it off intentionally)
- * and is known to prevent some systems from booting.  so we won't do this
- * unless maybe we can determine when we're on a system that needs SMI forced.
- */
-		/* BIOS workaround (?): be sure the pre-Linux code
-		 * receives the SMI
-		 */
-		pci_read_config_dword(pdev, offset + EHCI_USBLEGCTLSTS, &val);
-		pci_write_config_dword(pdev, offset + EHCI_USBLEGCTLSTS,
-				       val | EHCI_USBLEGCTLSTS_SOOE);
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 		/* some systems get upset if this semaphore is
 		 * set for any other reason than forcing a BIOS
@@ -712,11 +719,27 @@ static int handshake(void __iomem *ptr, u32 mask, u32 done,
 	return -ETIMEDOUT;
 }
 
-bool usb_is_intel_switchable_xhci(struct pci_dev *pdev)
+#define PCI_DEVICE_ID_INTEL_LYNX_POINT_XHCI	0x8C31
+
+bool usb_is_intel_ppt_switchable_xhci(struct pci_dev *pdev)
 {
 	return pdev->class == PCI_CLASS_SERIAL_USB_XHCI &&
 		pdev->vendor == PCI_VENDOR_ID_INTEL &&
 		pdev->device == PCI_DEVICE_ID_INTEL_PANTHERPOINT_XHCI;
+}
+
+
+bool usb_is_intel_lpt_switchable_xhci(struct pci_dev *pdev)
+{
+	return pdev->class == PCI_CLASS_SERIAL_USB_XHCI &&
+		pdev->vendor == PCI_VENDOR_ID_INTEL &&
+		pdev->device == PCI_DEVICE_ID_INTEL_LYNX_POINT_XHCI;
+}
+
+bool usb_is_intel_switchable_xhci(struct pci_dev *pdev)
+{
+	return usb_is_intel_ppt_switchable_xhci(pdev) ||
+		usb_is_intel_lpt_switchable_xhci(pdev);
 }
 EXPORT_SYMBOL_GPL(usb_is_intel_switchable_xhci);
 
@@ -742,10 +765,31 @@ void usb_enable_xhci_ports(struct pci_dev *xhci_pdev)
 {
 	u32		ports_available;
 
-	ports_available = 0xffffffff;
+	
+
+
+
+	if (!IS_ENABLED(CONFIG_USB_XHCI_HCD)) {
+		dev_warn(&xhci_pdev->dev,
+				"CONFIG_USB_XHCI_HCD is turned off, "
+				"defaulting to EHCI.\n");
+		dev_warn(&xhci_pdev->dev,
+				"USB 3.0 devices will work at USB 2.0 speeds.\n");
+		return;
+	}
+
+	
+
+
+	pci_read_config_dword(xhci_pdev, USB_INTEL_USB3PRM,
+			&ports_available);
+
+	dev_dbg(&xhci_pdev->dev, "Configurable ports to enable SuperSpeed: 0x%x\n",
+			ports_available);
+
 	/* Write USB3_PSSEN, the USB 3.0 Port SuperSpeed Enable
-	 * Register, to turn on SuperSpeed terminations for all
-	 * available ports.
+	 * Register, to turn on SuperSpeed terminations for the
+	 * switchable ports.
 	 */
 	pci_write_config_dword(xhci_pdev, USB_INTEL_USB3_PSSEN,
 			cpu_to_le32(ports_available));
@@ -755,7 +799,16 @@ void usb_enable_xhci_ports(struct pci_dev *xhci_pdev)
 	dev_dbg(&xhci_pdev->dev, "USB 3.0 ports that are now enabled "
 			"under xHCI: 0x%x\n", ports_available);
 
-	ports_available = 0xffffffff;
+	
+
+
+
+	pci_read_config_dword(xhci_pdev, USB_INTEL_USB2PRM,
+			&ports_available);
+
+	dev_dbg(&xhci_pdev->dev, "Configurable USB 2.0 ports to hand over to xCHI: 0x%x\n",
+			ports_available);
+
 	/* Write XUSB2PR, the xHC USB 2.0 Port Routing Register, to
 	 * switch the USB 2.0 power and data lines over to the xHCI
 	 * host.
@@ -785,12 +838,12 @@ static void __devinit quirk_usb_handoff_xhci(struct pci_dev *pdev)
 	void __iomem *op_reg_base;
 	u32 val;
 	int timeout;
+	int len = pci_resource_len(pdev, 0);
 
 	if (!mmio_resource_enabled(pdev, 0))
 		return;
 
-	base = ioremap_nocache(pci_resource_start(pdev, 0),
-				pci_resource_len(pdev, 0));
+	base = ioremap_nocache(pci_resource_start(pdev, 0), len);
 	if (base == NULL)
 		return;
 
@@ -800,9 +853,17 @@ static void __devinit quirk_usb_handoff_xhci(struct pci_dev *pdev)
 	 */
 	ext_cap_offset = xhci_find_next_cap_offset(base, XHCI_HCC_PARAMS_OFFSET);
 	do {
+		if ((ext_cap_offset + sizeof(val)) > len) {
+			
+			dev_warn(&pdev->dev,
+				 "xHCI controller failing to respond");
+			return;
+		}
+
 		if (!ext_cap_offset)
 			/* We've reached the end of the extended capabilities */
 			goto hc_init;
+
 		val = readl(base + ext_cap_offset);
 		if (XHCI_EXT_CAPS_ID(val) == XHCI_EXT_CAPS_LEGACY)
 			break;
@@ -833,9 +894,10 @@ static void __devinit quirk_usb_handoff_xhci(struct pci_dev *pdev)
 	/* Disable any BIOS SMIs and clear all SMI events*/
 	writel(val, base + ext_cap_offset + XHCI_LEGACY_CONTROL_OFFSET);
 
+hc_init:
 	if (usb_is_intel_switchable_xhci(pdev))
 		usb_enable_xhci_ports(pdev);
-hc_init:
+
 	op_reg_base = base + XHCI_HC_LENGTH(readl(base));
 
 	/* Wait for the host controller to be ready before writing any

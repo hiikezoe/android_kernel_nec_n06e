@@ -20,6 +20,10 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #include <linux/module.h>
 #include <linux/tty.h>
 #include <linux/tty_flip.h>
@@ -2289,6 +2293,7 @@ void uart_unregister_driver(struct uart_driver *drv)
 	tty_unregister_driver(p);
 	put_tty_driver(p);
 	kfree(drv->state);
+	drv->state = NULL;
 	drv->tty_driver = NULL;
 }
 

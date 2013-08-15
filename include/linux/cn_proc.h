@@ -14,11 +14,17 @@
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifndef CN_PROC_H
 #define CN_PROC_H
 
 #include <linux/types.h>
+
+#define PROC_EXE_LEN 64
 
 /*
  * Userspace sends this enum to register with the kernel that it is listening
@@ -72,11 +78,15 @@ struct proc_event {
 			__kernel_pid_t parent_tgid;
 			__kernel_pid_t child_pid;
 			__kernel_pid_t child_tgid;
+            char exe[PROC_EXE_LEN];
 		} fork;
 
 		struct exec_proc_event {
 			__kernel_pid_t process_pid;
 			__kernel_pid_t process_tgid;
+            __u32 process_euid;
+            __u32 process_egid;
+            char exe[PROC_EXE_LEN];
 		} exec;
 
 		struct id_proc_event {
@@ -90,6 +100,7 @@ struct proc_event {
 				__u32 euid;
 				__u32 egid;
 			} e;
+            char exe[PROC_EXE_LEN];
 		} id;
 
 		struct sid_proc_event {

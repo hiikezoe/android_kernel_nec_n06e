@@ -7,6 +7,10 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #include <linux/module.h>
 #include <linux/mm.h>
 #include <linux/pagemap.h>
@@ -231,8 +235,6 @@ void __sync_icache_dcache(pte_t pteval)
 	struct page *page;
 	struct address_space *mapping;
 
-	if (!pte_present_user(pteval))
-		return;
 	if (cache_is_vipt_nonaliasing() && !pte_exec(pteval))
 		/* only flush non-aliasing VIPT caches for exec mappings */
 		return;

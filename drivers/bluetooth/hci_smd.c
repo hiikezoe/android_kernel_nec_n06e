@@ -17,6 +17,10 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -43,6 +47,10 @@
 
 #define RX_Q_MONITOR		(500)	/* 500 milli second */
 #define HCI_REGISTER_SET	0
+
+
+#define DVE021_BT_ALARM_HISTORY_ID          0x47        
+
 
 /* SSR state machine to take care of back to back SSR requests
  * and handling the incomming BT on/off,Airplane mode toggling and
@@ -647,6 +655,11 @@ static int hcismd_set_enable(const char *val, struct kernel_param *kp)
 		else if (ssr_state)
 			BT_ERR("SSR is in progress,state is : %x", ssr_state);
 	break;
+	
+	case 99:
+		printk(KERN_ERR "[T][ARM]Event:0x%02X Info:0x%02X\n", DVE021_BT_ALARM_HISTORY_ID, 0x00);
+	break;
+	
 	default:
 		ret = -EFAULT;
 	}

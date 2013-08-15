@@ -13,6 +13,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifndef __ARCH_ARM_MACH_MSM_DEVICES_H
 #define __ARCH_ARM_MACH_MSM_DEVICES_H
@@ -84,19 +88,41 @@ extern struct platform_device msm8960_device_cache_erp;
 extern struct platform_device msm8960_device_ebi1_ch0_erp;
 extern struct platform_device msm8960_device_ebi1_ch1_erp;
 
-extern struct platform_device apq8064_device_uart_gsbi1;
-extern struct platform_device apq8064_device_uart_gsbi3;
-extern struct platform_device apq8064_device_uart_gsbi4;
+
+
+
+
+
+
+
+
+
+
 extern struct platform_device apq8064_device_uartdm_gsbi4;
-extern struct platform_device apq8064_device_uart_gsbi7;
+
+
+extern struct platform_device msm_device_gsbi7_uart_dm;
+
+
+
+
 extern struct platform_device apq8064_device_qup_i2c_gsbi1;
+
+extern struct platform_device apq8064_device_qup_i2c_gsbi2;
+
 extern struct platform_device apq8064_device_qup_i2c_gsbi3;
 extern struct platform_device apq8064_device_qup_i2c_gsbi4;
-extern struct platform_device apq8064_device_qup_spi_gsbi5;
+
+
+extern struct platform_device apq8064_device_qup_i2c_gsbi5;
+
 extern struct platform_device apq8064_slim_ctrl;
 extern struct platform_device apq8064_device_ssbi_pmic1;
 extern struct platform_device apq8064_device_ssbi_pmic2;
 extern struct platform_device apq8064_device_cache_erp;
+
+extern struct platform_device apq8064_device_tsif[2];
+
 
 extern struct platform_device msm9615_device_uart_gsbi4;
 extern struct platform_device msm9615_device_qup_i2c_gsbi5;
@@ -367,13 +393,13 @@ extern struct platform_device apq8064_rpm_log_device;
 extern struct platform_device msm_device_rng;
 extern struct platform_device apq8064_device_rng;
 
-#if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || \
-		defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE)
+#if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || 		defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE)
+
 extern struct platform_device msm9615_qcrypto_device;
 #endif
 
-#if defined(CONFIG_CRYPTO_DEV_QCEDEV) || \
-		defined(CONFIG_CRYPTO_DEV_QCEDEV_MODULE)
+#if defined(CONFIG_CRYPTO_DEV_QCEDEV) || 		defined(CONFIG_CRYPTO_DEV_QCEDEV_MODULE)
+
 extern struct platform_device msm9615_qcedev_device;
 #endif
 extern struct platform_device msm8960_device_watchdog;

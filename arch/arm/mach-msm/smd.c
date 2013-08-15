@@ -14,6 +14,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/platform_device.h>
 #include <linux/module.h>
@@ -47,19 +51,19 @@
 #include "smd_private.h"
 #include "modem_notifier.h"
 
-#if defined(CONFIG_ARCH_QSD8X50) || defined(CONFIG_ARCH_MSM8X60) \
-	|| defined(CONFIG_ARCH_MSM8960) || defined(CONFIG_ARCH_FSM9XXX) \
-	|| defined(CONFIG_ARCH_MSM9615)	|| defined(CONFIG_ARCH_APQ8064)
+#if defined(CONFIG_ARCH_QSD8X50) || defined(CONFIG_ARCH_MSM8X60) 	|| defined(CONFIG_ARCH_MSM8960) || defined(CONFIG_ARCH_FSM9XXX) 	|| defined(CONFIG_ARCH_MSM9615)	|| defined(CONFIG_ARCH_APQ8064)
+
+
 #define CONFIG_QDSP6 1
 #endif
 
-#if defined(CONFIG_ARCH_MSM8X60) || defined(CONFIG_ARCH_MSM8960) \
-	|| defined(CONFIG_ARCH_APQ8064)
+#if defined(CONFIG_ARCH_MSM8X60) || defined(CONFIG_ARCH_MSM8960) 	|| defined(CONFIG_ARCH_APQ8064)
+
 #define CONFIG_DSPS 1
 #endif
 
-#if defined(CONFIG_ARCH_MSM8960) \
-	|| defined(CONFIG_ARCH_APQ8064)
+#if defined(CONFIG_ARCH_MSM8960) 	|| defined(CONFIG_ARCH_APQ8064)
+
 #define CONFIG_WCNSS 1
 #define CONFIG_DSPS_SMSM 1
 #endif
@@ -371,6 +375,47 @@ static int smd_module_inited;
 static RAW_NOTIFIER_HEAD(smd_module_init_notifier_list);
 static DEFINE_MUTEX(smd_module_init_notifier_lock);
 static void smd_module_init_notify(uint32_t state, void *data);
+
+
+
+#define MESSAGE_BUF_ADDRESS     MSM_OEM_DVE021_DB_UINIT_BASE
+
+#define MESSAGE_BUF_SIZE_MAX    (1024)
+
+#define SYSLOG_BUF_ADDRESS      (MSM_OEM_DVE021_DB_UINIT_BASE + SZ_1M)
+
+#define SYSLOG_BUF_SIZE_MAX     (1<<17)
+
+
+#define OEM_DVE021_FATAL_FLG_ON  0x10ad10ad  
+
+#define OEM_DVE021_FATAL_FLG_DISABLE  0xde10de10  
+
+
+
+#define OEM_DVE021_FATAL_MODE_INIT    0x494E4954   
+#define OEM_DVE021_FATAL_MODE_APPS    0x41505053   
+#define OEM_DVE021_FATAL_MODE_MODEM   0x6D6F6431   
+#define OEM_DVE021_FATAL_MODE_DSP     0x64737073   
+#define OEM_DVE021_FATAL_MODE_LPASS   0x4C704173   
+#define OEM_DVE021_FATAL_MODE_RIVA    0x52495641   
+
+#define OEM_DVE021_FATAL_MODE_MDM     0x394D444D   
+
+#define OEM_DVE021_FATAL_MODE_ERR     0x65727258   
+static uint32_t DVE022_fatal_mode_flg = OEM_DVE021_FATAL_MODE_INIT;
+
+
+void set_dload_mode(int on);
+
+void DVE022_set_fatal_flg(unsigned int fatal_flag);
+
+unsigned int DVE022_get_fatal_flg(void);
+
+
+extern int DVE022_syslog(char *buf, int len);
+extern int DVE022_pullout_pc(char *buf, int len);
+
 
 static inline void smd_write_intr(unsigned int val,
 				const void __iomem *addr)
@@ -3634,3 +3679,172 @@ module_init(msm_smd_init);
 MODULE_DESCRIPTION("MSM Shared Memory Core");
 MODULE_AUTHOR("Brian Swetland <swetland@google.com>");
 MODULE_LICENSE("GPL");
+
+
+int DVE022_set_fatal_mode(int mode)
+{
+    
+    if( (DVE022_fatal_mode_flg == OEM_DVE021_FATAL_MODE_APPS)  ||
+        (DVE022_fatal_mode_flg == OEM_DVE021_FATAL_MODE_MODEM) ||
+        (DVE022_fatal_mode_flg == OEM_DVE021_FATAL_MODE_DSP)   ||
+        (DVE022_fatal_mode_flg == OEM_DVE021_FATAL_MODE_LPASS) ||
+        (DVE022_fatal_mode_flg == OEM_DVE021_FATAL_MODE_RIVA)  )
+    {
+        return OEM_DVE021_FATAL_MODE_ERR;
+    }
+
+    
+    DVE022_fatal_mode_flg = mode;
+    
+    return DVE022_fatal_mode_flg;
+}
+EXPORT_SYMBOL(DVE022_set_fatal_mode);
+
+int DVE022_get_fatal_mode(void)
+{
+    return DVE022_fatal_mode_flg;
+}
+EXPORT_SYMBOL(DVE022_get_fatal_mode);
+
+
+
+
+
+
+#define MESSAGE_HEAD "APP "
+void DVE022_handle_fatalA(char *message,int message_len)
+{
+    
+    int n;
+    char *ptr;
+    int rest;
+    int mode            = OEM_DVE021_FATAL_MODE_INIT;
+    uint32_t fatal_flag = OEM_DVE021_FATAL_FLG_ON;
+
+    ptr = (char*)MESSAGE_BUF_ADDRESS;
+    rest = MESSAGE_BUF_SIZE_MAX;
+
+    mode = DVE022_get_fatal_mode();
+    
+
+
+    if ( mode != OEM_DVE021_FATAL_MODE_MODEM
+    &&   mode != OEM_DVE021_FATAL_MODE_MDM
+        )
+
+    {
+        
+        smsm_reset_modem(SMSM_RESET);
+        
+        memset((void *)MESSAGE_BUF_ADDRESS, 0x00, MESSAGE_BUF_SIZE_MAX);
+    }
+    
+    
+    memset((void *)SYSLOG_BUF_ADDRESS, 0x00, SYSLOG_BUF_SIZE_MAX);
+
+    
+    if(mode == OEM_DVE021_FATAL_MODE_APPS)
+    {
+        
+        n=strlen(MESSAGE_HEAD);
+        if((n>=0)&&(n<=rest))
+        {
+            strncpy(ptr,MESSAGE_HEAD,n);
+            ptr  += n;
+            rest -= n;
+        };
+
+        
+        if((message_len>=0)&&(message_len<=rest))
+        {
+
+            
+            strncpy(ptr,message,message_len);
+            ptr  += message_len;
+            rest -= message_len;
+        }
+
+        n=strlen("\n");
+        if((n>=0)&&(n<=rest))
+        {
+            
+            strncpy(ptr,"\n",n);
+            ptr  += n;
+            rest -= n;
+        };
+
+        
+        if(rest>=0)
+        {
+            n=DVE022_pullout_pc(ptr,rest);
+            if(n>=0){
+                ptr  += n;
+                rest -= n;
+                
+                if(rest>0){
+                    memset((void*)ptr,0,rest);
+                }
+            }
+        };
+    }
+    
+    else if(mode == OEM_DVE021_FATAL_MODE_MODEM)
+    {
+        if(memcmp((void*)ptr,"Q6SW",sizeof("Q6SW")-1)!= 0)
+        {
+            strncpy(ptr,"Q6SW Fatal exception",sizeof("Q6SW Fatal exception"));
+        }
+    }
+
+    
+    else if(mode == OEM_DVE021_FATAL_MODE_MDM)
+    {
+        strncpy(ptr,"MDM Fatal exception",sizeof("MDM Fatal exception"));
+    }
+
+    
+    else if(mode == OEM_DVE021_FATAL_MODE_DSP)
+    {
+        strncpy(ptr,"DSP Fatal exception",sizeof("DSP Fatal exception"));
+    }
+    
+    else if(mode == OEM_DVE021_FATAL_MODE_LPASS)
+    {
+        strncpy(ptr,"LPASS Fatal exception",sizeof("LPASS Fatal exception"));
+    }
+    
+    else if(mode == OEM_DVE021_FATAL_MODE_RIVA)
+    {
+        strncpy(ptr,"RIVA Fatal exception",sizeof("RIVA Fatal exception"));
+    }
+    
+    else
+    {
+        strncpy(ptr,"OTHER Fatal exception",sizeof("OTHER Fatal exception"));
+    }
+
+    
+    DVE022_syslog((char*)SYSLOG_BUF_ADDRESS,SYSLOG_BUF_SIZE_MAX);
+
+    
+
+    if( DVE022_get_fatal_flg() != OEM_DVE021_FATAL_FLG_DISABLE)
+    {
+
+        
+        DVE022_set_fatal_flg(fatal_flag);
+
+    }
+
+
+
+    
+    set_dload_mode(1);
+
+
+
+
+
+}
+EXPORT_SYMBOL(DVE022_handle_fatalA);
+

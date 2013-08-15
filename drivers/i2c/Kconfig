@@ -1,6 +1,10 @@
 #
 # I2C subsystem configuration
 #
+#/***********************************************************************/
+#/* Modified by                                                         */
+#/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+#/***********************************************************************/
 
 menuconfig I2C
 	tristate "I2C support"
@@ -86,6 +90,10 @@ config I2C_SMBUS
 
 source drivers/i2c/algos/Kconfig
 source drivers/i2c/busses/Kconfig
+
+
+source drivers/i2c/chips/Kconfig
+
 
 config I2C_DEBUG_CORE
 	bool "I2C Core debugging messages"

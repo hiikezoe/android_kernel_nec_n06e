@@ -10,6 +10,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/workqueue.h>
 #include <linux/delay.h>
@@ -222,7 +226,7 @@ static int msm_mctl_set_vfe_output_mode(struct msm_cam_media_controller
 		pr_err("%s Copy from user failed ", __func__);
 		rc = -EFAULT;
 	} else {
-		pr_info("%s: mctl=0x%p, vfe output mode =0x%x",
+		CDBG("%s: mctl=0x%p, vfe output mode =0x%x",
 		  __func__, p_mctl, p_mctl->vfe_output_mode);
 	}
 	return rc;
@@ -592,6 +596,9 @@ static int msm_mctl_open(struct msm_cam_media_controller *p_mctl,
 			pr_err("%s: sensor powerup failed: %d\n", __func__, rc);
 			goto sensor_sdev_failed;
 		}
+        
+        pm_obs_a_camera(PM_OBS_CAMERA_CAM1_MODE, TRUE);
+        
 
 		if (p_mctl->act_sdev)
 			rc = v4l2_subdev_call(p_mctl->act_sdev,
@@ -630,6 +637,9 @@ msm_csi_version:
 act_power_up_failed:
 	if (v4l2_subdev_call(p_mctl->sensor_sdev, core, s_power, 0) < 0)
 		pr_err("%s: sensor powerdown failed: %d\n", __func__, rc);
+    
+    pm_obs_a_camera(PM_OBS_CAMERA_CAM1_MODE, FALSE);
+    
 sensor_sdev_failed:
 register_sdev_failed:
 	wake_unlock(&p_mctl->wake_lock);
@@ -681,6 +691,11 @@ static void msm_mctl_release(struct msm_cam_media_controller *p_mctl)
 
 	v4l2_subdev_call(p_mctl->ispif_sdev,
 			core, ioctl, VIDIOC_MSM_ISPIF_REL, NULL);
+
+    
+    pm_obs_a_camera(PM_OBS_CAMERA_CAM1_MODE, FALSE);
+    
+
 	pm_qos_update_request(&p_mctl->pm_qos_req_list,
 				PM_QOS_DEFAULT_VALUE);
 	pm_qos_remove_request(&p_mctl->pm_qos_req_list);

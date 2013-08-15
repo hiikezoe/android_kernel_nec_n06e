@@ -21,6 +21,10 @@
  * 30-07-98: Dead keys redone, aeb@cwi.nl.
  * 21-08-02: Converted to input API, major cleanup. (Vojtech Pavlik)
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
@@ -1053,13 +1057,10 @@ static int kbd_update_leds_helper(struct input_handle *handle, void *data)
  */
 int vt_get_leds(int console, int flag)
 {
-	unsigned long flags;
 	struct kbd_struct * kbd = kbd_table + console;
 	int ret;
 
-	spin_lock_irqsave(&kbd_event_lock, flags);
 	ret = vc_kbd_led(kbd, flag);
-	spin_unlock_irqrestore(&kbd_event_lock, flags);
 
 	return ret;
 }
@@ -1145,11 +1146,11 @@ static void kbd_bh(unsigned long dummy)
 
 DECLARE_TASKLET_DISABLED(keyboard_tasklet, kbd_bh, 0);
 
-#if defined(CONFIG_X86) || defined(CONFIG_IA64) || defined(CONFIG_ALPHA) ||\
-    defined(CONFIG_MIPS) || defined(CONFIG_PPC) || defined(CONFIG_SPARC) ||\
-    defined(CONFIG_PARISC) || defined(CONFIG_SUPERH) ||\
-    (defined(CONFIG_ARM) && defined(CONFIG_KEYBOARD_ATKBD) && !defined(CONFIG_ARCH_RPC)) ||\
-    defined(CONFIG_AVR32)
+#if defined(CONFIG_X86) || defined(CONFIG_IA64) || defined(CONFIG_ALPHA) ||    defined(CONFIG_MIPS) || defined(CONFIG_PPC) || defined(CONFIG_SPARC) ||    defined(CONFIG_PARISC) || defined(CONFIG_SUPERH) ||    (defined(CONFIG_ARM) && defined(CONFIG_KEYBOARD_ATKBD) && !defined(CONFIG_ARCH_RPC)) ||    defined(CONFIG_AVR32)
+
+
+
+
 
 #define HW_RAW(dev) (test_bit(EV_MSC, dev->evbit) && test_bit(MSC_RAW, dev->mscbit) &&\
 			((dev)->id.bustype == BUS_I8042) && ((dev)->id.vendor == 0x0001) && ((dev)->id.product == 0x0001))

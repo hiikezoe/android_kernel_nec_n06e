@@ -1,6 +1,10 @@
 /*
  *  Copyright (C) 1991, 1992  Linus Torvalds
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 /*
  * Hopefully this will be a rather complete VT102 implementation.
@@ -187,7 +191,13 @@ static DECLARE_WORK(console_work, console_callback);
  * want_console is the console we want to switch to,
  * saved_* variants are for save/restore around kernel debugger enter/leave
  */
-int fg_console;
+
+
+volatile int fg_console;
+
+
+
+
 int last_console;
 int want_console = -1;
 static int saved_fg_console;
@@ -1432,11 +1442,11 @@ static void set_mode(struct vc_data *vc, int on_off)
 				break;
 			case 3:	/* 80/132 mode switch unimplemented */
 				vc->vc_deccolm = on_off;
-#if 0
-				vc_resize(deccolm ? 132 : 80, vc->vc_rows);
-				/* this alone does not suffice; some user mode
-				   utility has to change the hardware regs */
-#endif
+
+
+
+
+
 				break;
 			case 5:			/* Inverted screen on/off */
 				if (vc->vc_decscnm != on_off) {
@@ -3472,6 +3482,19 @@ int con_debug_enter(struct vc_data *vc)
 		};
 		if (kdbgetintenv(setargs[0], &linecount)) {
 			snprintf(lns, 4, "%i", vc->vc_rows);
+			kdb_set(2, setargs);
+		}
+	}
+	if (vc->vc_cols < 999) {
+		int colcount;
+		char cols[4];
+		const char *setargs[3] = {
+			"set",
+			"COLUMNS",
+			cols,
+		};
+		if (kdbgetintenv(setargs[0], &colcount)) {
+			snprintf(cols, 4, "%i", vc->vc_cols);
 			kdb_set(2, setargs);
 		}
 	}

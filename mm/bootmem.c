@@ -8,6 +8,10 @@
  * Access to this subsystem has to be serialized externally (which is true
  * for the boot process anyway).
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #include <linux/init.h>
 #include <linux/pfn.h>
 #include <linux/slab.h>
@@ -766,13 +770,17 @@ void * __init alloc_bootmem_section(unsigned long size,
 				    unsigned long section_nr)
 {
 	bootmem_data_t *bdata;
-	unsigned long pfn, goal;
+	unsigned long pfn, goal, limit;
 
 	pfn = section_nr_to_pfn(section_nr);
 	goal = pfn << PAGE_SHIFT;
+	limit = section_nr_to_pfn(section_nr + 1) << PAGE_SHIFT;
 	bdata = &bootmem_node_data[early_pfn_to_nid(pfn)];
 
-	return alloc_bootmem_core(bdata, size, SMP_CACHE_BYTES, goal, 0);
+	if (goal + size > limit)
+		limit = 0;
+
+	return alloc_bootmem_core(bdata, size, SMP_CACHE_BYTES, goal, limit);
 }
 #endif
 

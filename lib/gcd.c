@@ -1,3 +1,7 @@
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #include <linux/kernel.h>
 #include <linux/gcd.h>
 #include <linux/export.h>
@@ -9,6 +13,9 @@ unsigned long gcd(unsigned long a, unsigned long b)
 
 	if (a < b)
 		swap(a, b);
+
+	if (!b)
+		return a;
 	while ((r = a % b) != 0) {
 		a = b;
 		b = r;

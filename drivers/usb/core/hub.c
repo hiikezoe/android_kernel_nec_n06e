@@ -7,6 +7,26 @@
  * (C) Copyright 2001 Brad Hards (bhards@bigpond.net.au)
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #include <linux/kernel.h>
 #include <linux/errno.h>
@@ -25,6 +45,7 @@
 #include <linux/mutex.h>
 #include <linux/freezer.h>
 #include <linux/usb/otg.h>
+#include <linux/random.h>
 
 #include <asm/uaccess.h>
 #include <asm/byteorder.h>
@@ -2038,6 +2059,14 @@ int usb_new_device(struct usb_device *udev)
 	/* Tell the world! */
 	announce_device(udev);
 
+	if (udev->serial)
+		add_device_randomness(udev->serial, strlen(udev->serial));
+	if (udev->product)
+		add_device_randomness(udev->product, strlen(udev->product));
+	if (udev->manufacturer)
+		add_device_randomness(udev->manufacturer,
+				      strlen(udev->manufacturer));
+
 	device_enable_async_suspend(&udev->dev);
 
 	/*
@@ -2189,12 +2218,16 @@ static unsigned hub_is_wusb(struct usb_hub *hub)
 static int hub_port_reset(struct usb_hub *hub, int port1,
 			struct usb_device *udev, unsigned int delay, bool warm);
 
-/* Is a USB 3.0 port in the Inactive state? */
-static bool hub_port_inactive(struct usb_hub *hub, u16 portstatus)
+
+
+
+static bool hub_port_warm_reset_required(struct usb_hub *hub, u16 portstatus)
 {
 	return hub_is_superspeed(hub->hdev) &&
-		(portstatus & USB_PORT_STAT_LINK_STATE) ==
-		USB_SS_PORT_LS_SS_INACTIVE;
+		(((portstatus & USB_PORT_STAT_LINK_STATE) ==
+		  USB_SS_PORT_LS_SS_INACTIVE) ||
+		 ((portstatus & USB_PORT_STAT_LINK_STATE) ==
+		  USB_SS_PORT_LS_COMP_MOD)) ;
 }
 
 static int hub_port_wait_reset(struct usb_hub *hub, int port1,
@@ -2230,7 +2263,7 @@ static int hub_port_wait_reset(struct usb_hub *hub, int port1,
 			 *
 			 * See https://bugzilla.kernel.org/show_bug.cgi?id=41752
 			 */
-			if (hub_port_inactive(hub, portstatus)) {
+			if (hub_port_warm_reset_required(hub, portstatus)) {
 				int ret;
 
 				if ((portchange & USB_PORT_STAT_C_CONNECTION))
@@ -2601,6 +2634,10 @@ int usb_port_suspend(struct usb_device *udev, pm_message_t msg)
 				USB_DEVICE_REMOTE_WAKEUP, 0,
 				NULL, 0,
 				USB_CTRL_SET_TIMEOUT);
+
+		
+		if (udev->usb2_hw_lpm_capable == 1)
+			usb_set_usb2_hardware_lpm(udev, 1);
 
 		/* System sleep transitions should never fail */
 		if (!PMSG_IS_AUTO(msg))
@@ -3060,6 +3097,9 @@ hub_port_init (struct usb_hub *hub, struct usb_device *udev, int port1,
 	const char		*speed;
 	int			devnum = udev->devnum;
 
+	unsigned short idVendor;
+
+
 	/* root hub ports have a slightly longer reset period
 	 * (from USB 2.0 spec, section 7.1.7.5)
 	 */
@@ -3199,6 +3239,9 @@ hub_port_init (struct usb_hub *hub, struct usb_device *udev, int port1,
 			}
 			udev->descriptor.bMaxPacketSize0 =
 					buf->bMaxPacketSize0;
+
+			idVendor = buf->idVendor;
+
 			kfree(buf);
 
 			/*
@@ -3206,7 +3249,11 @@ hub_port_init (struct usb_hub *hub, struct usb_device *udev, int port1,
 			 * second reset which results in failure due to
 			 * speed change.
 			 */
-			if (le16_to_cpu(buf->idVendor) != 0x1a0a) {
+
+			if (le16_to_cpu(idVendor) != 0x1a0a) {
+
+
+
 				retval = hub_port_reset(hub, port1, udev,
 							 delay, false);
 				if (retval < 0)	/* error or disconnect */
@@ -4071,9 +4118,7 @@ static void hub_events(void)
 			/* Warm reset a USB3 protocol port if it's in
 			 * SS.Inactive state.
 			 */
-			if (hub_is_superspeed(hub->hdev) &&
-				(portstatus & USB_PORT_STAT_LINK_STATE)
-					== USB_SS_PORT_LS_SS_INACTIVE) {
+			if (hub_port_warm_reset_required(hub, portstatus)) {
 				dev_dbg(hub_dev, "warm reset port %d\n", i);
 				hub_port_reset(hub, i, NULL,
 						HUB_BH_RESET_TIME, true);

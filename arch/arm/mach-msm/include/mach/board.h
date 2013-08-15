@@ -14,6 +14,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifndef __ASM_ARCH_MSM_BOARD_H
 #define __ASM_ARCH_MSM_BOARD_H
@@ -493,6 +497,9 @@ struct msm_hdmi_platform_data {
 	int (*init_irq)(void);
 	bool (*check_hdcp_hw_support)(void);
 	bool is_mhl_enabled;
+
+	const char *mhl_device;
+
 };
 
 struct msm_mhl_platform_data {
@@ -510,6 +517,9 @@ struct msm_mhl_platform_data {
 	/* GPIO no. for hdmi-mhl mux */
 	uint32_t gpio_hdmi_mhl_mux;
 	bool mhl_enabled;
+
+	int (*charging_enable)(int enable, int max_curr);
+
 };
 
 struct msm_i2c_platform_data {
@@ -597,8 +607,8 @@ void msm_pm_register_irqs(void);
 struct msm_usb_host_platform_data;
 int msm_add_host(unsigned int host,
 		struct msm_usb_host_platform_data *plat);
-#if defined(CONFIG_USB_FUNCTION_MSM_HSUSB) \
-	|| defined(CONFIG_USB_MSM_72K) || defined(CONFIG_USB_MSM_72K_MODULE)
+#if defined(CONFIG_USB_FUNCTION_MSM_HSUSB) 	|| defined(CONFIG_USB_MSM_72K) || defined(CONFIG_USB_MSM_72K_MODULE)
+
 void msm_hsusb_set_vbus_state(int online);
 #else
 static inline void msm_hsusb_set_vbus_state(int online) {}

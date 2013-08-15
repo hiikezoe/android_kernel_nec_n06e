@@ -10,6 +10,18 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
+
+
+
+
+
+
+
 
 #define pr_fmt(fmt) "%s: " fmt, __func__
 
@@ -2673,6 +2685,330 @@ static void pm8xxx_vreg_show_state(struct regulator_dev *rdev,
 	}
 }
 
+
+
+
+static char* pm8921_reg_name[] = {
+    "8921_l1",
+    "8921_l2",
+    "8921_l3",
+    "8921_l4",
+    "8921_l5",
+    "8921_l6",
+    "8921_l7",
+    "8921_l8",
+    "8921_l9",
+    "8921_l10",
+    "8921_l11",
+    "8921_l12",
+    "8921_l14",
+    "8921_l15",
+    "8921_l16",
+    "8921_l17",
+    "8921_l18",
+    "8921_l21",
+    "8921_l22",
+    "8921_l23",
+    "8921_l24",
+    "8921_l25",
+    "8921_l26",
+    "8921_l27",
+    "8921_l28",
+    "8921_l29",
+    "8921_s1",
+    "8921_s2",
+    "8921_s3",
+    "8921_s4",
+    "8921_s5",
+    "8921_s6",
+    "8921_s7",
+    "8921_s8",
+    "8921_lvs1",
+    "8921_lvs2",
+    "8921_lvs3",
+    "8921_lvs4",
+    "8921_lvs5",
+    "8921_lvs6",
+    "8921_lvs7",
+    "8921_usb_otg",
+    "8921_hdmi_mvs",
+    "8921_ncp"
+};
+
+
+static char* pm8821_reg_name[] = {
+    "8821_s1",
+    "8821_s2",
+};
+
+
+static struct regulator *ncm_regulator_get(enum pm8xxx_version version, u8 vreg_id)
+{
+    struct regulator *regulator = NULL;
+
+    switch(version) {
+    case PM8XXX_VERSION_8921:
+        if (ARRAY_SIZE(pm8921_reg_name) <= vreg_id)
+        {
+            pr_err("undeclared id [%d]\n", vreg_id);
+        } else
+        {
+            regulator = regulator_get(NULL, pm8921_reg_name[vreg_id]);
+            pr_info("[PM] get:%s.\n", pm8921_reg_name[vreg_id]);
+        }
+        break;
+    case PM8XXX_VERSION_8821:
+        if (ARRAY_SIZE(pm8821_reg_name) <= vreg_id)
+        {
+            pr_err("undeclared id [%d]\n", vreg_id);
+        }else
+        {
+            regulator = regulator_get(NULL, pm8821_reg_name[vreg_id]);
+            pr_info("[PM] get:%s.\n", pm8821_reg_name[vreg_id]);
+        }
+        break;
+    default:
+        pr_err("undeclared PMIC version [%d]\n", version);
+        break;
+    }
+
+    return regulator;
+}
+
+static int nc_pm8921_set_vreg_pull_down(struct regulator_dev *rdev, unsigned int enable)
+{
+    struct pm8xxx_vreg *vreg = rdev_get_drvdata(rdev);
+    int rc;
+
+    pr_info("[PM] %s: start.\n", vreg->rdesc.name);
+
+    vreg->pdata.pull_down_enable = enable;
+    
+    switch (vreg->type) {
+        case PM8XXX_REGULATOR_TYPE_PLDO:
+        case PM8XXX_REGULATOR_TYPE_NLDO:
+            rc = pm8xxx_vreg_masked_write(vreg, vreg->ctrl_addr,
+                  (vreg->pdata.pull_down_enable ? LDO_PULL_DOWN_ENABLE : 0),
+                  LDO_PULL_DOWN_ENABLE_MASK, &vreg->ctrl_reg);
+            if (rc)
+                vreg_err(vreg, "pm8xxx_vreg_masked_write failed, rc=%d\n", rc);
+            break;
+        case PM8XXX_REGULATOR_TYPE_NLDO1200:
+            rc = pm8xxx_vreg_masked_write(vreg, vreg->test_addr,
+                     (vreg->pdata.pull_down_enable ? NLDO1200_PULL_DOWN_ENABLE : 0)
+                     | REGULATOR_BANK_SEL(1) | REGULATOR_BANK_WRITE,
+                     NLDO1200_PULL_DOWN_ENABLE_MASK | REGULATOR_BANK_MASK,
+                     &vreg->test_reg[1]);
+                     
+            if (rc)
+                vreg_err(vreg, "pm8xxx_vreg_masked_write failed, rc=%d\n", rc);
+            break;
+        case PM8XXX_REGULATOR_TYPE_SMPS:
+            rc = pm8xxx_vreg_masked_write(vreg, vreg->test_addr,
+                    (vreg->pdata.pull_down_enable
+                            ? SMPS_ADVANCED_PULL_DOWN_ENABLE : 0)
+                    | REGULATOR_BANK_SEL(6) | REGULATOR_BANK_WRITE,
+                    REGULATOR_BANK_MASK | SMPS_ADVANCED_PULL_DOWN_ENABLE,
+                    &vreg->test_reg[6]);
+            if (rc)
+                break;
+            
+            if (!SMPS_IN_ADVANCED_MODE(vreg)) {
+                rc = pm8xxx_vreg_masked_write(vreg, vreg->ctrl_addr,
+                        (vreg->pdata.pull_down_enable
+                                ? SMPS_LEGACY_PULL_DOWN_ENABLE : 0),
+                        SMPS_LEGACY_PULL_DOWN_ENABLE, &vreg->ctrl_reg);
+                        
+                if (rc)
+                        vreg_err(vreg, "pm8xxx_vreg_masked_write failed, rc=%d\n", rc);
+            }
+            break;
+        case PM8XXX_REGULATOR_TYPE_FTSMPS:
+            rc = pm8xxx_vreg_masked_write(vreg, vreg->pwr_cnfg_addr,
+                    (vreg->pdata.pull_down_enable ? FTSMPS_PULL_DOWN_ENABLE : 0),
+                    FTSMPS_PULL_DOWN_ENABLE_MASK, &vreg->pwr_cnfg_reg);
+        
+            if (rc)
+                    vreg_err(vreg, "pm88xxx_vreg_masked_write failed, rc=%d\n", rc);
+            break;
+        case PM8XXX_REGULATOR_TYPE_VS:
+            rc = pm8xxx_vreg_masked_write(vreg, vreg->ctrl_addr,
+                   (vreg->pdata.pull_down_enable ? VS_PULL_DOWN_ENABLE
+                                                 : VS_PULL_DOWN_DISABLE),
+                   VS_PULL_DOWN_ENABLE_MASK, &vreg->ctrl_reg);
+            
+            if (rc)
+                vreg_err(vreg, "pm8xxx_vreg_masked_write failed, rc=%d\n", rc);
+            
+            break;
+        case PM8XXX_REGULATOR_TYPE_VS300:
+            rc = pm8xxx_vreg_masked_write(vreg, vreg->ctrl_addr,
+                   (vreg->pdata.pull_down_enable ? VS_PULL_DOWN_ENABLE
+                                                 : VS_PULL_DOWN_DISABLE),
+                   VS_PULL_DOWN_ENABLE_MASK, &vreg->ctrl_reg);
+            
+            if (rc)
+                vreg_err(vreg, "pm8xxx_vreg_masked_write failed, rc=%d\n", rc);
+            
+            break;
+        case PM8XXX_REGULATOR_TYPE_NCP:
+            rc = pm8xxx_readb(vreg->dev->parent, vreg->ctrl_addr, &vreg->ctrl_reg);
+            if (rc)
+                vreg_err(vreg, "pm8xxx_readb failed, rc=%d\n", rc);
+            break;
+        default:
+            rc = -EINVAL;
+            pr_err("undeclared type [%d]\n", vreg->type);
+            break;
+    }
+    
+    return rc;
+}
+
+int nc_pm8xxx_vreg_pull_down_switch(enum pm8xxx_version version,
+                                    u8 vreg_id, unsigned char enable)
+{
+    int ret;
+    struct regulator *vreg = NULL;
+
+    pr_info("[PM] pull down enable:%d.\n",enable);
+    vreg = ncm_regulator_get(version, vreg_id);
+
+    if(IS_ERR(vreg))
+    {
+        pr_err("regulator_get FAIL\n");
+        return -EINVAL;
+    }
+    
+    ret = oem_set_pulldown(vreg, enable);
+    
+    if(ret)
+    {
+        pr_err("set_pulldown FAIL\n");
+        return -EINVAL;
+    }    
+        
+    return ret;
+}
+EXPORT_SYMBOL(nc_pm8xxx_vreg_pull_down_switch);
+
+int nc_pm8xxx_lp_mode_control(enum pm8xxx_version version,
+                              u8 vreg_id, u8 vreg_cmd)
+{
+    int ret;
+    struct regulator *vreg = NULL;
+
+    pr_info("[PM] low power mode:%d.\n", vreg_cmd);
+    vreg = ncm_regulator_get(version, vreg_id);
+
+    if( vreg_cmd !=0 && vreg_cmd != 1 )
+    {
+        pr_err("undeclared cmd [%d]\n", vreg_cmd);
+        return -EINVAL;
+    }
+    
+    if(IS_ERR(vreg))
+    {
+        pr_err("regulator_get FAIL\n");
+        return -EINVAL;
+    }
+    
+    
+    ret = oem_regulator_mode(vreg, (vreg_cmd ? REGULATOR_MODE_IDLE : REGULATOR_MODE_NORMAL));
+    
+    if (ret < 0)
+        pr_err("set_mode FAIL\n");
+
+    return ret;
+}
+EXPORT_SYMBOL(nc_pm8xxx_lp_mode_control);
+
+int nc_pm8xxx_vreg_control(enum pm8xxx_version version, u8 vreg_cmd,
+                           u8 vreg_id, u32 min_level, u32 max_level)
+{
+    int ret;
+    struct regulator *vreg = NULL;
+
+    pr_info("[PM] enable:%d.\n", vreg_cmd);
+    vreg = ncm_regulator_get(version, vreg_id);
+
+    if( vreg_cmd !=0 && vreg_cmd != 1 )
+    {
+        pr_err("undeclared cmd [%d]\n", vreg_cmd);
+        return -EINVAL;
+    }
+
+    if(IS_ERR(vreg))
+    {
+        pr_err("regulator_get FAIL\n");
+        return -EINVAL;
+    }
+    
+    if(vreg_cmd)
+    {
+        ret = oem_update_voltage(vreg, min_level, max_level);
+
+        if(ret == -EINVAL) 
+        {
+            pr_err("Unable to set the voltage:%d\n", ret);
+            return -EINVAL;
+        }
+
+        ret = oem_regulator_enable(vreg);
+        
+        if(ret)
+        {
+            pr_err("Unable to enable the regulator:%d\n", ret);
+            return -EINVAL;
+        }
+    }
+    else
+    {
+        ret = oem_regulator_disable(vreg);
+        
+        if(ret)
+        {
+            pr_err("Unable to disable the regulator:%d\n", ret);
+            return -EINVAL;
+        }
+    }
+
+    return 0;
+}
+EXPORT_SYMBOL(nc_pm8xxx_vreg_control);
+
+int nc_pm8xxx_vreg_set_level(enum pm8xxx_version version, 
+                             u8 vreg_id, u32 min_level, u32 max_level)
+{
+    int ret;
+    struct regulator *vreg = NULL;
+
+    pr_info("[PM] min voltage:%d  max voltage:%d.\n",
+                 min_level, max_level);
+    vreg = ncm_regulator_get(version, vreg_id);
+
+    if(IS_ERR(vreg))
+    {
+        pr_err("regulator_get FAIL\n");
+        return -EINVAL;
+    }
+    
+    ret = oem_update_voltage(vreg, min_level, max_level);
+    
+    if(ret)
+    {
+        pr_err("set_voltage FAIL\n");
+        return -EINVAL;
+    }
+        
+    return ret;
+}
+
+EXPORT_SYMBOL(nc_pm8xxx_vreg_set_level);
+
+
+
+
 /* Real regulator operations. */
 static struct regulator_ops pm8xxx_pldo_ops = {
 	.enable			= pm8xxx_ldo_enable,
@@ -2685,6 +3021,11 @@ static struct regulator_ops pm8xxx_pldo_ops = {
 	.get_mode		= pm8xxx_ldo_get_mode,
 	.get_optimum_mode	= pm8xxx_vreg_get_optimum_mode,
 	.enable_time		= pm8xxx_enable_time,
+
+
+    .set_pull_down      = nc_pm8921_set_vreg_pull_down,
+
+
 };
 
 static struct regulator_ops pm8xxx_nldo_ops = {
@@ -2698,6 +3039,11 @@ static struct regulator_ops pm8xxx_nldo_ops = {
 	.get_mode		= pm8xxx_ldo_get_mode,
 	.get_optimum_mode	= pm8xxx_vreg_get_optimum_mode,
 	.enable_time		= pm8xxx_enable_time,
+
+
+    .set_pull_down      = nc_pm8921_set_vreg_pull_down,
+
+
 };
 
 static struct regulator_ops pm8xxx_nldo1200_ops = {
@@ -2711,6 +3057,11 @@ static struct regulator_ops pm8xxx_nldo1200_ops = {
 	.get_mode		= pm8xxx_nldo1200_get_mode,
 	.get_optimum_mode	= pm8xxx_vreg_get_optimum_mode,
 	.enable_time		= pm8xxx_enable_time,
+
+
+    .set_pull_down      = nc_pm8921_set_vreg_pull_down,
+
+
 };
 
 static struct regulator_ops pm8xxx_smps_ops = {
@@ -2724,6 +3075,11 @@ static struct regulator_ops pm8xxx_smps_ops = {
 	.get_mode		= pm8xxx_smps_get_mode,
 	.get_optimum_mode	= pm8xxx_vreg_get_optimum_mode,
 	.enable_time		= pm8xxx_enable_time,
+
+
+    .set_pull_down      = nc_pm8921_set_vreg_pull_down,
+
+
 };
 
 static struct regulator_ops pm8xxx_ftsmps_ops = {
@@ -2737,6 +3093,11 @@ static struct regulator_ops pm8xxx_ftsmps_ops = {
 	.get_mode		= pm8xxx_ftsmps_get_mode,
 	.get_optimum_mode	= pm8xxx_vreg_get_optimum_mode,
 	.enable_time		= pm8xxx_enable_time,
+
+
+    .set_pull_down      = nc_pm8921_set_vreg_pull_down,
+
+
 };
 
 static struct regulator_ops pm8xxx_vs_ops = {
@@ -2744,6 +3105,11 @@ static struct regulator_ops pm8xxx_vs_ops = {
 	.disable		= pm8xxx_vs_disable,
 	.is_enabled		= pm8xxx_vreg_is_enabled,
 	.enable_time		= pm8xxx_enable_time,
+
+
+    .set_pull_down      = nc_pm8921_set_vreg_pull_down,
+
+
 };
 
 static struct regulator_ops pm8xxx_vs300_ops = {
@@ -2751,6 +3117,11 @@ static struct regulator_ops pm8xxx_vs300_ops = {
 	.disable		= pm8xxx_vs300_disable,
 	.is_enabled		= pm8xxx_vreg_is_enabled,
 	.enable_time		= pm8xxx_enable_time,
+
+
+    .set_pull_down      = nc_pm8921_set_vreg_pull_down,
+
+
 };
 
 static struct regulator_ops pm8xxx_ncp_ops = {
@@ -2761,6 +3132,11 @@ static struct regulator_ops pm8xxx_ncp_ops = {
 	.get_voltage		= pm8xxx_ncp_get_voltage,
 	.list_voltage		= pm8xxx_ncp_list_voltage,
 	.enable_time		= pm8xxx_enable_time,
+
+
+    .set_pull_down      = nc_pm8921_set_vreg_pull_down,
+
+
 };
 
 static struct regulator_ops pm8xxx_boost_ops = {
@@ -2771,6 +3147,11 @@ static struct regulator_ops pm8xxx_boost_ops = {
 	.get_voltage		= pm8xxx_boost_get_voltage,
 	.list_voltage		= pm8xxx_boost_list_voltage,
 	.enable_time		= pm8xxx_enable_time,
+
+
+    .set_pull_down      = nc_pm8921_set_vreg_pull_down,
+
+
 };
 
 /* Pin control regulator operations. */

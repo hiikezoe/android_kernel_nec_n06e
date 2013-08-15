@@ -18,6 +18,10 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 /*
  * Airgo Networks, Inc proprietary. All rights reserved.
@@ -50,6 +54,10 @@
 #include "limSession.h"
 #include "vos_nvitem.h"
 
+
+#include "sirApi.h"
+
+
 /* Static global used to mark situations where pMac->lim.gLimTriggerBackgroundScanDuringQuietBss is SET
  * and limTriggerBackgroundScanDuringQuietBss() returned failure.  In this case, we will stop data
  * traffic instead of going into scan.  The recover function limProcessQuietBssTimeout() needs to have
@@ -62,6 +70,11 @@ static const tANI_U8 abChannel[]= {36,40,44,48,52,56,60,64,100,104,108,112,116,
 
 //#define LIM_MAX_ACTIVE_SESSIONS 3  //defined temporarily for BT-AMP SUPPORT 
 #define SUCCESS 1                   //defined temporarily for BT-AMP
+
+
+extern int is_send_counrtycode;
+extern char FCC_givenContryCode[];
+
 
 /** -------------------------------------------------------------
 \fn limAssignDialogueToken
@@ -1044,17 +1057,17 @@ limCleanupMlm(tpAniSirGlobal pMac)
         tx_timer_deactivate(&pMac->lim.limTimers.gLimPreAuthClnupTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimPreAuthClnupTimer);
 
-#if 0 // The WPS PBC clean up timer is disabled
-        if (pMac->lim.gLimSystemRole == eLIM_AP_ROLE)
-        {
-            if(pMac->lim.limTimers.gLimWPSOverlapTimerObj.isTimerCreated == eANI_BOOLEAN_TRUE)
-            {
-                tx_timer_deactivate(&pMac->lim.limTimers.gLimWPSOverlapTimerObj.gLimWPSOverlapTimer);
-                tx_timer_delete(&pMac->lim.limTimers.gLimWPSOverlapTimerObj.gLimWPSOverlapTimer);
-                pMac->lim.limTimers.gLimWPSOverlapTimerObj.isTimerCreated = eANI_BOOLEAN_FALSE;
-            }
-        }
-#endif
+
+
+
+
+
+
+
+
+
+
+
 #endif
 #ifdef WLAN_FEATURE_VOWIFI_11R
         // Deactivate and delete FT Preauth response timer
@@ -2320,31 +2333,31 @@ limDetectRadar(tpAniSirGlobal pMac, tANI_U32 *pMsg)
 }
 #endif
 
-# if 0
-//TBD_RAJESH :: TO SOLVE LINKING ISSUE
-void
-limUpdateShortSlotTime(tpAniSirGlobal pMac, tSirMacAddr peerMacAddr, //dummy to avoid linking problem
-    tpUpdateBeaconParams pBeaconParams)
-{
 
-}
 
-//TBD_RAJESH :: TO SOLVE LINKING ISSUE
-void
-limUpdateShortPreamble(tpAniSirGlobal pMac, tSirMacAddr peerMacAddr,    //dummy to avoid linking problem
-    tpUpdateBeaconParams pBeaconParams)
-    
-{
-}
 
-//TBD_RAJESH :: TO SOLVE LINKING ISSUE
 
-void   //dummy to avoid linking problem
-limDecideApProtection(tpAniSirGlobal pMac, tSirMacAddr peerMacAddr, tpUpdateBeaconParams pBeaconParams,tpPESession psessionEntry)
-{
-}
 
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 /** -------------------------------------------------------------
@@ -3161,31 +3174,31 @@ void limProcessQuietBssTimeout( tpAniSirGlobal pMac )
  *
  * @return None
  */
-#if 0
-void limProcessWPSOverlapTimeout(tpAniSirGlobal pMac)
-{
 
-    tpPESession psessionEntry;
-    tANI_U32 sessionId;
-    
-    if (tx_timer_activate(&pMac->lim.limTimers.gLimWPSOverlapTimerObj.gLimWPSOverlapTimer) != TX_SUCCESS)
-    {
-            limLog(pMac, LOGP, FL("tx_timer_activate failed\n"));
-    }
 
-    sessionId = pMac->lim.limTimers.gLimWPSOverlapTimerObj.sessionId;
 
-    PELOGE(limLog(pMac, LOGE, FL("WPS overlap timeout, sessionId=%d\n"), sessionId);)
 
-    if((psessionEntry = peFindSessionBySessionId(pMac, sessionId)) == NULL) 
-    {
-        PELOGE(limLog(pMac, LOGP,FL("Session Does not exist for given sessionID\n"));)
-        return;
-    }
-    
-    limWPSPBCTimeout(pMac, psessionEntry);
-}
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #endif
 
 /**
@@ -3681,6 +3694,22 @@ tANI_U8 limActiveScanAllowed(
         return false;
     }
 
+    
+    
+    if(channelNum == 12 || channelNum == 13)
+    {
+        if(is_send_counrtycode == FALSE)
+        {
+
+
+
+            {
+                return false;
+            }
+        }
+    }
+    
+    
     for (i=0; (i+1) < len; i+=2)
     {
         if (channelPair[i] == channelNum)
@@ -5772,14 +5801,14 @@ limValidateDeltsReq(tpAniSirGlobal pMac, tpSirDeltsReq pDeltsReq, tSirMacAddr pe
         pSta = dphGetHashEntry(pMac, DPH_STA_HASH_INDEX_PEER, &psessionEntry->dph.dphHashTable);
 
         val = sizeof(tSirMacAddr);
-        #if 0
-        if (wlan_cfgGetStr(pMac, WNI_CFG_BSSID, peerMacAddr, &val) != eSIR_SUCCESS)
-        {
-            /// Could not get BSSID from CFG. Log error.
-            limLog(pMac, LOGP, FL("could not retrieve BSSID\n"));
-            return eSIR_FAILURE;
-        }
-       #endif// TO SUPPORT BT-AMP
+
+
+
+
+
+
+
+
        sirCopyMacAddr(peerMacAddr,psessionEntry->bssId);
        
     }

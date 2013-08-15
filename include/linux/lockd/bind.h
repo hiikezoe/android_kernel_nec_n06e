@@ -5,6 +5,10 @@
  *
  * Copyright (C) 1996, Olaf Kirch <okir@monad.swb.de>
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifndef LINUX_LOCKD_BIND_H
 #define LINUX_LOCKD_BIND_H
@@ -54,7 +58,7 @@ extern void	nlmclnt_done(struct nlm_host *host);
 
 extern int	nlmclnt_proc(struct nlm_host *host, int cmd,
 					struct file_lock *fl);
-extern int	lockd_up(void);
-extern void	lockd_down(void);
+extern int	lockd_up(struct net *net);
+extern void	lockd_down(struct net *net);
 
 #endif /* LINUX_LOCKD_BIND_H */

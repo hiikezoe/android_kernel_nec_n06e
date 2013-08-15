@@ -1,3 +1,7 @@
+#/***********************************************************************/
+#/* Modified by                                                         */
+#/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+#/***********************************************************************/
 ccflags-$(CONFIG_POWER_SUPPLY_DEBUG) := -DDEBUG
 
 power_supply-y				:= power_supply_core.o
@@ -59,3 +63,13 @@ obj-$(CONFIG_PM8921_CHARGER)	+= pm8921-charger.o
 obj-$(CONFIG_LTC4088_CHARGER)	+= ltc4088-charger.o
 obj-$(CONFIG_CHARGER_SMB347)	+= smb347-charger.o
 obj-$(CONFIG_BATTERY_BCL)	+= battery_current_limit.o
+
+
+obj-$(CONFIG_FEATURE_DVE021_DIAG_PW)     += ncdiagd_power.o
+
+
+obj-$(CONFIG_FEATURE_DVE021_BATTERY_IM) += battim.o
+obj-$(CONFIG_FEATURE_DVE021_BATTERY_IM) += pm_obs_api.o
+
+
+obj-$(CONFIG_PM8921_CHARGER) += charge_protect.o

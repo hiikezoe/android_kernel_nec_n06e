@@ -10,6 +10,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifndef __LIBRA_SDIOIF_H__
 #define __LIBRA_SDIOIF_H__
@@ -76,6 +80,12 @@ void libra_sdio_release_irq(struct sdio_func *func);
 int libra_enable_sdio_irq(struct sdio_func *func, u8 enable);
 void libra_sdio_disable_func(struct sdio_func *func);
 int libra_disable_sdio_irq_capability(struct sdio_func *func, u8 disable);
+
+int libra_sdio_deep_sleep_config(void);
+void libra_sdio_deep_sleep_deconfig(void);
+void libra_sdio_deep_sleep_in(void);
+void libra_sdio_deep_sleep_out(void);
+
 int libra_sdio_notify_card_removal(
 		notify_card_removal_t *libra_sdio_notify_card_removal_hdlr);
 int libra_sdio_register_shutdown_hdlr(

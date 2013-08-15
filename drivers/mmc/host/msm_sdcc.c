@@ -14,6 +14,10 @@
  * Author: San Mehat (san@android.com)
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 #include <linux/moduleparam.h>
@@ -31,6 +35,11 @@
 #include <linux/mmc/host.h>
 #include <linux/mmc/card.h>
 #include <linux/mmc/mmc.h>
+
+
+#include <linux/mmc/sd.h>
+
+
 #include <linux/mmc/sdio.h>
 #include <linux/clk.h>
 #include <linux/scatterlist.h>
@@ -61,7 +70,114 @@
 #include "msm_sdcc.h"
 #include "msm_sdcc_dml.h"
 
+
+#define MMCIRESP0_ERR_MASK 0xFDFFA080 
+
+
 #define DRIVER_NAME "msm-sdcc"
+
+
+
+
+#include <linux/miscdevice.h>
+#include "../card/block.h"
+#include "../core/core.h"
+#include "../core/sd.h"
+
+
+#define SD_CARD_EVENT_LOG_ENABLE
+
+
+
+
+#if defined(SD_CARD_EVENT_LOG_ENABLE)
+#define SD_CARD_MAX_EVENT_LOGS 64
+
+enum msmsdcc_event_kind {
+	MSMSDCC_NO_EVENT = 0,
+	MSMSDCC_CMD_EVENT,
+	MSMSDCC_IRQ_EVENT,
+	MSMSDCC_RESP_EVENT,
+};
+
+struct msmsdcc_event_cmd {
+	u32  opcode;
+	u32  arg;
+	bool acmd;
+	bool suspended;
+};
+
+struct msmsdcc_event_irq {
+	u32  status;
+	u32  imask0;
+	bool pio;
+};
+
+struct msmsdcc_event_resp {
+	u32  resp0;
+	u32  resp1;
+	u32  resp2;
+	u32  resp3;
+	bool long_resp;
+};
+
+struct msmsdcc_event {
+	unsigned char kind;
+	ktime_t event_time;
+	struct msmsdcc_event_cmd cmd;
+	struct msmsdcc_event_irq irq;
+	struct msmsdcc_event_resp resp;
+};
+
+static struct msmsdcc_event sd_event_list[SD_CARD_MAX_EVENT_LOGS];
+static int sd_event_pos = 0;
+
+#define NEXT_SD_EVENT_POS(pos) \
+	({ \
+		if (++(pos) >= SD_CARD_MAX_EVENT_LOGS) { \
+			(pos) = 0; \
+		} \
+	})
+#endif 
+
+
+
+
+
+
+
+
+
+
+#define SD_CARD(host)	((host)->pdev_id == 3)
+
+
+#define SD_CARD_EVENT_ID		(0x4E)
+
+#define SD_CARD_ARM_HW_TIMEOUT	(0xE0)
+#define SD_CARD_ARM_CMD_ERROR	(0xE1)
+#define SD_CARD_ARM_DATA_ERROR	(0xE2)
+
+#define SD_CARD_ARM_OPCODE(cmd, acmd)	\
+	(acmd ? (0x40+((cmd)&0x3F)) : ((cmd)&0x3F))
+
+#define SD_CARD_ARM_LOG(info, err, eject, opcode, arg)	\
+	pr_info("[T][ARM]Event:0x%02X Info:0x%02X%02X%02X%02X%08X\n", \
+			SD_CARD_EVENT_ID, info, (-1) * err, eject, opcode, arg)
+
+static struct msmsdcc_host *msmsdcc_host_addr;
+
+static inline void msmsdcc_get_host(struct msmsdcc_host **host)
+{
+	*host = msmsdcc_host_addr;
+}
+
+static inline void msmsdcc_set_host(struct msmsdcc_host *host)
+{
+	msmsdcc_host_addr = host;
+}
+
+
 
 #define DBG(host, fmt, args...)	\
 	pr_debug("%s: %s: " fmt "\n", mmc_hostname(host->mmc), __func__ , args)
@@ -164,6 +280,78 @@ static bool msmsdcc_is_wait_for_auto_prog_done(struct msmsdcc_host *host,
 					       struct mmc_request *mrq);
 static bool msmsdcc_is_wait_for_prog_done(struct msmsdcc_host *host,
 					  struct mmc_request *mrq);
+
+
+
+#if defined(SD_CARD_EVENT_LOG_ENABLE)
+static char *statuslist[] = {
+	"CMD_CRC_FAIL", "DATA_CRC_FAIL", "CMD_TIMEOUT", "DATA_TIMEOUT",
+	"TX_UNDERRUN", "RX_OVERRUN", "CMD_RESPONSE_END", "CMD_SENT",
+	"DATAEND", "(bit9)", "DATA_BLK_END", "CMD_ACTIVE",
+	"TXACTIVE", "RXACTIVE", "TXFIFO_HALF_FULL", "RXFIFO_HALF_FULL",
+	"TXFIFO_FULL", "RXFIFO_FULL", "TXFIFO_EMPTY", "RXFIFO_EMPTY",
+	"TXDATA_AVLBL", "RXDATA_AVLBL", "SDIO_INTR", "PROG_DONE",
+	"ATA_CMD_COMPL", "SDIO_INTR_OPER", "CCS_TIMEOUT", "(bit27)",
+	"(bit28)", "(bit29)", "(bit30)", "(bit31)",
+};
+
+static inline void msmsdcc_print_valid_status(struct msmsdcc_host *host, u32 valid)
+{
+	int i;
+
+	for (i = 0; i < 32; i++) {
+		if (valid & (1 << i))
+			pr_info("%s ", statuslist[i]);
+	}
+}
+
+static void msmsdcc_dump_event_log(struct msmsdcc_host *host)
+{
+	u32 valid;
+	int pos = sd_event_pos;
+	int i;
+
+	if (SD_CARD(host)) {
+		pr_info("##### START EVENT LOGS #####\n");
+		for (i= 0; i < SD_CARD_MAX_EVENT_LOGS; i++) {
+			if (sd_event_list[pos].kind == MSMSDCC_CMD_EVENT) {
+				pr_info("%s: [%llu] %s%u %08X %s\n", mmc_hostname(host->mmc),
+						(unsigned long long) ktime_to_ms(sd_event_list[pos].event_time),
+						sd_event_list[pos].cmd.acmd ? "ACMD" : "CMD",
+						sd_event_list[pos].cmd.opcode & 0x003F,
+						sd_event_list[pos].cmd.arg,
+						sd_event_list[pos].cmd.suspended ? "[suspended]" : "");
+			} else if (sd_event_list[pos].kind == MSMSDCC_IRQ_EVENT) {
+				valid = sd_event_list[pos].irq.status & sd_event_list[pos].irq.imask0;
+				pr_info("%s: [%llu] -> IRQ%s STATUS:%08X & IMASK0:%08X = %08X\n", mmc_hostname(host->mmc),
+						(unsigned long long) ktime_to_ms(sd_event_list[pos].event_time),
+						sd_event_list[pos].irq.pio ? "-PIO" : "",
+						sd_event_list[pos].irq.status,
+						sd_event_list[pos].irq.imask0,
+						valid);
+				msmsdcc_print_valid_status(host, valid);
+			} else if (sd_event_list[pos].kind == MSMSDCC_RESP_EVENT) {
+				if (!sd_event_list[pos].resp.long_resp) {
+					pr_info("%s: [%llu] -> RESP: %08X\n", mmc_hostname(host->mmc),
+							(unsigned long long) ktime_to_ms(sd_event_list[pos].event_time),
+							sd_event_list[pos].resp.resp0);
+				} else {
+					pr_info("%s: [%llu] -> RESP: %08X %08X %08X %08X\n", mmc_hostname(host->mmc),
+							(unsigned long long) ktime_to_ms(sd_event_list[pos].event_time),
+							sd_event_list[pos].resp.resp0,
+							sd_event_list[pos].resp.resp1,
+							sd_event_list[pos].resp.resp2,
+							sd_event_list[pos].resp.resp3);
+				}
+			}
+			NEXT_SD_EVENT_POS(pos);
+		}
+		pr_info("#####  END  EVENT LOGS #####\n");
+	}
+}
+#endif 
+
+
 
 static inline unsigned short msmsdcc_get_nr_sg(struct msmsdcc_host *host)
 {
@@ -485,6 +673,22 @@ out:
 	return;
 }
 
+
+
+static inline void
+msmsdcc_set_and_clear_acmd(struct msmsdcc_host *host, struct mmc_request *mrq)
+{
+	if (SD_CARD(host)) {
+		if (mrq->cmd->opcode == MMC_APP_CMD && !mrq->cmd->error) {
+			host->acmd = 1;
+		} else {
+			host->acmd = 0;
+		}
+	}
+}
+
+
+
 static int
 msmsdcc_request_end(struct msmsdcc_host *host, struct mmc_request *mrq)
 {
@@ -503,6 +707,12 @@ msmsdcc_request_end(struct msmsdcc_host *host, struct mmc_request *mrq)
 
 	/* Clear current request information as current request has ended */
 	memset(&host->curr, 0, sizeof(struct msmsdcc_curr_req));
+
+
+
+	msmsdcc_set_and_clear_acmd(host, mrq);
+
+
 
 	/*
 	 * Need to drop the host lock here; mmc_request_done may call
@@ -565,6 +775,27 @@ static inline void msmsdcc_delay(struct msmsdcc_host *host)
 static inline void
 msmsdcc_start_command_exec(struct msmsdcc_host *host, u32 arg, u32 c)
 {
+
+
+
+
+
+
+
+
+#if defined(SD_CARD_EVENT_LOG_ENABLE)
+	if (SD_CARD(host)) {
+		sd_event_list[sd_event_pos].kind = MSMSDCC_CMD_EVENT;
+		sd_event_list[sd_event_pos].event_time = ktime_get();
+		sd_event_list[sd_event_pos].cmd.opcode = c;
+		sd_event_list[sd_event_pos].cmd.arg = arg;
+		sd_event_list[sd_event_pos].cmd.acmd = host->acmd;
+		sd_event_list[sd_event_pos].cmd.suspended = host->sdcc_suspended;
+		NEXT_SD_EVENT_POS(sd_event_pos);
+	}
+#endif 
+
+
 	writel_relaxed(arg, host->base + MMCIARGUMENT);
 	writel_relaxed(c, host->base + MMCICOMMAND);
 	/*
@@ -674,6 +905,13 @@ msmsdcc_dma_complete_tlet(unsigned long data)
 			 * request has ended
 			 */
 			memset(&host->curr, 0, sizeof(struct msmsdcc_curr_req));
+
+
+
+			msmsdcc_set_and_clear_acmd(host, mrq);
+
+
+
 			spin_unlock_irqrestore(&host->lock, flags);
 
 			mmc_request_done(host->mmc, mrq);
@@ -829,6 +1067,13 @@ static void msmsdcc_sps_complete_tlet(unsigned long data)
 			 * request has ended
 			 */
 			memset(&host->curr, 0, sizeof(struct msmsdcc_curr_req));
+
+
+
+			msmsdcc_set_and_clear_acmd(host, mrq);
+
+
+
 			spin_unlock_irqrestore(&host->lock, flags);
 
 			mmc_request_done(host->mmc, mrq);
@@ -1391,7 +1636,15 @@ msmsdcc_data_err(struct msmsdcc_host *host, struct mmc_data *data,
 					 mmc_hostname(host->mmc), opcode,
 					 (readl_relaxed(host->base
 					 + MCI_TEST_INPUT) & 0x2) ? 1 : 0);
-				msmsdcc_dump_sdcc_state(host);
+
+
+				if (!SD_CARD(host)) {
+					msmsdcc_dump_sdcc_state(host);
+				}
+
+
+
+
 			}
 		}
 
@@ -1423,6 +1676,17 @@ msmsdcc_data_err(struct msmsdcc_host *host, struct mmc_data *data,
 		      mmc_hostname(host->mmc), status);
 		data->error = -EIO;
 	}
+
+
+
+	if (SD_CARD(host) && data->error) {
+		msmsdcc_dump_sdcc_state(host);
+		SD_CARD_ARM_LOG(SD_CARD_ARM_DATA_ERROR, data->error, host->eject,
+				SD_CARD_ARM_OPCODE(data->mrq->cmd->opcode, host->acmd),
+				data->mrq->cmd->arg);
+	}
+
+
 
 	/* Dummy CMD52 is not needed when CMD53 has errors */
 	if (host->dummy_52_needed)
@@ -1636,6 +1900,22 @@ msmsdcc_pio_irq(int irq, void *dev_id)
 		spin_unlock(&host->lock);
 		return IRQ_NONE;
 	}
+
+
+
+#if defined(SD_CARD_EVENT_LOG_ENABLE)
+	if (SD_CARD(host)) {
+		sd_event_list[sd_event_pos].kind = MSMSDCC_IRQ_EVENT;
+		sd_event_list[sd_event_pos].event_time = ktime_get();
+		sd_event_list[sd_event_pos].irq.status = status;
+		sd_event_list[sd_event_pos].irq.imask0 = readl_relaxed(host->base + MMCIMASK0);
+		sd_event_list[sd_event_pos].irq.pio = true;
+		NEXT_SD_EVENT_POS(sd_event_pos);
+	}
+#endif 
+
+
+
 #if IRQ_DEBUG
 	msmsdcc_print_status(host, "irq1-r", status);
 #endif
@@ -1743,6 +2023,31 @@ static void msmsdcc_do_cmdirq(struct msmsdcc_host *host, uint32_t status)
 	host->curr.cmd = NULL;
 	if (mmc_resp_type(cmd))
 		cmd->resp[0] = readl_relaxed(host->base + MMCIRESPONSE0);
+
+
+
+    if (memcmp((const void*)(mmc_hostname(host->mmc)), (const void*)("mmc0"), 4) == 0)
+    {
+    
+        if ((cmd->resp[0] & MMCIRESP0_ERR_MASK) != 0){
+
+            
+            if ((cmd->opcode != MMC_GO_IDLE_STATE) &&     
+                (cmd->opcode != MMC_SEND_OP_COND) &&      
+                (cmd->opcode != MMC_ALL_SEND_CID) &&      
+                (cmd->opcode != MMC_SET_DSR) &&           
+                (cmd->opcode != MMC_SEND_CSD) &&          
+                (cmd->opcode != MMC_SEND_CID) &&          
+                (cmd->opcode != MMC_GO_INACTIVE_STATE) && 
+                (cmd->opcode != MMC_FAST_IO) &&           
+                (cmd->opcode != MMC_GO_IRQ_STATE)){       
+                    printk(KERN_ERR "%s :[T][ARM]Event:0x21 Info:0x%02X%08X", mmc_hostname(host->mmc), cmd->opcode, cmd->resp[0]);
+            }
+        }
+    }
+
+
+
 	/*
 	 * Read rest of the response registers only if
 	 * long response is expected for this command
@@ -1753,10 +2058,43 @@ static void msmsdcc_do_cmdirq(struct msmsdcc_host *host, uint32_t status)
 		cmd->resp[3] = readl_relaxed(host->base + MMCIRESPONSE3);
 	}
 
+
+
+#if defined(SD_CARD_EVENT_LOG_ENABLE)
+	if (SD_CARD(host)) {
+		sd_event_list[sd_event_pos].kind = MSMSDCC_RESP_EVENT;
+		sd_event_list[sd_event_pos].event_time = ktime_get();
+		sd_event_list[sd_event_pos].resp.resp0 = cmd->resp[0];
+		if (mmc_resp_type(cmd) & MMC_RSP_136) {
+			sd_event_list[sd_event_pos].resp.long_resp = true;
+			sd_event_list[sd_event_pos].resp.resp1 = cmd->resp[1];
+			sd_event_list[sd_event_pos].resp.resp2 = cmd->resp[2];
+			sd_event_list[sd_event_pos].resp.resp3 = cmd->resp[3];
+		} else {
+			sd_event_list[sd_event_pos].resp.long_resp = false;
+		}
+		NEXT_SD_EVENT_POS(sd_event_pos);
+	}
+#endif 
+
+
+
 	if (status & (MCI_CMDTIMEOUT | MCI_AUTOCMD19TIMEOUT)) {
 		pr_debug("%s: CMD%d: Command timeout\n",
 				mmc_hostname(host->mmc), cmd->opcode);
 		cmd->error = -ETIMEDOUT;
+
+
+		if (SD_CARD(host) &&
+				cmd->opcode != MMC_SLEEP_AWAKE &&
+				cmd->opcode != SD_SEND_IF_COND &&
+				cmd->opcode != SD_IO_RW_DIRECT) {
+			msmsdcc_dump_sdcc_state(host);
+			SD_CARD_ARM_LOG(SD_CARD_ARM_CMD_ERROR, cmd->error, host->eject,
+					SD_CARD_ARM_OPCODE(cmd->opcode, host->acmd), cmd->arg);
+		}
+
+
 	} else if ((status & MCI_CMDCRCFAIL && cmd->flags & MMC_RSP_CRC) &&
 			!host->tuning_in_progress) {
 		pr_err("%s: CMD%d: Command CRC error\n",
@@ -1767,6 +2105,14 @@ static void msmsdcc_do_cmdirq(struct msmsdcc_host *host, uint32_t status)
 		if (host->tuning_needed)
 			host->tuning_done = false;
 		cmd->error = -EILSEQ;
+
+
+		if (SD_CARD(host)) {
+			SD_CARD_ARM_LOG(SD_CARD_ARM_CMD_ERROR, cmd->error, host->eject,
+					SD_CARD_ARM_OPCODE(cmd->opcode, host->acmd), cmd->arg);
+		}
+
+
 	}
 
 	if (!cmd->error) {
@@ -1881,6 +2227,21 @@ msmsdcc_irq(int irq, void *dev_id)
 		if (((readl_relaxed(host->base + MMCIMASK0) & status) &
 						(~(MCI_IRQ_PIO))) == 0)
 			break;
+
+
+
+#if defined(SD_CARD_EVENT_LOG_ENABLE)
+		if (SD_CARD(host)) {
+			sd_event_list[sd_event_pos].kind = MSMSDCC_IRQ_EVENT;
+			sd_event_list[sd_event_pos].event_time = ktime_get();
+			sd_event_list[sd_event_pos].irq.status = status;
+			sd_event_list[sd_event_pos].irq.imask0 = readl_relaxed(host->base + MMCIMASK0);
+			sd_event_list[sd_event_pos].irq.pio = false;
+			NEXT_SD_EVENT_POS(sd_event_pos);
+		}
+#endif 
+
+
 
 #if IRQ_DEBUG
 		msmsdcc_print_status(host, "irq0-r", status);
@@ -2200,6 +2561,21 @@ msmsdcc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 
 	spin_lock_irqsave(&host->lock, flags);
 
+
+
+	if (SD_CARD(host)) {
+		if (host->curr.mrq) {
+			WARN(host->curr.mrq, "Request in progress\n");
+			mrq->cmd->error = -EBUSY;
+			msmsdcc_set_and_clear_acmd(host, mrq);
+			spin_unlock_irqrestore(&host->lock, flags);
+			mmc_request_done(mmc, mrq);
+			return;
+		}
+	}
+
+
+
 	if (host->eject) {
 		if (mrq->data && !(mrq->data->flags & MMC_DATA_READ)) {
 			mrq->cmd->error = 0;
@@ -2208,10 +2584,29 @@ msmsdcc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 		} else
 			mrq->cmd->error = -ENOMEDIUM;
 
+
+
+		msmsdcc_set_and_clear_acmd(host, mrq);
+
+
 		spin_unlock_irqrestore(&host->lock, flags);
 		mmc_request_done(mmc, mrq);
 		return;
 	}
+
+
+
+	if (SD_CARD(host)) {
+		if (!host->pwr || !atomic_read(&host->clks_on)) {
+			mrq->cmd->error = -EFAULT;
+			msmsdcc_set_and_clear_acmd(host, mrq);
+			spin_unlock_irqrestore(&host->lock, flags);
+			mmc_request_done(mmc, mrq);
+			return;
+		}
+	}
+
+
 
 	/*
 	 * Don't start the request if SDCC is not in proper state to handle it
@@ -3248,6 +3643,26 @@ msmsdcc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	unsigned int clock;
 
 
+
+	int sd_error = 0;
+	if (SD_CARD(host)) {
+		if (ios->power_mode != MMC_POWER_OFF) {
+			mmc_err_info_get(&sd_error);
+			if (sd_error) {
+				pr_info("%s: Power on skipped for error card!!",
+						mmc_hostname(mmc));
+				return;
+			}
+			if (host->eject) {
+				pr_debug("%s: Power on skipped for no card.",
+						mmc_hostname(mmc));
+				return;
+			}
+		}
+	}
+
+
+
 	/*
 	 * Disable SDCC core interrupt until set_ios is completed.
 	 * This avoids any race conditions with interrupt raised
@@ -3432,40 +3847,46 @@ int msmsdcc_set_pwrsave(struct mmc_host *mmc, int pwrsave)
 
 static int msmsdcc_get_ro(struct mmc_host *mmc)
 {
-	int status = -ENOSYS;
-	struct msmsdcc_host *host = mmc_priv(mmc);
 
-	if (host->plat->wpswitch) {
-		status = host->plat->wpswitch(mmc_dev(mmc));
-	} else if (gpio_is_valid(host->plat->wpswitch_gpio)) {
-		status = gpio_request(host->plat->wpswitch_gpio,
-					"SD_WP_Switch");
-		if (status) {
-			pr_err("%s: %s: Failed to request GPIO %d\n",
-				mmc_hostname(mmc), __func__,
-				host->plat->wpswitch_gpio);
-		} else {
-			status = gpio_direction_input(
-					host->plat->wpswitch_gpio);
-			if (!status) {
-				/*
-				 * Wait for atleast 300ms as debounce
-				 * time for GPIO input to stabilize.
-				 */
-				msleep(300);
-				status = gpio_get_value_cansleep(
-						host->plat->wpswitch_gpio);
-				status ^= !host->plat->is_wpswitch_active_low;
-			}
-			gpio_free(host->plat->wpswitch_gpio);
-		}
-	}
 
-	if (status < 0)
-		status = -ENOSYS;
-	pr_debug("%s: Card read-only status %d\n", __func__, status);
+	return 0;  
 
-	return status;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }
 
 static void msmsdcc_enable_sdio_irq(struct mmc_host *mmc, int enable)
@@ -4322,6 +4743,11 @@ msmsdcc_check_status(unsigned long data)
 					" is ACTIVE_HIGH\n",
 					mmc_hostname(host->mmc),
 					host->oldstat, status);
+
+
+			mmc_err_info_clear();
+
+
 			mmc_detect_change(host->mmc, 0);
 		}
 		host->oldstat = status;
@@ -4970,6 +5396,200 @@ store_idle_timeout(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+static ssize_t
+msmsdcc_show_sd_card_status(struct device *dev, 
+		struct device_attribute *attr, char *buf)
+{
+	struct mmc_host *mmc = dev_get_drvdata(dev);
+	struct msmsdcc_host *host = mmc_priv(mmc);
+	int sd_error = 0;
+	char *type = "Normal";
+
+	mmc_claim_host(mmc);
+	if (host->eject) {
+		type = "Absent";
+	} else {
+		mmc_err_info_get(&sd_error);
+		if (sd_error) {
+			type = "Error";
+		}
+	}
+	mmc_release_host(mmc);
+
+	return snprintf(buf, PAGE_SIZE, "%s\n", type);
+}
+
+static DEVICE_ATTR(sd_card_status, S_IRUSR,
+		msmsdcc_show_sd_card_status, NULL);
+
+static struct attribute *sd_dev_attrs[] = {
+
+
+
+
+
+
+
+
+
+	&dev_attr_sd_card_status.attr,
+	NULL,
+};
+static struct attribute_group sd_dev_attr_grp = {
+	.attrs = sd_dev_attrs,
+};
+
+
+
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void msmsdcc_early_suspend(struct early_suspend *h)
 {
@@ -5065,6 +5685,14 @@ static void msmsdcc_dump_sdcc_state(struct msmsdcc_host *host)
 		host->curr.wait_for_auto_prog_done,
 		host->curr.got_auto_prog_done, host->curr.req_tout_ms);
 	msmsdcc_print_rpm_info(host);
+
+
+
+#if defined(SD_CARD_EVENT_LOG_ENABLE)
+	msmsdcc_dump_event_log(host);
+#endif 
+
+
 }
 
 static void msmsdcc_req_tout_timer_hdlr(unsigned long data)
@@ -5092,6 +5720,18 @@ static void msmsdcc_req_tout_timer_hdlr(unsigned long data)
 		if (!mrq->cmd->error)
 			mrq->cmd->error = -ETIMEDOUT;
 		host->dummy_52_needed = 0;
+
+
+
+		if (SD_CARD(host)) {
+			SD_CARD_ARM_LOG(SD_CARD_ARM_HW_TIMEOUT,
+					mrq->cmd->error, host->eject,
+					SD_CARD_ARM_OPCODE(mrq->cmd->opcode, host->acmd),
+					mrq->cmd->arg);
+		}
+
+
+
 		if (host->curr.data) {
 			if (mrq->data && !mrq->data->error)
 				mrq->data->error = -ETIMEDOUT;
@@ -5632,6 +6272,13 @@ msmsdcc_probe(struct platform_device *pdev)
 	struct resource *dma_crci_res = NULL;
 	int ret = 0;
 
+
+#if defined(SD_CARD_EVENT_LOG_ENABLE)
+	int i = 0;
+#endif 
+
+
+
 	if (pdev->dev.of_node) {
 		plat = msmsdcc_populate_pdata(&pdev->dev);
 		of_property_read_u32((&pdev->dev)->of_node,
@@ -5706,6 +6353,17 @@ msmsdcc_probe(struct platform_device *pdev)
 	host->mmc = mmc;
 	host->curr.cmd = NULL;
 
+
+
+	if (SD_CARD(host)) {
+		ret = mmc_blk_alloc_buf();
+		if (ret) {
+			goto host_free;
+		}
+	}
+
+
+
 	if (!plat->disable_bam && bam_memres && dml_memres && bam_irqres)
 		set_hw_caps(host, MSMSDCC_SPS_BAM_SUP);
 	else if (dmares)
@@ -5715,7 +6373,13 @@ msmsdcc_probe(struct platform_device *pdev)
 			resource_size(core_memres));
 	if (!host->base) {
 		ret = -ENOMEM;
-		goto host_free;
+
+
+		goto blk_buf_free;
+
+
+
+
 	}
 
 	host->core_irqres = core_irqres;
@@ -6037,9 +6701,31 @@ msmsdcc_probe(struct platform_device *pdev)
 		pm_runtime_enable(&(pdev)->dev);
 	}
 #endif
-	host->idle_tout_ms = MSM_MMC_DEFAULT_IDLE_TIMEOUT;
+
+
+	if (!SD_CARD(host)) {
+		host->idle_tout_ms = MSM_MMC_DEFAULT_IDLE_TIMEOUT;
+	} else {
+		host->idle_tout_ms = MSM_MMC_IDLE_TIMEOUT_SD;
+	}
+
+
+
+
 	setup_timer(&host->req_tout_timer, msmsdcc_req_tout_timer_hdlr,
 			(unsigned long)host);
+
+
+
+#if defined(SD_CARD_EVENT_LOG_ENABLE)
+	if (SD_CARD(host)) {
+		for (i= 0; i < SD_CARD_MAX_EVENT_LOGS; i++) {
+			sd_event_list[i].kind = MSMSDCC_NO_EVENT;
+		}
+	}
+#endif 
+
+
 
 	mmc_add_host(mmc);
 
@@ -6117,6 +6803,19 @@ msmsdcc_probe(struct platform_device *pdev)
 	ret = device_create_file(&pdev->dev, &host->idle_timeout);
 	if (ret)
 		goto remove_polling_file;
+
+
+
+	if (SD_CARD(host)) {
+		msmsdcc_set_host(host);
+		ret = sysfs_create_group(&pdev->dev.kobj, &sd_dev_attr_grp);
+		if (ret) {
+			pr_err("%s: sysfs_create_group failed.\n", mmc_hostname(mmc));
+		}
+	}
+
+
+
 	return 0;
 
  remove_polling_file:
@@ -6176,6 +6875,14 @@ msmsdcc_probe(struct platform_device *pdev)
 	}
  ioremap_free:
 	iounmap(host->base);
+
+
+ blk_buf_free:
+	if (SD_CARD(host)) {
+		mmc_blk_free_buf();
+	}
+
+
  host_free:
 	mmc_free_host(mmc);
  out:
@@ -6200,6 +6907,16 @@ static int msmsdcc_remove(struct platform_device *pdev)
 	plat = host->plat;
 
 	device_remove_file(&pdev->dev, &host->max_bus_bw);
+
+
+
+	if (SD_CARD(host)) {
+		sysfs_remove_group(&pdev->dev.kobj, &sd_dev_attr_grp);
+		msmsdcc_set_host(NULL);
+	}
+
+
+
 	if (!plat->status_irq)
 		device_remove_file(&pdev->dev, &host->polling);
 	device_remove_file(&pdev->dev, &host->idle_timeout);
@@ -6251,6 +6968,13 @@ static int msmsdcc_remove(struct platform_device *pdev)
 	}
 
 	iounmap(host->base);
+
+
+	if (SD_CARD(host)) {
+		mmc_blk_free_buf();
+	}
+
+
 	mmc_free_host(mmc);
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -6395,6 +7119,19 @@ msmsdcc_runtime_suspend(struct device *dev)
 
 	pr_debug("%s: %s: start\n", mmc_hostname(mmc), __func__);
 	if (mmc) {
+
+
+
+
+
+
+
+
+
+
+
+
+
 		host->sdcc_suspending = 1;
 		mmc->suspend_task = current;
 
@@ -6438,6 +7175,18 @@ msmsdcc_runtime_suspend(struct device *dev)
 		mmc->suspend_task = NULL;
 		if (rc && wake_lock_active(&host->sdio_suspend_wlock))
 			wake_unlock(&host->sdio_suspend_wlock);
+
+
+
+
+
+
+
+
+
+
+
+
 	}
 	pr_debug("%s: %s: ends with err=%d\n", mmc_hostname(mmc), __func__, rc);
 out:
@@ -6453,6 +7202,11 @@ msmsdcc_runtime_resume(struct device *dev)
 	struct msmsdcc_host *host = mmc_priv(mmc);
 	unsigned long flags;
 
+
+	int err = 0;
+
+
+
 	if (host->plat->is_sdio_al_client)
 		return 0;
 
@@ -6463,7 +7217,35 @@ msmsdcc_runtime_resume(struct device *dev)
 			msmsdcc_ungate_clock(host);
 		}
 
-		mmc_resume_host(mmc);
+
+
+
+
+
+
+
+
+
+
+
+		if (mmc->card) {
+			err = mmc_resume_host(mmc);
+			if (SD_CARD(host)) {
+				if (err) {
+					mmc_detect_change(mmc, 0);
+				}
+
+
+
+
+
+
+			}
+		}
+
+
+
+
 
 		/*
 		 * FIXME: Clearing of flags must be handled in clients
@@ -6516,6 +7298,16 @@ static int msmsdcc_pm_suspend(struct device *dev)
 		return 0;
 
 
+
+
+
+
+
+
+
+
+
+
 	if (host->plat->status_irq)
 		disable_irq(host->plat->status_irq);
 
@@ -6531,6 +7323,18 @@ static int msmsdcc_pm_suspend(struct device *dev)
 	 */
 	if (!pm_runtime_suspended(dev) && !host->pending_resume)
 		rc = msmsdcc_runtime_suspend(dev);
+
+
+
+
+
+
+
+
+
+
+
+
 	/* This flag must not be set if system is entering into suspend */
 	host->pending_resume = false;
 	return rc;
@@ -6569,6 +7373,17 @@ static int msmsdcc_pm_resume(struct device *dev)
 	if (host->plat->is_sdio_al_client)
 		return 0;
 
+
+
+
+
+
+
+
+
+
+
+
 	if (mmc->card && mmc_card_sdio(mmc->card))
 		rc = msmsdcc_runtime_resume(dev);
 	/*
@@ -6584,6 +7399,16 @@ static int msmsdcc_pm_resume(struct device *dev)
 		msmsdcc_check_status((unsigned long)host);
 		enable_irq(host->plat->status_irq);
 	}
+
+
+
+
+
+
+
+
+
+
 
 	return rc;
 }
@@ -6614,6 +7439,117 @@ static int msmsdcc_runtime_resume(struct device *dev)
 	return 0;
 }
 #endif
+
+
+
+static ssize_t mmcdiag_read(struct file *file,
+		char __user *data, size_t len, loff_t *ppos)
+{
+	struct msmsdcc_host *host = NULL;
+	unsigned int status = 0;
+	int ret = 0;
+
+	pr_info(">> mmcdiag read!");
+
+	if (len < 1) {
+		pr_err("Buffer size error. len=%u", len);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	msmsdcc_get_host(&host);
+	if (!host || !host->plat || !host->mmc ||
+			!(host->plat->status || host->plat->status_gpio)) {
+		pr_err("Diag state error.");
+		ret = -EFAULT;
+		goto out;
+	}
+
+	if (host->plat->status) {
+		status = host->plat->status(mmc_dev(host->mmc));
+	} else {
+		status = msmsdcc_slot_status(host);
+	}
+
+	sprintf(data, "%u", status);
+	ret = 1;
+
+ out:
+	pr_info(">> mmcdiag read! ret=%d, status=%u", ret, status);
+	return ret;
+}
+
+static ssize_t mmcdiag_write(struct file *file,
+		const char __user *data, size_t len, loff_t *ppos)
+{
+	struct msmsdcc_host *host = NULL;
+	int ret = 0;
+	struct mmc_host *mmc;
+
+	pr_info(">> mmcdiag write %s!",
+			(data[0] != '0') ? "ON":"OFF");
+
+	msmsdcc_get_host(&host);
+	if (!host) {
+		pr_err("Diag state error(host)");
+		ret = -EFAULT;
+		goto out;
+	}
+
+	if (data[0] != '0') {
+		if (host->eject) {
+			ret = -EFAULT;
+			goto out;
+		}
+
+		mmc = host->mmc;
+		if (!mmc) {
+			pr_err("Diag state error(mmc)");
+			ret = -EFAULT;
+			goto out;
+		}
+
+		mmc_claim_host(mmc);
+		ret = mmc_sd_init_card(mmc, mmc->ocr, mmc->card);
+		mmc_release_host(mmc);
+		msleep(50);
+	}
+
+ out:
+	pr_info(">> mmcdiag write %s! ret=%d",
+			(data[0] != '0') ? "ON":"OFF", ret);
+	return (ssize_t)ret;
+}
+
+static int mmcdiag_open(struct inode *inode,
+		struct file *file)
+{
+	pr_info(">> mmcdiag open!");
+	return 0;
+}
+
+static int mmcdiag_release(struct inode *inode,
+		struct file *file)
+{
+	pr_info(">> mmcdiag close!");
+	return 0;
+}
+
+static struct file_operations mmcdiag_fops = {
+	.owner		= THIS_MODULE,
+	.read		= mmcdiag_read,
+	.write		= mmcdiag_write,
+	.open		= mmcdiag_open,
+	.release	= mmcdiag_release,
+};
+
+static struct miscdevice mmcdiag_device = {
+	.minor	= MISC_DYNAMIC_MINOR,
+	.name	= "mmcdiag",
+	.fops	= &mmcdiag_fops,
+};
+
+
 
 static const struct dev_pm_ops msmsdcc_dev_pm_ops = {
 	.runtime_suspend = msmsdcc_runtime_suspend,
@@ -6650,12 +7586,23 @@ static int __init msmsdcc_init(void)
 		return ret;
 	}
 #endif
+
+
+	misc_register(&mmcdiag_device);
+
+
 	return platform_driver_register(&msmsdcc_driver);
 }
 
 static void __exit msmsdcc_exit(void)
 {
 	platform_driver_unregister(&msmsdcc_driver);
+
+
+
+	misc_deregister(&mmcdiag_device);
+
+
 
 #if defined(CONFIG_DEBUG_FS)
 	debugfs_remove(debugfs_file);

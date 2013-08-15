@@ -30,6 +30,10 @@
 *                 Qualcomm Confidential and Proprietary.
 *
 ==============================================================================**/
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 /* $HEADER$ */
 
 /**-----------------------------------------------------------------------------
@@ -1071,6 +1075,10 @@ void hdd_suspend_wlan(struct early_suspend *wlan_suspend)
    {
       tSirSetPowerParamsReq powerRequest = { 0 };
 
+
+
+
+
       powerRequest.uIgnoreDTIM = 1;
   
       /*Back up the actual values from CFG */
@@ -1078,6 +1086,19 @@ void hdd_suspend_wlan(struct early_suspend *wlan_suspend)
                               &pHddCtx->hdd_actual_ignore_DTIM_value);
       wlan_cfgGetInt(pHddCtx->hHal, WNI_CFG_LISTEN_INTERVAL, 
                               &pHddCtx->hdd_actual_LI_value);
+
+
+
+
+
+
+
+
+
+
+
+
+
       
       if(pHddCtx->cfg_ini->enableModulatedDTIM)
       {
@@ -1311,7 +1332,16 @@ void hdd_resume_wlan(struct early_suspend *wlan_suspend)
        }
 #endif
 
+
       if(pHddCtx->hdd_ignore_dtim_enabled == TRUE)
+
+
+
+
+
+
+
+
       {
          /*Switch back to DTIM 1*/
          tSirSetPowerParamsReq powerRequest = { 0 }; 
@@ -1367,6 +1397,12 @@ void hdd_resume_wlan(struct early_suspend *wlan_suspend)
 #ifdef ANI_BUS_TYPE_SDIO
    sd_release_host(sdio_func_dev);
 #endif
+
+
+
+
+
+
    return;
 }
 

@@ -19,6 +19,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifndef __LINUX_XHCI_HCD_H
 #define __LINUX_XHCI_HCD_H
@@ -341,7 +345,11 @@ struct xhci_op_regs {
 #define PORT_PLC	(1 << 22)
 /* port configure error change - port failed to configure its link partner */
 #define PORT_CEC	(1 << 23)
-/* bit 24 reserved */
+
+
+
+
+#define PORT_CAS	(1 << 24)
 /* wake on connect (enable) */
 #define PORT_WKCONN_E	(1 << 25)
 /* wake on disconnect (enable) */
@@ -1687,8 +1695,8 @@ struct xhci_plat_data {
 	unsigned revision;
 };
 
-#if defined(CONFIG_USB_XHCI_PLATFORM) \
-	|| defined(CONFIG_USB_XHCI_PLATFORM_MODULE)
+#if defined(CONFIG_USB_XHCI_PLATFORM) 	|| defined(CONFIG_USB_XHCI_PLATFORM_MODULE)
+
 int xhci_register_plat(void);
 void xhci_unregister_plat(void);
 #else

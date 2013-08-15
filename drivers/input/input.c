@@ -9,6 +9,21 @@
  * under the terms of the GNU General Public License version 2 as published by
  * the Free Software Foundation.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
+
+
+
+
+
+
+
+
+
+
 
 #define pr_fmt(fmt) KBUILD_BASENAME ": " fmt
 
@@ -33,6 +48,30 @@ MODULE_DESCRIPTION("Input core");
 MODULE_LICENSE("GPL");
 
 #define INPUT_DEVICES	256
+
+
+#include <linux/completion.h>
+
+#define MON_OFF			0
+#define HOOK_OFF		1
+#define HOOK_ON			2
+#define DVE021_WRITEBUF_SIZE	512
+
+#define DVE021_PROC_DIR			"DVE022"
+#define DVE021_PROC_KEYHOOK_ENTRY		"keyhook_out"
+#define DVE021_PROC_KEYHOOK_ENABLE_ENTRY	"keyhook_enable"
+#define DVE021_PROC_KEYHOOK_STATE_ENTRY	"keyhook_state"
+
+struct input_event DVE022_key_buff;
+static bool DVE022_keyhook_enable = false;
+static int hook_state = MON_OFF;
+
+static DECLARE_COMPLETION(DVE022_content_completion);
+
+static DEFINE_SEMAPHORE(sem_DVE022_key_buff);
+static DEFINE_SEMAPHORE(sem_DVE022_keyhook_enable);
+static DEFINE_SEMAPHORE(sem_DVE022_keyhook_state);
+
 
 static LIST_HEAD(input_dev_list);
 static LIST_HEAD(input_handler_list);
@@ -213,6 +252,58 @@ static int input_handle_abs_event(struct input_dev *dev,
 	return INPUT_PASS_TO_HANDLERS;
 }
 
+
+static void DVE022_keyhook_handle_event(unsigned int type, unsigned int code,
+				      int value, int *disposition)
+{
+	bool pass_to_proc = false;
+
+	*disposition = INPUT_PASS_TO_HANDLERS;
+
+	if (down_interruptible(&sem_DVE022_keyhook_enable)) {
+		pr_info("down_interruptible(keyhook_enable) failed\n");
+		return;
+	}
+
+	switch (code) {
+	case KEY_VOLUMEUP:
+	case KEY_VOLUMEDOWN:
+		*disposition = INPUT_IGNORE_EVENT;
+		pass_to_proc = true;
+		break;
+	
+	case KEY_POWER:
+		break;
+	
+	default:
+		if (down_interruptible(&sem_DVE022_keyhook_state)) {
+			pr_info("down_interruptible(keyhook_state) failed\n");
+		} else {
+			if (hook_state == HOOK_ON) {
+				*disposition = INPUT_IGNORE_EVENT;
+				pass_to_proc = true;
+			}
+			up(&sem_DVE022_keyhook_state);
+		}
+		break;
+	}
+
+	if (pass_to_proc && value == 1) {
+		if (down_interruptible(&sem_DVE022_key_buff)) {
+			pr_info("down_interruptible(key_buff) failed\n");
+		} else {
+			DVE022_key_buff.type  = type;
+			DVE022_key_buff.code  = code;
+			DVE022_key_buff.value = value;
+			up(&sem_DVE022_key_buff);
+			complete(&DVE022_content_completion);
+		}
+	}
+
+	up(&sem_DVE022_keyhook_enable);
+}
+
+
 static void input_handle_event(struct input_dev *dev,
 			       unsigned int type, unsigned int code, int value)
 {
@@ -243,6 +334,15 @@ static void input_handle_event(struct input_dev *dev,
 		if (is_event_supported(code, dev->keybit, KEY_MAX) &&
 		    !!test_bit(code, dev->key) != value) {
 
+			
+			if (DVE022_keyhook_enable) {
+				DVE022_keyhook_handle_event(type, code, value,
+								&disposition);
+			} else {
+				disposition = INPUT_PASS_TO_HANDLERS;
+			}
+			
+
 			if (value != 2) {
 				__change_bit(code, dev->key);
 				if (value)
@@ -251,7 +351,11 @@ static void input_handle_event(struct input_dev *dev,
 					input_stop_autorepeat(dev);
 			}
 
-			disposition = INPUT_PASS_TO_HANDLERS;
+
+
+
+
+
 		}
 		break;
 
@@ -593,9 +697,11 @@ static void input_dev_release_keys(struct input_dev *dev)
 
 	if (is_event_supported(EV_KEY, dev->evbit, EV_MAX)) {
 		for (code = 0; code <= KEY_MAX; code++) {
-			if (is_event_supported(code, dev->keybit, KEY_MAX) &&
-			    __test_and_clear_bit(code, dev->key)) {
-				input_pass_event(dev, EV_KEY, code, 0);
+			if (!(code == KEY_VOLUMEUP && !(strncmp(dev->name, "gpio-keys", 9)))) {
+				if (is_event_supported(code, dev->keybit, KEY_MAX) &&
+				    __test_and_clear_bit(code, dev->key)) {
+					input_pass_event(dev, EV_KEY, code, 0);
+				}
 			}
 		}
 		input_pass_event(dev, EV_SYN, SYN_REPORT, 1);
@@ -1193,6 +1299,147 @@ static void input_proc_exit(void)
 	remove_proc_entry("handlers", proc_bus_input_dir);
 	remove_proc_entry("bus/input", NULL);
 }
+
+
+static int DVE022_keyhook_proc_read(char *buffer, char **start, off_t offset,
+				  int count, int *peof, void *dat)
+{
+	wait_for_completion_interruptible(&DVE022_content_completion);
+	init_completion(&DVE022_content_completion);
+	if (down_interruptible(&sem_DVE022_key_buff)) {
+		pr_info("down_interruptible(key_buff) failed\n");
+	} else {
+		memcpy(buffer, &DVE022_key_buff, sizeof(DVE022_key_buff));
+		up(&sem_DVE022_key_buff);
+	}
+	*start= &buffer[0];
+	return sizeof(DVE022_key_buff);
+}
+
+static int DVE022_keyhook_proc_write(struct file *filp, const char *buffer,
+				   unsigned long count, void *data)
+{
+	int copy_len;
+	char buf[DVE021_WRITEBUF_SIZE];
+
+	if (down_interruptible(&sem_DVE022_keyhook_enable)) {
+		pr_info("down_interruptible(keyhook_enable) failed\n");
+		return -ERESTARTSYS;
+	}
+
+	if (count > DVE021_WRITEBUF_SIZE) {
+		copy_len = DVE021_WRITEBUF_SIZE;
+	} else {
+		copy_len = count;
+	}
+
+	if (copy_from_user(buf, buffer, copy_len)) {
+		up(&sem_DVE022_keyhook_enable);
+		pr_err("copy_from_user failed\n");
+		return -EFAULT;
+	}
+	DVE022_keyhook_enable = (int)(buf[0] - '0');
+
+	up(&sem_DVE022_keyhook_enable);
+
+	return copy_len;
+}
+
+static int DVE022_keyhook_state_proc_read(char *buffer, char **start,
+					off_t offset, int count, int *peof,
+					void *dat)
+{
+	if (down_interruptible( &sem_DVE022_keyhook_state)) {
+		pr_info("down_interruptible(keyhook_state) failed\n");
+		return -ERESTARTSYS;
+	}
+
+	buffer[0] = (char)(hook_state + '0');
+	buffer[1] = (char)0;
+	*start = &buffer[0];
+
+	up(&sem_DVE022_keyhook_state);
+
+	return sizeof(char);
+}
+
+static int DVE022_keyhook_state_proc_write(struct file *filp, const char* buffer,
+					 unsigned long count, void *data)
+{
+	int copy_len;
+	char buf[DVE021_WRITEBUF_SIZE];
+
+	if (down_interruptible( &sem_DVE022_keyhook_state)) {
+		pr_info("down_interruptible(keyhook_state) failed\n");
+		return -ERESTARTSYS;
+	}
+
+	if (count > DVE021_WRITEBUF_SIZE) {
+		copy_len = DVE021_WRITEBUF_SIZE;
+	} else {
+		copy_len = count;
+	}
+
+	if (copy_from_user(buf, buffer, copy_len)) {
+		up(&sem_DVE022_keyhook_state);
+		pr_err("copy_from_user failed\n");
+		return -EFAULT;
+	}
+	hook_state = (int)(buf[0] - '0');
+
+	up(&sem_DVE022_keyhook_state);
+
+	return copy_len;
+}
+
+static int __init DVE022_proc_init(void)
+{
+	struct proc_dir_entry *dirp;
+
+	dirp = (struct proc_dir_entry *)
+		create_proc_entry(DVE021_PROC_DIR "/"
+				DVE021_PROC_KEYHOOK_ENTRY, 0444, 0);
+	if (dirp == 0) {
+		return -ENOMEM;
+	}
+	dirp->read_proc = (read_proc_t *)DVE022_keyhook_proc_read;
+
+	dirp = (struct proc_dir_entry *)
+		create_proc_entry(DVE021_PROC_DIR "/"
+				DVE021_PROC_KEYHOOK_ENABLE_ENTRY, 0222, 0);
+	if (dirp == 0) {
+		goto fail1;
+	}
+	dirp->write_proc = (write_proc_t *)DVE022_keyhook_proc_write;
+
+	dirp = (struct proc_dir_entry *)
+		create_proc_entry(DVE021_PROC_DIR "/"
+				DVE021_PROC_KEYHOOK_STATE_ENTRY, 0666, 0);
+	if (dirp == 0) {
+		goto fail2;
+	}
+	dirp->read_proc = (read_proc_t *)DVE022_keyhook_state_proc_read;
+	dirp->write_proc = (write_proc_t *)DVE022_keyhook_state_proc_write;
+
+	return 0;
+
+ fail2:
+	remove_proc_entry(DVE021_PROC_DIR "/" DVE021_PROC_KEYHOOK_ENABLE_ENTRY,
+				NULL);
+ fail1:
+ 	remove_proc_entry(DVE021_PROC_DIR "/" DVE021_PROC_KEYHOOK_ENTRY, NULL);
+ 	return -ENOMEM;
+}
+
+static void DVE022_proc_exit(void)
+{
+	remove_proc_entry(DVE021_PROC_DIR "/" DVE021_PROC_KEYHOOK_ENTRY, NULL);
+	remove_proc_entry(DVE021_PROC_DIR "/" DVE021_PROC_KEYHOOK_ENABLE_ENTRY,
+				NULL);
+	remove_proc_entry(DVE021_PROC_DIR "/" DVE021_PROC_KEYHOOK_STATE_ENTRY,
+				NULL);
+}
+
 
 #else /* !CONFIG_PROC_FS */
 static inline void input_wakeup_procfs_readers(void) { }
@@ -2156,6 +2403,10 @@ static int __init input_init(void)
 		goto fail2;
 	}
 
+	
+	DVE022_proc_init();
+	
+
 	return 0;
 
  fail2:	input_proc_exit();
@@ -2166,6 +2417,11 @@ static int __init input_init(void)
 static void __exit input_exit(void)
 {
 	input_proc_exit();
+
+	
+	DVE022_proc_exit();
+	
+
 	unregister_chrdev(INPUT_MAJOR, "input");
 	class_unregister(&input_class);
 }

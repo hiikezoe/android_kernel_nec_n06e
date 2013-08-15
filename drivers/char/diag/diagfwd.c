@@ -9,6 +9,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #include <linux/slab.h>
 #include <linux/init.h>
 #include <linux/module.h>
@@ -36,6 +40,10 @@
 #include "diagfwd_cntl.h"
 #include "diagfwd_hsic.h"
 #include "diagchar_hdlc.h"
+
+#include <linux/io.h>
+#include <mach/msm_iomap.h>
+
 #ifdef CONFIG_DIAG_SDIO_PIPE
 #include "diagfwd_sdio.h"
 #endif
@@ -45,6 +53,17 @@
 
 #define MODE_CMD		41
 #define RESET_ID		2
+
+#define D_DIAG_MODE_CMD		0x004A
+#define	D_DIAG_B_MODE		0
+int	g_b_mode = 1;
+
+
+#define WDT0_RST		(MSM_TMR0_BASE + 0x38)
+#define WDT0_EN			(MSM_TMR0_BASE + 0x40)
+#define WDT0_BARK_TIME	(MSM_TMR0_BASE + 0x4C)
+#define WDT0_BITE_TIME	(MSM_TMR0_BASE + 0x5C)
+
 
 int diag_debug_buf_idx;
 unsigned char diag_debug_buf[1024];
@@ -719,6 +738,63 @@ void diag_send_data(struct diag_master_table entry, unsigned char *buf,
 	}
 }
 
+static int diag_check_client
+(
+	int cmd_code,
+	int subsys_id,
+	uint16_t subsys_cmd_code,
+	unsigned char *buf,
+	int len
+)
+{
+	int	i, ret = 1;
+	int data_type;
+
+	data_type = APPS_DATA;
+	
+	if (chk_apps_master() && cmd_code == MODE_CMD) {
+		if (subsys_id != RESET_ID)
+			data_type = MODEM_DATA;
+	}
+
+	pr_debug("diag: %d %d %d", cmd_code, subsys_id, subsys_cmd_code);
+	for (i = 0; i < diag_max_reg; i++) {
+		entry = driver->table[i];
+		if (entry.process_id != NO_PROCESS) {
+			if (entry.cmd_code == cmd_code && entry.subsys_id ==
+				 subsys_id && entry.cmd_code_lo <=
+							 subsys_cmd_code &&
+				  entry.cmd_code_hi >= subsys_cmd_code) {
+				diag_send_data(entry, buf, len, data_type);
+				ret = 0;
+			} else if (entry.cmd_code == 255
+				  && cmd_code == 75) {
+				if (entry.subsys_id ==
+					subsys_id &&
+				   entry.cmd_code_lo <=
+					subsys_cmd_code &&
+					 entry.cmd_code_hi >=
+					subsys_cmd_code) {
+					diag_send_data(entry, buf, len,
+								 data_type);
+					ret = 0;
+				}
+			} else if (entry.cmd_code == 255 &&
+				  entry.subsys_id == 255) {
+				if (entry.cmd_code_lo <=
+						 cmd_code &&
+						 entry.
+						cmd_code_hi >= cmd_code) {
+					diag_send_data(entry, buf, len,
+								 data_type);
+					ret = 0;
+				}
+			}
+		}
+	}
+	return ret;
+}
+
 int diag_process_apps_pkt(unsigned char *buf, int len)
 {
 	uint16_t subsys_cmd_code;
@@ -743,6 +819,14 @@ int diag_process_apps_pkt(unsigned char *buf, int len)
 	temp++;
 	subsys_cmd_code = *(uint16_t *)temp;
 	temp += 2;
+
+	if (g_b_mode == D_DIAG_B_MODE) {
+		packet_type = 0;
+		if (subsys_cmd_code == D_DIAG_MODE_CMD) {
+			packet_type = diag_check_client(cmd_code, subsys_id, subsys_cmd_code, buf, len);
+		}
+		return packet_type;
+	} else {
 	data_type = APPS_DATA;
 	/* Dont send any command other than mode reset */
 	if (chk_apps_master() && cmd_code == MODE_CMD) {
@@ -784,6 +868,7 @@ int diag_process_apps_pkt(unsigned char *buf, int len)
 				}
 			}
 		}
+	}
 	}
 #if defined(CONFIG_DIAG_OVER_USB)
 	/* Check for the command/respond msg for the maximum packet length */
@@ -1047,6 +1132,23 @@ int diag_process_apps_pkt(unsigned char *buf, int len)
 		encode_rsp_and_send(5);
 		return 0;
 	}
+
+	
+  else if ((*buf == 0x4b) && (*(buf+1) == 0xfb)
+          && (*(buf+2) == 0x05) && (*(buf+3) == 0x00)){
+			pr_info("Start WatchDog\n");
+			__raw_writel(0, WDT0_EN);
+			mdelay(5000);
+			__raw_writel(1, WDT0_RST);
+			__raw_writel(5*0x31F3, WDT0_BARK_TIME);
+			__raw_writel(0x31F3, WDT0_BITE_TIME);
+			__raw_writel(1, WDT0_EN);
+			mdelay(10000);
+			printk(KERN_ERR "Restarting has failed\n");
+			
+			return 0;
+	}
+
 	 /* Check for ID for NO MODEM present */
 	else if (chk_polling_response()) {
 		/* respond to 0x0 command */

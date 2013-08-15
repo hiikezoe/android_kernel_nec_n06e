@@ -37,6 +37,10 @@
     Wireless Extensions Data types referred to by CCP.
 
   ======================================================================== */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/version.h>
 #include <linux/module.h>
@@ -319,6 +323,13 @@ int wlan_hdd_set_filter(hdd_context_t *pHddCtx, tpPacketFilterCfg pRequest,
                            v_U8_t sessionId);
 void wlan_hdd_set_mc_addr_list(hdd_context_t *pHddCtx, v_U8_t set, v_U8_t sessionId);
 #endif
+
+
+
+char FCC_givenContryCode[WNI_CFG_COUNTRY_CODE_LEN] = {'\0','\0','\0'};
+
+extern int is_send_counrtycode;
+
 
 #ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
 /**---------------------------------------------------------------------------
@@ -677,10 +688,10 @@ void ccmCfgSetCallback(tHalHandle halHandle, tANI_S32 result)
    v_CONTEXT_t pVosContext;
    hdd_context_t *pHddCtx;
    VOS_STATUS hdd_reconnect_all_adapters( hdd_context_t *pHddCtx );
-#if 0
-   hdd_wext_state_t *pWextState;
-   v_U32_t roamId;
-#endif
+
+
+
+
 
    ENTER();
 
@@ -692,27 +703,27 @@ void ccmCfgSetCallback(tHalHandle halHandle, tANI_S32 result)
       hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Invalid pHddCtx", __FUNCTION__);
       return;
    }
-#if 0
-   pWextState = pAdapter->pWextState;
-#endif
+
+
+
 
    if (WNI_CFG_NEED_RESTART == result || WNI_CFG_NEED_RELOAD == result)
    {
       //TODO Verify is this is really used. If yes need to fix it.
       hdd_reconnect_all_adapters( pHddCtx );
-#if 0
-      pAdapter->conn_info.connState = eConnectionState_NotConnected;
-      INIT_COMPLETION(pAdapter->disconnect_comp_var);
-      vosStatus = sme_RoamDisconnect(halHandle, pAdapter->sessionId, eCSR_DISCONNECT_REASON_UNSPECIFIED);
 
-      if(VOS_STATUS_SUCCESS == vosStatus)
-          wait_for_completion_interruptible_timeout(&pAdapter->disconnect_comp_var,
-                     msecs_to_jiffies(WLAN_WAIT_TIME_DISCONNECT));
 
-      sme_RoamConnect(halHandle,
-                     pAdapter->sessionId, &(pWextState->roamProfile),
-                     &roamId);
-#endif
+
+
+
+
+
+
+
+
+
+
+
    }
 
    EXIT();
@@ -2412,6 +2423,110 @@ void* wlan_hdd_change_country_code_callback(void *pAdapter)
     return NULL;
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 static int iw_set_priv(struct net_device *dev,
                        struct iw_request_info *info,
                        union iwreq_data *wrqu, char *extra)
@@ -2511,6 +2626,10 @@ static int iw_set_priv(struct net_device *dev,
         long lrc;
 
         country_code =  cmd + 8;
+        
+        FCC_givenContryCode[0] = *country_code;
+        FCC_givenContryCode[1] = *(country_code + 1);
+        
 
         init_completion(&pAdapter->change_country_code);
 
@@ -2537,6 +2656,31 @@ static int iw_set_priv(struct net_device *dev,
             return VOS_STATUS_E_FAILURE;
         }
     }
+
+    else if( strncasecmp(cmd, "CLRCC", 5) == 0 )
+    {
+        is_send_counrtycode = FALSE;
+        cmd[0]= 'O';
+        cmd[1]= 'K';
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     else if( strncasecmp(cmd, "rssi", 4) == 0 )
     {
         status = iw_get_rssi(dev, info, wrqu, extra);
@@ -4574,20 +4718,20 @@ static int iw_qcom_set_wapi_key(struct net_device *dev, struct iw_request_info *
             pHddStaCtx->roam_info.roamingState = HDD_ROAM_STATE_NONE;
         }
     }
-#if 0 /// NEED TO CHECK ON THIS
-    else
-    {
-        // Store the keys in the adapter to be moved to the profile & passed to
-        // SME in the ConnectRequest if we are not yet in connected state.
-         memcpy( &pAdapter->setKey[ setKey.keyId ], &setKey, sizeof( setKey ) );
-         pAdapter->fKeySet[ setKey.keyId ] = TRUE;
 
-         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_MED,
-                    "  Saving key [idx= %d] to apply when moving to connected state ",
-                    setKey.keyId );
 
-    }
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
     return halStatus;
 }
 
@@ -5920,8 +6064,16 @@ static const struct iw_priv_args we_private_args[] = {
 
     /* handlers for main ioctl */
     {   WLAN_PRIV_SET_INT_GET_NONE,
+
+
         IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
-        0,
+
+
+
+
+
+
+        0, 
         "" },
 
     /* handlers for sub-ioctl */
@@ -6397,22 +6549,22 @@ int hdd_register_wext(struct net_device *dev)
 
 int hdd_UnregisterWext(struct net_device *dev)
 {
-#if 0
-   hdd_wext_state_t *wextBuf;
-   hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
 
-   ENTER();
-   // Set up the pointer to the Wireless Extensions state structure
-   wextBuf = pAdapter->pWextState;
 
-   // De-allocate the Wireless Extensions state structure
-   kfree(wextBuf);
 
-   // Clear out the pointer to the Wireless Extensions state structure
-   pAdapter->pWextState = NULL;
 
-   EXIT();
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
    dev->wireless_handlers = NULL;
    return 0;
 }

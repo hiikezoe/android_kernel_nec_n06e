@@ -22,6 +22,22 @@
  *
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
+
+
+
+
+
+
+
+
+
+
+
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
@@ -36,6 +52,10 @@
 #include <linux/reboot.h>
 #include <net/netlink.h>
 #include <net/genetlink.h>
+
+
+#include <linux/mfd/pm8xxx/pm8921-charger.h>
+
 
 MODULE_AUTHOR("Zhang Rui");
 MODULE_DESCRIPTION("Generic thermal management sysfs support");
@@ -495,7 +515,7 @@ struct thermal_hwmon_device {
 
 struct thermal_hwmon_attr {
 	struct device_attribute attr;
-	char name[16];
+	char name[THERMAL_NAME_LENGTH]; 
 };
 
 /* one temperature input for each thermal zone */
@@ -1116,10 +1136,24 @@ void thermal_zone_device_update(struct thermal_zone_device *tz)
 		switch (trip_type) {
 		case THERMAL_TRIP_CRITICAL:
 			if (temp >= trip_temp) {
+				
+				int is_pm8921_tz = !strcmp(tz->type,
+							   "pm8921_tz");
+				if (is_pm8921_tz) {
+					ncm_pm8921_notify_thermal_trip(count);
+				}
+				
 				if (tz->ops->notify)
 					ret = tz->ops->notify(tz, count,
 							      trip_type);
-				if (!ret) {
+				
+
+
+
+				
+				if (!ret && !is_pm8921_tz) {
+
+				
 					pr_emerg("Critical temperature reached (%ld C), shutting down\n",
 						 temp/1000);
 					orderly_poweroff(true);
@@ -1127,9 +1161,15 @@ void thermal_zone_device_update(struct thermal_zone_device *tz)
 			}
 			break;
 		case THERMAL_TRIP_HOT:
-			if (temp >= trip_temp)
+			
+			if (temp >= trip_temp) {
+				if (!strcmp(tz->type, "pm8921_tz")) {
+					ncm_pm8921_notify_thermal_trip(count);
+				}
 				if (tz->ops->notify)
 					tz->ops->notify(tz, count, trip_type);
+			}
+			
 			break;
 		case THERMAL_TRIP_CONFIGURABLE_HI:
 			if (temp >= trip_temp)

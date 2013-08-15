@@ -51,6 +51,10 @@
   written permission of QUALCOMM Incorporated.
 
 ===========================================================================*/
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 /*===========================================================================
 
@@ -197,13 +201,13 @@ VOS_PWR_SLEEP(100);
         }
         VOS_PWR_SLEEP(300);
         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO, "WLAN put in reset mode \n");
-#if 0
-        rc = pmapp_clock_vote("wlan", PMAPP_CLOCK_ID_A0, PMAPP_CLOCK_VOTE_ON);
-        if (rc) {
-            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: Voting TCXO to ON failed. (%d)\n",__func__, rc);
-            return -EIO;
-        }
-#endif
+
+
+
+
+
+
+
         /* Configure TCXO to be slave to WLAN_CLK_PWR_REQ */
         rc = pmapp_clock_vote(id, PMAPP_CLOCK_ID_A0, PMAPP_CLOCK_VOTE_PIN_CTRL);
         if (rc) {
@@ -827,6 +831,9 @@ VOS_STATUS vos_chipAssertDeepSleep
 #endif
 #endif //FIXME_VOLANS
 
+    
+   	pm_obs_a_wlan(PM_OBS_WLAN_OFF_MODE);
+
    return VOS_STATUS_SUCCESS;
 }
 
@@ -886,6 +893,10 @@ VOS_STATUS vos_chipDeAssertDeepSleep
    }
 #endif
 #endif //FIXME_VOLANS
+
+    
+   	pm_obs_a_wlan(PM_OBS_WLAN_SLEEP_MODE);
+
    return VOS_STATUS_SUCCESS;
 }
 

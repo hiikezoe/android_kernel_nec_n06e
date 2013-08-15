@@ -12,6 +12,10 @@
  *  'linux/arch/arm/lib/traps.S'.  Mostly a debugging aid, but will probably
  *  kill the offending process.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #include <linux/signal.h>
 #include <linux/personality.h>
 #include <linux/kallsyms.h>
@@ -263,6 +267,9 @@ static int __die(const char *str, int err, struct thread_info *thread, struct pt
 
 	printk(KERN_EMERG "Internal error: %s: %x [#%d]" S_PREEMPT S_SMP
 	       S_ISA "\n", str, err, ++die_counter);
+        
+        printk(KERN_ERR "[T][ARM]Event:0x38 Info:0x01\n");
+        
 
 #ifdef CONFIG_LGE_CRASH_HANDLER
 	set_crash_store_disable();
@@ -425,15 +432,17 @@ asmlinkage void __exception do_undefinstr(struct pt_regs *regs)
 #endif
 			instr = *(u32 *) pc;
 	} else if (thumb_mode(regs)) {
-		get_user(instr, (u16 __user *)pc);
+		if (get_user(instr, (u16 __user *)pc))
+			goto die_sig;
 		if (is_wide_instruction(instr)) {
 			unsigned int instr2;
-			get_user(instr2, (u16 __user *)pc+1);
+			if (get_user(instr2, (u16 __user *)pc+1))
+				goto die_sig;
 			instr <<= 16;
 			instr |= instr2;
 		}
-	} else {
-		get_user(instr, (u32 __user *)pc);
+	} else if (get_user(instr, (u32 __user *)pc)) {
+		goto die_sig;
 	}
 
 	if (call_undef_hook(regs, instr) == 0)
@@ -441,6 +450,7 @@ asmlinkage void __exception do_undefinstr(struct pt_regs *regs)
 
 	trace_undef_instr(regs, (void *)pc);
 
+die_sig:
 #ifdef CONFIG_DEBUG_USER
 	if (user_debug & UDBG_UNDEFINED) {
 		printk(KERN_INFO "%s (%d): undefined instruction: pc=%p\n",
@@ -453,6 +463,10 @@ asmlinkage void __exception do_undefinstr(struct pt_regs *regs)
 	info.si_errno = 0;
 	info.si_code  = ILL_ILLOPC;
 	info.si_addr  = pc;
+
+        
+	printk(KERN_ERR "[T][ARM]Event:0x33 Info:0x00\n");
+        
 
 	arm_notify_die("Oops - undefined instruction", regs, &info, 0, 6);
 }

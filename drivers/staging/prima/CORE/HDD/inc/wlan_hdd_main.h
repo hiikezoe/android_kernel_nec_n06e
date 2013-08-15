@@ -31,6 +31,10 @@
          Qualcomm Confidential and Proprietary.
   
   ==========================================================================*/
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
   
 /*--------------------------------------------------------------------------- 
   Include files
@@ -723,6 +727,13 @@ struct hdd_adapter_s
    //Magic cookie for adapter sanity verification
    v_U32_t magic;
    v_BOOL_t higherDtimTransition;
+
+
+
+
+
+
+
 };
 
 typedef struct hdd_dynamic_mcbcfilter_s
@@ -885,6 +896,11 @@ struct hdd_context_s
 #ifdef WLAN_FEATURE_PACKET_FILTERING
    t_multicast_add_list mc_addr_list;
 #endif
+
+   
+   
+   const struct firmware *DVE022_nv;
+   
 
 #ifdef WLAN_FEATURE_HOLD_RX_WAKELOCK
    struct wake_lock rx_wake_lock;

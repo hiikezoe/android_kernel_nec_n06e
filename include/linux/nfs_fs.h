@@ -5,6 +5,10 @@
  *
  *  OS-specific nfs filesystem definitions and declarations
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifndef _LINUX_NFS_FS_H
 #define _LINUX_NFS_FS_H
@@ -262,11 +266,6 @@ static inline struct rpc_clnt *NFS_CLIENT(const struct inode *inode)
 static inline const struct nfs_rpc_ops *NFS_PROTO(const struct inode *inode)
 {
 	return NFS_SERVER(inode)->nfs_client->rpc_ops;
-}
-
-static inline __be32 *NFS_COOKIEVERF(const struct inode *inode)
-{
-	return NFS_I(inode)->cookieverf;
 }
 
 static inline unsigned NFS_MINATTRTIMEO(const struct inode *inode)

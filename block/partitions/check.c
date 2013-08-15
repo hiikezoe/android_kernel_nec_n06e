@@ -12,10 +12,15 @@
  *
  *  Added needed MAJORS for new pairs, {hdi,hdj}, {hdk,hdl}
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/slab.h>
 #include <linux/ctype.h>
 #include <linux/genhd.h>
+#include <linux/vmalloc.h>    
 
 #include "check.h"
 
@@ -112,12 +117,21 @@ check_partition(struct gendisk *hd, struct block_device *bdev)
 	struct parsed_partitions *state;
 	int i, res, err;
 
-	state = kzalloc(sizeof(struct parsed_partitions), GFP_KERNEL);
+	
+	
+	state = vmalloc(sizeof(struct parsed_partitions));
+	
 	if (!state)
 		return NULL;
+
+	memset(state, 0, sizeof(struct parsed_partitions));    
+
 	state->pp_buf = (char *)__get_free_page(GFP_KERNEL);
 	if (!state->pp_buf) {
-		kfree(state);
+		
+		
+		vfree(state);
+		
 		return NULL;
 	}
 	state->pp_buf[0] = '\0';
@@ -161,6 +175,9 @@ check_partition(struct gendisk *hd, struct block_device *bdev)
 	printk(KERN_INFO "%s", state->pp_buf);
 
 	free_page((unsigned long)state->pp_buf);
-	kfree(state);
+	
+	
+	vfree(state);
+	
 	return ERR_PTR(res);
 }

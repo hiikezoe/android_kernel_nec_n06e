@@ -22,6 +22,10 @@ struct vfsmount;
  * (C) Copyright 1997 Thomas Schoebel-Theuer,
  * with heavy changes by Linus Torvalds
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #define IS_ROOT(x) ((x) == (x)->d_parent)
 
@@ -190,6 +194,8 @@ struct dentry_operations {
 #define DCACHE_NEED_LOOKUP	0x80000 /* dentry requires i_op->lookup */
 #define DCACHE_MANAGED_DENTRY \
 	(DCACHE_MOUNTED|DCACHE_NEED_AUTOMOUNT|DCACHE_MANAGE_TRANSIT)
+
+#define DCACHE_DENTRY_KILLED	0x100000
 
 extern seqlock_t rename_lock;
 

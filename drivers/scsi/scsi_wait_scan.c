@@ -9,10 +9,14 @@
  * will wait until they have all finished scanning their busses before
  * allowing the boot to proceed
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 #include <linux/device.h>
-#include <scsi/scsi_scan.h>
+#include "scsi_priv.h"
 
 static int __init wait_scan_init(void)
 {

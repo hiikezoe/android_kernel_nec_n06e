@@ -10,6 +10,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <asm/mach-types.h>
 #include <linux/gpio.h>
@@ -23,8 +27,8 @@
 #ifdef CONFIG_MSM_CAMERA
 
 #ifdef CONFIG_MSM_CAMERA_FLASH
-#if (defined(CONFIG_GPIO_SX150X) || defined(CONFIG_GPIO_SX150X_MODULE)) && \
-	defined(CONFIG_I2C)
+#if (defined(CONFIG_GPIO_SX150X) || defined(CONFIG_GPIO_SX150X_MODULE)) 
+
 
 static struct i2c_board_info cam_expander_i2c_info[] = {
 	{
@@ -519,8 +523,8 @@ static struct camera_vreg_t msm_8960_cam_vreg[] = {
 
 static struct gpio msm8960_common_cam_gpio[] = {
 	{5, GPIOF_DIR_IN, "CAMIF_MCLK"},
-	{20, GPIOF_DIR_IN, "CAMIF_I2C_DATA"},
-	{21, GPIOF_DIR_IN, "CAMIF_I2C_CLK"},
+	{10, GPIOF_DIR_IN, "CAMIF_I2C_DATA"},
+	{11, GPIOF_DIR_IN, "CAMIF_I2C_CLK"},
 };
 
 static struct gpio msm8960_front_cam_gpio[] = {
@@ -850,8 +854,8 @@ void __init msm8960_init_cam(void)
 			GPIO_CAM_GP_LED_EN1;
 		msm_flash_src._fsrc.ext_driver_src.led_flash_en =
 			GPIO_CAM_GP_LED_EN2;
-		#if defined(CONFIG_I2C) && (defined(CONFIG_GPIO_SX150X) || \
-		defined(CONFIG_GPIO_SX150X_MODULE))
+		#if  (defined(CONFIG_GPIO_SX150X) || 		defined(CONFIG_GPIO_SX150X_MODULE))
+
 		msm_flash_src._fsrc.ext_driver_src.expander_info =
 			cam_expander_info;
 		#endif

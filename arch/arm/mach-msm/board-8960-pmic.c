@@ -10,6 +10,17 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
+
+
+
+
+
+
 
 #include <linux/interrupt.h>
 #include <linux/mfd/pm8xxx/pm8921.h>
@@ -422,12 +433,13 @@ static struct pm8xxx_misc_platform_data pm8xxx_misc_pdata = {
 	.priority		= 0,
 };
 
+ 
 static struct pm8921_bms_platform_data pm8921_bms_pdata __devinitdata = {
 	.battery_type			= BATT_UNKNOWN,
 	.r_sense_uohm			= 10000,
 	.v_cutoff			= 3400,
 	.max_voltage_uv			= MAX_VOLTAGE_MV * 1000,
-	.rconn_mohm			= 18,
+	.rconn_mohm			= 30,
 	.shutdown_soc_valid_limit	= 20,
 	.adjust_soc_low_threshold	= 25,
 	.chg_term_ua			= CHG_TERM_MA * 1000,
@@ -439,6 +451,7 @@ static struct pm8921_bms_platform_data pm8921_bms_pdata __devinitdata = {
 	.low_ocv_correction_limit_uv	= 100,
 	.hold_soc_est			= 3,
 };
+ 
 
 #define	PM8921_LC_LED_MAX_CURRENT	4	/* I = 4mA */
 #define	PM8921_LC_LED_LOW_CURRENT	1	/* I = 1mA */

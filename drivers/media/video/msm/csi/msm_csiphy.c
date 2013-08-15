@@ -9,6 +9,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/delay.h>
 #include <linux/clk.h>
@@ -21,10 +25,11 @@
 #include "msm_csiphy.h"
 #include "msm.h"
 #include "msm_csiphy_hwreg.h"
-#define DBG_CSIPHY 0
+#define DBG_CSIPHY 1
 
 #define V4L2_IDENT_CSIPHY                        50003
 #define CSIPHY_VERSION_V3                        0x10
+
 
 int msm_csiphy_lane_config(struct csiphy_device *csiphy_dev,
 	struct msm_camera_csiphy_params *csiphy_params)
@@ -114,7 +119,7 @@ static irqreturn_t msm_csiphy_irq(int irq_num, void *data)
 		msm_camera_io_w(irq,
 			csiphy_dev->base +
 			MIPI_CSIPHY_INTERRUPT_CLEAR0_ADDR + 0x4*i);
-		pr_err("%s MIPI_CSIPHY%d_INTERRUPT_STATUS%d = 0x%x\n",
+		CDBG("%s MIPI_CSIPHY%d_INTERRUPT_STATUS%d = 0x%x\n",
 			 __func__, csiphy_dev->pdev->id, i, irq);
 		msm_camera_io_w(0x1, csiphy_dev->base +
 			MIPI_CSIPHY_GLBL_IRQ_CMD_ADDR);

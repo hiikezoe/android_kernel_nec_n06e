@@ -16,6 +16,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/sched.h>
 #include <linux/module.h>
@@ -68,6 +72,14 @@ size_t logger_offset(struct logger_log *log, size_t n)
 }
 
 
+
+
+#define LOGGER_ENTRY_MSG_LEN        (4*1024)    
+#define LOGGER_ENTRY_OFFSET_LEN     offsetof(struct logger_entry, msg)  
+static char conv_buf[LOGGER_ENTRY_MSG_LEN + LOGGER_ENTRY_OFFSET_LEN];
+
+
+
 /*
  * file_get_log - Given a file structure, return the associated log
  *
@@ -90,6 +102,21 @@ static inline struct logger_log *file_get_log(struct file *file)
 	} else
 		return file->private_data;
 }
+
+
+#define FATAL_BACKUP_LOGCAT_NAME "logcat_auto_run"	
+#define FATAL_BACKUP_PID_INITIAL -1
+static int g_fatal_backup_logcat_pid = FATAL_BACKUP_PID_INITIAL;
+
+
+
+extern void backup_log_init( void );
+extern void backup_log( struct logger_entry* );
+
+
+extern void backup_arm_write( void );
+
+
 
 /*
  * get_entry_header - returns a pointer to the logger_entry header within
@@ -163,6 +190,37 @@ static ssize_t copy_header_to_user(int ver, struct logger_entry *entry,
 	return copy_to_user(buf, hdr, hdr_len);
 }
 
+
+#define TRACELOG_MESSAGE_STR            "\x5B\x54\x5D"
+
+char DVE023(char in_char)
+{
+	char ret_char;
+
+	in_char = ~in_char;
+	ret_char = ((in_char & 0x9C)
+				| ((in_char << 5) & 0x60)
+				| ((in_char >> 5) & 0x03));
+
+	return ret_char;
+}
+
+void DVE025(char * in_str, char * out_str)
+{
+	int loop;
+	int loop_end;
+
+	loop_end = strlen(in_str);
+
+	for (loop = 0; loop < loop_end; loop++) {
+		out_str[loop] = DVE023(in_str[loop]);
+	}
+	out_str[loop] = '\0';
+
+	return;
+}
+
+
 /*
  * do_read_log_to_user - reads exactly 'count' bytes from 'log' into the
  * user-space buffer 'buf'. Returns 'count' on success.
@@ -178,6 +236,11 @@ static ssize_t do_read_log_to_user(struct logger_log *log,
 	struct logger_entry *entry;
 	size_t len;
 	size_t msg_start;
+
+	struct logger_entry *ent;
+	char	*tag;
+	char	*msg;
+
 
 	/*
 	 * First, copy the header to userspace, using the version of
@@ -198,16 +261,55 @@ static ssize_t do_read_log_to_user(struct logger_log *log,
 	 * the log, whichever comes first.
 	 */
 	len = min(count, log->size - msg_start);
-	if (copy_to_user(buf, log->buffer + msg_start, len))
-		return -EFAULT;
+
+
+
+
+
+	memcpy(conv_buf, log->buffer + reader->r_off, len + LOGGER_ENTRY_OFFSET_LEN );
+
+
 
 	/*
 	 * Second, we read any remaining bytes, starting back at the head of
 	 * the log.
 	 */
 	if (count != len)
-		if (copy_to_user(buf + len, log->buffer, count - len))
-			return -EFAULT;
+
+
+
+
+
+	memcpy(conv_buf + len + LOGGER_ENTRY_OFFSET_LEN, log->buffer, count - len);
+
+	ent = (struct logger_entry *)conv_buf;
+
+
+	
+	if(g_fatal_backup_logcat_pid == current->pid)
+    {
+
+		backup_log( ent );
+
+	}
+
+
+	tag = ent->msg + 1;
+	msg = ent->msg + strlen(tag) + 2;
+
+	if (!strncmp( msg,
+			TRACELOG_MESSAGE_STR,
+			strlen( TRACELOG_MESSAGE_STR ))) {  
+		DVE025(tag, tag);
+		DVE025(msg, msg);
+	}
+
+
+
+	if (copy_to_user(buf, conv_buf + LOGGER_ENTRY_OFFSET_LEN, count))
+
+		return -EFAULT;
+
 
 	reader->r_off = logger_offset(log, reader->r_off +
 		sizeof(struct logger_entry) + count);
@@ -452,6 +554,18 @@ ssize_t logger_aio_write(struct kiocb *iocb, const struct iovec *iov,
 	struct timespec now;
 	ssize_t ret = 0;
 
+	char    *p = NULL;
+	int     idx = 0;
+
+	static const char * const alarm_msg = "\x5B\x54\x5D\x5B\x41\x52\x4D\x5D";
+
+	static const int    alarm_len = 8;
+
+	
+	char alarm_buf[37];
+
+
+
 	now = current_kernel_time();
 
 	header.pid = current->tgid;
@@ -485,6 +599,26 @@ ssize_t logger_aio_write(struct kiocb *iocb, const struct iovec *iov,
 		/* figure out how much of this vector we can keep */
 		len = min_t(size_t, iov->iov_len, header.len - ret);
 
+
+		
+		if ( idx == 2 && iov->iov_len > alarm_len ) {
+			if ( !strncmp( iov->iov_base, alarm_msg, alarm_len )){
+				size_t len2;
+				len2 = min( len, log->size - log->w_off ); 
+				p = log->buffer + log->w_off;
+				if ( len != len2 ){
+					strncpy( alarm_buf, iov->iov_base, sizeof( alarm_buf ));
+
+					
+					alarm_buf[36] = '\0';
+
+					p = alarm_buf;
+				}
+			}
+		}
+		idx++;
+
+
 		/* write out this segment's payload */
 		nr = do_write_log_from_user(log, iov->iov_base, len);
 		if (unlikely(nr < 0)) {
@@ -502,6 +636,13 @@ ssize_t logger_aio_write(struct kiocb *iocb, const struct iovec *iov,
 	/* wake up any blocked readers */
 	wake_up_interruptible(&log->wq);
 
+
+				
+	if ( p ){
+		printk( KERN_ERR "%s\n", p );
+	}
+
+
 	return ret;
 }
 
@@ -516,6 +657,10 @@ static int logger_open(struct inode *inode, struct file *file)
 {
 	struct logger_log *log;
 	int ret;
+
+	char logcat_argv[sizeof(FATAL_BACKUP_LOGCAT_NAME)];
+	int argv_buf_size;
+
 
 	ret = nonseekable_open(inode, file);
 	if (ret)
@@ -547,6 +692,26 @@ static int logger_open(struct inode *inode, struct file *file)
 		file->private_data = reader;
 	} else
 		file->private_data = log;
+
+
+	
+	if(g_fatal_backup_logcat_pid == FATAL_BACKUP_PID_INITIAL)
+	{
+		argv_buf_size = current->mm->arg_end - current->mm->arg_start;
+
+		
+		if(argv_buf_size >= strlen(FATAL_BACKUP_LOGCAT_NAME))
+		{
+			memcpy(logcat_argv, (char*)current->mm->arg_start, strlen(FATAL_BACKUP_LOGCAT_NAME));
+			
+			
+			if(0 == strncmp(logcat_argv, FATAL_BACKUP_LOGCAT_NAME, strlen(FATAL_BACKUP_LOGCAT_NAME)))
+			{
+				g_fatal_backup_logcat_pid = current->pid;
+			}
+		}
+	}
+
 
 	return 0;
 }
@@ -784,6 +949,14 @@ static int __init logger_init(void)
 		goto out;
 
 out:
+
+
+	backup_arm_write();
+
+
+
+	backup_log_init();
+
 	return ret;
 }
 device_initcall(logger_init);

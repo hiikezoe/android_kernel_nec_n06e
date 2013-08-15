@@ -14,6 +14,26 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #ifndef __ASM_ARCH_MSM_HSUSB_H
 #define __ASM_ARCH_MSM_HSUSB_H
@@ -369,6 +389,10 @@ struct msm_otg {
 	u8 active_tmout;
 	struct hrtimer timer;
 	enum usb_vdd_type vdd_type;
+
+	struct delayed_work bat_timer;
+	struct work_struct bat_cancel_work;
+
 };
 
 struct msm_hsic_host_platform_data {

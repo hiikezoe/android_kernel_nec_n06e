@@ -10,13 +10,17 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/types.h>
 #include <linux/bitops.h>
 #include <linux/mutex.h>
 #include <linux/slimport.h>
 
-/* #define DEBUG */
+/*#define DEBUG*/
 #define DEV_DBG_PREFIX "EXT_COMMON: "
 
 /* The start of the data block collection within the CEA Extension Version 3 */
@@ -29,11 +33,15 @@
 
 #include "mdp.h"
 
+
+#include <linux/mhl_8334.h>
+
+
 struct external_common_state_type *external_common_state;
 EXPORT_SYMBOL(external_common_state);
 DEFINE_MUTEX(external_common_state_hpd_mutex);
 EXPORT_SYMBOL(external_common_state_hpd_mutex);
-
+extern int updating_panel_info;
 
 static int atoi(const char *name)
 {
@@ -129,9 +137,16 @@ EXPORT_SYMBOL(hdmi_common_supported_video_mode_lut);
 
 struct msm_hdmi_mode_timing_info
 	hdmi_mhl_supported_video_mode_lut[HDMI_VFRMT_MAX] = {
-	HDMI_VFRMT_640x480p60_4_3_TIMING,
+
+        HDMI_VFRMT_UNKNOWN_TIMING,
+
+        HDMI_VFRMT_640x480p60_4_3_TIMING,
 	VFRMT_NOT_SUPPORTED(HDMI_VFRMT_720x480p60_4_3),
-	VFRMT_NOT_SUPPORTED(HDMI_VFRMT_720x480p60_16_9),
+
+
+
+	HDMI_VFRMT_720x480p60_16_9_TIMING,
+
 	HDMI_VFRMT_1280x720p60_16_9_TIMING,
 	VFRMT_NOT_SUPPORTED(HDMI_VFRMT_1920x1080i60_16_9),
 	VFRMT_NOT_SUPPORTED(HDMI_VFRMT_1440x480i60_4_3),
@@ -764,6 +779,51 @@ static ssize_t hdmi_common_rda_spkr_alloc_data_block(struct device *dev,
 	return ret;
 }
 
+static ssize_t hdmi_virtual_hpd(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+    ssize_t ret = 1;
+    int on;
+    on = atoi(buf);
+    
+    if (on) {
+	    mhl_drive_all(TRUE);
+    } else {
+	    mhl_drive_all(FALSE);
+    }
+
+    return ret;
+}
+#if defined(CONFIG_FEATURE_DVE021_ONLY_FOR_PRODUCTION_PROCESS_DVE082)
+
+static ssize_t hdmi_common_rda_hdcp_on(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	ssize_t ret;
+	ret = snprintf(buf, PAGE_SIZE, "%d\n", hdmi_msm_state->hdcp_enable);
+	DEV_DBG("%s: '%d'\n", __func__, hdmi_msm_state->hdcp_enable);
+	return ret;
+}
+
+static ssize_t hdmi_common_wta_hdcp_on(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	ssize_t ret = strnlen(buf, PAGE_SIZE);
+	int hdcp_on;
+
+	hdcp_on = atoi(buf);
+
+	if (hdcp_on)
+		hdmi_msm_state->hdcp_enable = TRUE;
+	else
+		hdmi_msm_state->hdcp_enable = FALSE;
+
+	DEV_DBG("%s: '%d'\n", __func__, hdmi_msm_state->hdcp_enable);
+
+	return ret;
+}
+#endif
+
 static DEVICE_ATTR(video_mode, S_IRUGO | S_IWUGO,
 	external_common_rda_video_mode, external_common_wta_video_mode);
 static DEVICE_ATTR(video_mode_str, S_IRUGO, external_common_rda_video_mode_str,
@@ -799,6 +859,14 @@ static DEVICE_ATTR(audio_data_block, S_IRUGO, hdmi_common_rda_audio_data_block,
 static DEVICE_ATTR(spkr_alloc_data_block, S_IRUGO,
 	hdmi_common_rda_spkr_alloc_data_block, NULL);
 
+
+static DEVICE_ATTR(virtual_hpd, 0220, NULL, hdmi_virtual_hpd);
+#if defined(CONFIG_FEATURE_DVE021_ONLY_FOR_PRODUCTION_PROCESS_DVE082)
+static DEVICE_ATTR(hdcp_on, 0660, hdmi_common_rda_hdcp_on,
+	hdmi_common_wta_hdcp_on);
+#endif
+
+
 static struct attribute *external_common_fs_attrs[] = {
 	&dev_attr_video_mode.attr,
 	&dev_attr_video_mode_str.attr,
@@ -828,7 +896,13 @@ static struct attribute *external_common_fs_attrs[] = {
 	&dev_attr_hdmi_primary.attr,
 	&dev_attr_audio_data_block.attr,
 	&dev_attr_spkr_alloc_data_block.attr,
-	NULL,
+
+    &dev_attr_virtual_hpd.attr,
+#if defined(CONFIG_FEATURE_DVE021_ONLY_FOR_PRODUCTION_PROCESS_DVE082)
+	&dev_attr_hdcp_on.attr,
+#endif
+
+    NULL,
 };
 static struct attribute_group external_common_fs_attr_group = {
 	.attrs = external_common_fs_attrs,
@@ -1879,6 +1953,39 @@ static boolean check_edid_header(const uint8 *edid_buf)
 		&& (edid_buf[6] == 0xff) && (edid_buf[7] == 0x00);
 }
 
+static int for_4blocks(uint32 num_og_cea_blocks)
+{
+    int i;
+	int status = 0;
+	uint32 ieee_reg_id = 0;
+    uint8 edid_buf[0x80 * 2];
+
+    if(num_og_cea_blocks >= 2 && num_og_cea_blocks <= 4) {
+        for(i = 1; i < num_og_cea_blocks; i++) {
+            status = hdmi_common_read_edid_block(i, &edid_buf[0x00]);
+            if (status) {
+                DEV_ERR("%s: ddc read block(%d) failed: %d\n", __func__,i,
+                        status);
+                return -1;
+            }
+            if (edid_buf[0x00] != 2)
+                continue;
+            else {
+                ieee_reg_id =
+                    hdmi_edid_extract_ieee_reg_id(edid_buf);
+                if (ieee_reg_id == 0x0c03)
+                    external_common_state->hdmi_sink = TRUE ;
+                else
+                    external_common_state->hdmi_sink = FALSE ;
+            }
+        }
+    } else {
+        return -1;
+    }
+
+    return 0;
+}
+
 int hdmi_common_read_edid(void)
 {
 	int status = 0;
@@ -1957,6 +2064,7 @@ int hdmi_common_read_edid(void)
 	case 2:
 	case 3:
 	case 4:
+        for_4blocks(num_og_cea_blocks);
 		for (i = 1; i <= num_og_cea_blocks; i++) {
 			if (!(i % 2)) {
 					status = hdmi_common_read_edid_block(i,
@@ -2083,6 +2191,12 @@ bool hdmi_common_get_video_format_from_drv_data(struct msm_fb_data_type *mfd)
 		DEV_DBG("resolution %s", msm_hdmi_mode_2string(
 			external_common_state->video_resolution));
 	external_common_state->video_resolution = format;
+
+
+
+
+
+
 	return changed;
 }
 EXPORT_SYMBOL(hdmi_common_get_video_format_from_drv_data);

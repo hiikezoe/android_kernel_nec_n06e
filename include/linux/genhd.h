@@ -8,6 +8,10 @@
  *
  *		<drew@colorado.edu>
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/types.h>
 #include <linux/kdev_t.h>
@@ -130,6 +134,9 @@ struct hd_struct {
 #define GENHD_FL_BLOCK_EVENTS_ON_EXCL_WRITE	256
 #define GENHD_FL_NO_PART_SCAN			512
 
+#define GENHD_IF_USB	1
+
+
 enum {
 	DISK_EVENT_MEDIA_CHANGE			= 1 << 0, /* media changed */
 	DISK_EVENT_EJECT_REQUEST		= 1 << 1, /* eject requested */
@@ -191,6 +198,10 @@ struct gendisk {
 	struct blk_integrity *integrity;
 #endif
 	int node_id;
+
+	int media_present;
+	int interfaces;
+
 };
 
 static inline struct gendisk *part_to_disk(struct hd_struct *part)

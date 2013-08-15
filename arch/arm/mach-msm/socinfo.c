@@ -10,10 +10,26 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 /*
  * SOC Info Routines
  *
  */
+
+
+
+
+
+
+
+
+
+
+
+
 
 #include <linux/types.h>
 #include <linux/sysdev.h>
@@ -21,6 +37,15 @@
 #include <mach/socinfo.h>
 
 #include "smd_private.h"
+
+
+
+#include "linux/oemnc_info.h"
+
+#include "linux/oemnc_smem.h"
+
+
+
 
 #define BUILD_ID_LENGTH 32
 
@@ -961,3 +986,50 @@ const int cpu_is_krait_v3(void)
 		return 0;
 	};
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+uint32_t hw_revision_read(void)
+{
+
+
+	smem_id_vendor0  *p_smem_id_vendor0;
+	p_smem_id_vendor0 = smem_alloc(SMEM_ID_VENDOR0, sizeof(smem_id_vendor0));
+
+	if (!p_smem_id_vendor0) {
+		pr_info("Type of SOCINFO is not v7. Can't return HW REVION!\n");
+		return HW_REVISION_READ_ERR;
+	}
+	return p_smem_id_vendor0->smem_board_info.platform_version;
+
+
+
+
+
+
+
+
+
+
+
+}
+EXPORT_SYMBOL(hw_revision_read);
+
+

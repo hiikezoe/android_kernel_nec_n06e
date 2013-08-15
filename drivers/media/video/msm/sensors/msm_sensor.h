@@ -9,6 +9,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifndef MSM_SENSOR_H
 #define MSM_SENSOR_H
@@ -26,6 +30,9 @@
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
 #include <linux/gpio.h>
+
+#include <linux/pm_obs_api.h>
+
 #include <mach/camera.h>
 #include <media/msm_camera.h>
 #include <media/v4l2-subdev.h>
@@ -54,6 +61,11 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 			void __user *argp);
 int32_t msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl);
 int32_t msm_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl);
+
+
+int32_t msm_sensor_enable_i2c_mux(struct msm_camera_i2c_conf *i2c_conf);
+int32_t msm_sensor_disable_i2c_mux(struct msm_camera_i2c_conf *i2c_conf);
+
 
 int32_t msm_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl);
 int msm_sensor_i2c_probe(struct i2c_client *client,
@@ -105,6 +117,10 @@ int32_t msm_sensor_get_csi_params(struct msm_sensor_ctrl_t *s_ctrl,
 
 struct msm_sensor_ctrl_t *get_sctrl(struct v4l2_subdev *sd);
 int32_t msm_sensor_free_sensor_data(struct msm_sensor_ctrl_t *s_ctrl);
+
+
+int msm_sensor_set_parm_pm_obs( DVE022_pm_obs_data_t pm_obs );
+
 
 #define VIDIOC_MSM_SENSOR_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 4, void __user *)

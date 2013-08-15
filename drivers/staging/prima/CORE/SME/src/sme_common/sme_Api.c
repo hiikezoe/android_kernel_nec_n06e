@@ -30,6 +30,10 @@
    Qualcomm Confidential and Proprietary.
 
   ========================================================================*/
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 /*===========================================================================
 
@@ -104,6 +108,11 @@ eHalStatus sme_HandlePostChannelSwitchInd(tHalHandle hHal);
 #ifdef FEATURE_WLAN_LFR
 tANI_BOOLEAN csrIsScanAllowed(tpAniSirGlobal pMac);
 #endif
+
+
+extern int is_send_counrtycode;
+extern char FCC_givenContryCode[];
+
 
 //Internal SME APIs
 eHalStatus sme_AcquireGlobalLock( tSmeStruct *psSme)
@@ -1880,24 +1889,24 @@ eHalStatus sme_Close(tHalHandle hHal)
 #ifdef FEATURE_WLAN_LFR
 tANI_BOOLEAN csrIsScanAllowed(tpAniSirGlobal pMac)
 {
-#if 0
-        switch(pMac->roam.neighborRoamInfo.neighborRoamState) {
-                case eCSR_NEIGHBOR_ROAM_STATE_REPORT_SCAN:
-                case eCSR_NEIGHBOR_ROAM_STATE_PREAUTHENTICATING:
-                case eCSR_NEIGHBOR_ROAM_STATE_PREAUTH_DONE:
-                case eCSR_NEIGHBOR_ROAM_STATE_REASSOCIATING:
-                        return eANI_BOOLEAN_FALSE;
-                default:
-                        return eANI_BOOLEAN_TRUE;
-        }
-#else
+
+
+
+
+
+
+
+
+
+
+
         /*
          * TODO: always return TRUE for now until
          * we figure out why we could be stuck in
          * one of the roaming states forever.
          */
         return eANI_BOOLEAN_TRUE;
-#endif
+
 }
 #endif
 /* ---------------------------------------------------------------------------
@@ -5961,10 +5970,23 @@ eHalStatus sme_HandleChangeCountryCode(tpAniSirGlobal pMac,  void *pMsgBuf)
    static uNvTables nvTables;
    pMsg = (tAniChangeCountryCodeReq *)pMsgBuf;
 
-
+   smsLog( pMac, LOG1, FL("wlan: %s pMsg->countryCode = %s \n"), __FUNCTION__, pMsg->countryCode);
    /* if the reset Supplicant country code command is triggered, enable 11D, reset the NV country code and return */
-   if( VOS_TRUE == vos_mem_compare(pMsg->countryCode, SME_INVALID_COUNTRY_CODE, 2) )
+   if( (VOS_TRUE == vos_mem_compare(pMsg->countryCode, SME_INVALID_COUNTRY_CODE, 2))  || (VOS_TRUE == vos_mem_compare(pMsg->countryCode, "YY", 2)) )
    {
+       smsLog( pMac, LOG1, FL("wlan: %s pMsg->countryCode = XX or YY \n"), __FUNCTION__);
+       
+       if((VOS_TRUE == vos_mem_compare(pMsg->countryCode, "YY", 2)))
+       {
+          if(FCC_givenContryCode[0] != '\0')
+          {
+              FCC_givenContryCode[0] = '\0';
+          }
+          is_send_counrtycode = false;
+          smsLog( pMac, LOG1, FL("wlan: %s FCC_givenContryCode = %s \n"), __FUNCTION__, FCC_givenContryCode);
+       }
+       
+
        pMac->roam.configParam.Is11dSupportEnabled = pMac->roam.configParam.Is11dSupportEnabledOriginal;
 
        vosStatus = vos_nv_readDefaultCountryTable( &nvTables );
@@ -5979,7 +6001,16 @@ eHalStatus sme_HandleChangeCountryCode(tpAniSirGlobal pMac,  void *pMsgBuf)
            status = eHAL_STATUS_FAILURE;
            return status;
        }
-   }
+
+       
+       if(FCC_givenContryCode[0] != '\0')
+       {
+            pMsg->countryCode[0] = FCC_givenContryCode[0];
+            pMsg->countryCode[1] = FCC_givenContryCode[1];
+            pMsg->countryCode[2] = '\0';
+       }
+       
+    }
    else
    {
        /* if Supplicant country code has priority, disable 11d */
@@ -6004,6 +6035,7 @@ eHalStatus sme_HandleChangeCountryCode(tpAniSirGlobal pMac,  void *pMsgBuf)
       /* All 11D related options are already enabled
        * Country string is not changed
        * Do not need do anything for country code change request */
+      smsLog( pMac, LOG1, FL("wlan: %s Country string is not changed Do not need do anything for country code change request \n"), __FUNCTION__);
       return eHAL_STATUS_SUCCESS;
    }
 

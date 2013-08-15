@@ -27,6 +27,10 @@
  * For detailed explanation of Read-Copy Update mechanism see -
  *	Documentation/RCU
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #include <linux/types.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
@@ -295,7 +299,9 @@ cpu_has_callbacks_ready_to_invoke(struct rcu_data *rdp)
 static int
 cpu_needs_another_gp(struct rcu_state *rsp, struct rcu_data *rdp)
 {
-	return *rdp->nxttail[RCU_DONE_TAIL] && !rcu_gp_in_progress(rsp);
+	return *rdp->nxttail[RCU_DONE_TAIL +
+			     ACCESS_ONCE(rsp->completed) != rdp->completed] &&
+	       !rcu_gp_in_progress(rsp);
 }
 
 /*

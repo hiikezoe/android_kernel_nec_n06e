@@ -1,3 +1,7 @@
+#/***********************************************************************/
+#/* Modified by                                                         */
+#/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+#/***********************************************************************/
 snd-soc-88pm860x-objs := 88pm860x-codec.o
 snd-soc-ac97-objs := ac97.o
 snd-soc-ad1836-objs := ad1836.o
@@ -213,3 +217,4 @@ obj-$(CONFIG_SND_SOC_MSM_STUB)  += snd-soc-msm-stub.o
 obj-$(CONFIG_SND_SOC_MAX9877)	+= snd-soc-max9877.o
 obj-$(CONFIG_SND_SOC_TPA6130A2)	+= snd-soc-tpa6130a2.o
 obj-$(CONFIG_SND_SOC_TPA2028D)	+= tpa2028d.o
+obj-$(CONFIG_FEATURE_DVE021_AUDIO_AUDIENCE)  += es310.o

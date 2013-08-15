@@ -1,6 +1,10 @@
 #
 # Character device configuration
 #
+#/***********************************************************************/
+#/* Modified by                                                         */
+#/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+#/***********************************************************************/
 
 menu "Character devices"
 
@@ -65,6 +69,7 @@ config SGI_MBCS
 source "drivers/tty/serial/Kconfig"
 
 source "drivers/char/diag/Kconfig"
+source "drivers/char/diag_w/Kconfig"
 
 config TTY_PRINTK
 	bool "TTY driver to output user messages via printk"

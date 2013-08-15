@@ -1,3 +1,7 @@
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #ifndef __LINUX_USB_H
 #define __LINUX_USB_H
 
@@ -839,6 +843,27 @@ static inline int usb_make_path(struct usb_device *dev, char *buf, size_t size)
 	.bInterfaceSubClass = (sc), \
 	.bInterfaceProtocol = (pr)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+#define USB_VENDOR_AND_INTERFACE_INFO(vend, cl, sc, pr) \
+	.match_flags = USB_DEVICE_ID_MATCH_INT_INFO \
+		| USB_DEVICE_ID_MATCH_VENDOR, \
+	.idVendor = (vend), \
+	.bInterfaceClass = (cl), \
+	.bInterfaceSubClass = (sc), \
+	.bInterfaceProtocol = (pr)
+
 /* ----------------------------------------------------------------------- */
 
 /* Stuff for dynamic usb ids */
@@ -1435,6 +1460,7 @@ extern int usb_unlink_urb(struct urb *urb);
 extern void usb_kill_urb(struct urb *urb);
 extern void usb_poison_urb(struct urb *urb);
 extern void usb_unpoison_urb(struct urb *urb);
+extern void usb_block_urb(struct urb *urb);
 extern void usb_kill_anchored_urbs(struct usb_anchor *anchor);
 extern void usb_poison_anchored_urbs(struct usb_anchor *anchor);
 extern void usb_unpoison_anchored_urbs(struct usb_anchor *anchor);
@@ -1446,6 +1472,8 @@ extern int usb_wait_anchor_empty_timeout(struct usb_anchor *anchor,
 extern struct urb *usb_get_from_anchor(struct usb_anchor *anchor);
 extern void usb_scuttle_anchored_urbs(struct usb_anchor *anchor);
 extern int usb_anchor_empty(struct usb_anchor *anchor);
+
+#define usb_unblock_urb	usb_unpoison_urb
 
 /**
  * usb_urb_dir_in - check if an URB describes an IN transfer
@@ -1476,19 +1504,19 @@ void *usb_alloc_coherent(struct usb_device *dev, size_t size,
 void usb_free_coherent(struct usb_device *dev, size_t size,
 	void *addr, dma_addr_t dma);
 
-#if 0
-struct urb *usb_buffer_map(struct urb *urb);
-void usb_buffer_dmasync(struct urb *urb);
-void usb_buffer_unmap(struct urb *urb);
-#endif
+
+
+
+
+
 
 struct scatterlist;
 int usb_buffer_map_sg(const struct usb_device *dev, int is_in,
 		      struct scatterlist *sg, int nents);
-#if 0
-void usb_buffer_dmasync_sg(const struct usb_device *dev, int is_in,
-			   struct scatterlist *sg, int n_hw_ents);
-#endif
+
+
+
+
 void usb_buffer_unmap_sg(const struct usb_device *dev, int is_in,
 			 struct scatterlist *sg, int n_hw_ents);
 

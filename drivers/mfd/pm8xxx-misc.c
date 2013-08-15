@@ -10,6 +10,17 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
+
+
+
+
+
+
 
 #define pr_fmt(fmt) "%s: " fmt, __func__
 
@@ -1169,6 +1180,11 @@ static int __devinit pm8xxx_misc_probe(struct platform_device *pdev)
 	unsigned long flags;
 	int rc = 0, irq;
 
+	
+	struct pm8xxx_coincell_chg coincell;
+	int ret = 0;
+	
+
 	if (!pdata) {
 		pr_err("missing platform data\n");
 		return -EINVAL;
@@ -1210,6 +1226,25 @@ static int __devinit pm8xxx_misc_probe(struct platform_device *pdev)
 	spin_unlock_irqrestore(&pm8xxx_misc_chips_lock, flags);
 
 	platform_set_drvdata(pdev, chip);
+
+	
+	
+	ret = pm8xxx_smpl_control(0x01);
+	if (ret < 0)
+		pr_err("%s: could not set up pm8xxx_smpl_control: %d\n", __func__, ret);
+
+	ret = pm8xxx_smpl_set_delay(PM8XXX_SMPL_DELAY_0p5);
+	if (ret < 0)
+		pr_err("%s: could not set up pm8xxx_smpl_set_delay: %d\n", __func__, ret);
+
+	coincell.state    = PM8XXX_COINCELL_CHG_ENABLE;
+	coincell.voltage  = PM8XXX_COINCELL_VOLTAGE_3p2V;
+	coincell.resistor = PM8XXX_COINCELL_RESISTOR_800_OHMS;
+
+	ret = pm8xxx_coincell_chg_config(&coincell);
+	if (ret < 0)
+		pr_err("%s: could not set up pm8xxx_coincell_chg_config: %d\n", __func__, ret);
+	
 
 	return rc;
 

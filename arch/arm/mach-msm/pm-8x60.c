@@ -10,6 +10,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -30,6 +34,8 @@
 #include <mach/system.h>
 #include <mach/scm.h>
 #include <mach/socinfo.h>
+#include <mach/gpio.h>
+#include <mach/gpiomux.h>
 #include <mach/msm-krait-l2-accessors.h>
 #include <asm/cacheflush.h>
 #include <asm/hardware/gic.h>
@@ -599,6 +605,14 @@ static bool msm_pm_power_collapse(bool from_idle)
 	unsigned int avscsr;
 	bool collapsed;
 
+	int i;
+	static uint32_t reserved_test_msm_gpio_config_data[] = {
+		GPIO_CFG(51, 0, GPIO_CFG_INPUT,
+				GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+		GPIO_CFG(52, 0, GPIO_CFG_INPUT,
+				GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+	};
+
 	if (MSM_PM_DEBUG_POWER_COLLAPSE & msm_pm_debug_mask)
 		pr_info("CPU%u: %s: idle %d\n",
 			cpu, __func__, (int)from_idle);
@@ -619,6 +633,10 @@ static bool msm_pm_power_collapse(bool from_idle)
 	if (MSM_PM_DEBUG_CLOCK & msm_pm_debug_mask)
 		pr_info("CPU%u: %s: change clock rate (old rate = %lu)\n",
 			cpu, __func__, saved_acpuclk_rate);
+
+	for (i = 0; i < ARRAY_SIZE(reserved_test_msm_gpio_config_data); i++) {
+		gpio_tlmm_config(reserved_test_msm_gpio_config_data[i], 0);
+	}
 
 	if (msm_pm_save_cp15)
 		msm_pm_save_cpu_reg();

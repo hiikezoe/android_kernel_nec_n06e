@@ -10,6 +10,19 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
+
+
+
+
+
+
+
+
 
 #define pr_fmt(fmt)	"%s: " fmt, __func__
 
@@ -46,6 +59,8 @@
 #define	PM_IRQF_MASK_ALL		(PM_IRQF_MASK_FE | \
 					PM_IRQF_MASK_RE)
 
+#define PM8921_IRQ_BASE                 (NR_MSM_IRQS + NR_GPIO_IRQS) 
+
 struct pm_irq_chip {
 	struct device		*dev;
 	spinlock_t		pm_irq_lock;
@@ -57,6 +72,8 @@ struct pm_irq_chip {
 	unsigned int		num_masters;
 	u8			config[0];
 };
+
+static struct pm_irq_chip *nc_irq_chip;    
 
 static int pm8xxx_read_root_irq(const struct pm_irq_chip *chip, u8 *rp)
 {
@@ -446,7 +463,13 @@ struct pm_irq_chip *  __devinit pm8xxx_irq_init(struct device *dev,
 			irq_set_irq_wake(devirq, 1);
 		}
 	}
-
+	
+	
+	if(chip->irq_base == PM8921_IRQ_BASE){
+    	nc_irq_chip = chip;  
+	}
+	
+	
 	return chip;
 }
 
@@ -456,3 +479,31 @@ int pm8xxx_irq_exit(struct pm_irq_chip *chip)
 	kfree(chip);
 	return 0;
 }
+
+
+
+int nc_pm8921_get_rt_status(int irq_id, int* status)
+{
+    int rc;
+
+	
+	if(nc_irq_chip==NULL){
+		*status = 0;
+		return -1;
+	}
+	
+    rc = pm8xxx_get_irq_stat(nc_irq_chip, irq_id);
+    if (rc == -EAGAIN) {
+        *status = 0;
+		return -1;	
+    }
+    else {
+        *status = rc;
+    }
+
+    return 0;
+}
+
+EXPORT_SYMBOL(nc_pm8921_get_rt_status);
+
+

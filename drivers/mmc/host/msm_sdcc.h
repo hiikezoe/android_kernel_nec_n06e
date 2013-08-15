@@ -10,6 +10,10 @@
  *
  * - Based on mmci.h
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifndef _MSM_SDCC_H
 #define _MSM_SDCC_H
@@ -214,6 +218,11 @@
 #define NR_SG		128
 
 #define MSM_MMC_DEFAULT_IDLE_TIMEOUT	5000 /* msecs */
+
+
+#define MSM_MMC_IDLE_TIMEOUT_SD	10000 
+
+
 #define MSM_MMC_CLK_GATE_DELAY	200 /* msecs */
 
 /* Set the request timeout to 10secs */
@@ -416,6 +425,12 @@ struct msmsdcc_host {
 	struct device_attribute	polling;
 	struct device_attribute idle_timeout;
 	int saved_tuning_phase;
+
+
+
+	bool acmd;
+
+
 };
 
 #define MSMSDCC_VERSION_STEP_MASK	0x0000FFFF

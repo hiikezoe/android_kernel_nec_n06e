@@ -7,6 +7,10 @@
  * Released under the GPL v2 only.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/pci.h>
 #include <linux/module.h>
@@ -725,6 +729,18 @@ static int pci_pm_suspend_noirq(struct device *dev)
 
 	pci_pm_set_unknown_state(pci_dev);
 
+	
+
+
+
+
+
+
+
+
+	if (pci_dev->class == PCI_CLASS_SERIAL_USB_EHCI)
+		pci_write_config_word(pci_dev, PCI_COMMAND, 0);
+
 	return 0;
 }
 
@@ -922,6 +938,13 @@ static int pci_pm_poweroff_noirq(struct device *dev)
 
 	if (!pci_dev->state_saved && !pci_is_bridge(pci_dev))
 		pci_prepare_to_sleep(pci_dev);
+
+	
+
+
+
+	if (pci_dev->class == PCI_CLASS_SERIAL_USB_EHCI)
+		pci_write_config_word(pci_dev, PCI_COMMAND, 0);
 
 	return 0;
 }

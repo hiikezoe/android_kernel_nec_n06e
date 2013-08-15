@@ -12,6 +12,10 @@
  * Definitions for transaction data structures for the buffer cache
  * filesystem journaling support.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #ifndef _LINUX_JBD2_H
 #define _LINUX_JBD2_H
@@ -1091,6 +1095,7 @@ extern int	   jbd2_journal_destroy    (journal_t *);
 extern int	   jbd2_journal_recover    (journal_t *journal);
 extern int	   jbd2_journal_wipe       (journal_t *, int);
 extern int	   jbd2_journal_skip_recovery	(journal_t *);
+extern void	   jbd2_journal_update_sb_errno(journal_t *);
 extern void	   jbd2_journal_update_sb_log_tail	(journal_t *, tid_t,
 				unsigned long, int);
 extern void	   __jbd2_journal_abort_hard	(journal_t *);

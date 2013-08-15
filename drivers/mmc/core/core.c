@@ -10,6 +10,10 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
@@ -52,6 +56,17 @@
  * operations the card has to perform.
  */
 #define MMC_BKOPS_MAX_TIMEOUT	(30 * 1000) /* max time to wait in ms */
+
+
+
+
+
+
+
+
+
+
+
 
 static struct workqueue_struct *workqueue;
 
@@ -898,7 +913,13 @@ void mmc_set_data_timeout(struct mmc_data *data, const struct mmc_card *card)
 			 */
 			limit_us = 3000000;
 		else
-			limit_us = 100000;
+
+
+			limit_us = 250000;
+
+
+
+
 
 		/*
 		 * SDHC cards always use these fixed values.
@@ -1556,6 +1577,13 @@ void mmc_power_off(struct mmc_host *host)
 	mmc_delay(1);
 
 	mmc_host_clk_release(host);
+
+
+	if (host->card && mmc_card_sd(host->card)) {
+		mdelay(5);
+	}
+
+
 }
 
 /*
@@ -1975,6 +2003,12 @@ int mmc_erase(struct mmc_card *card, unsigned int from, unsigned int nr,
 {
 	unsigned int rem, to = from + nr;
 
+
+
+
+
+
+
 	if (!(card->host->caps & MMC_CAP_ERASE) ||
 	    !(card->csd.cmdclass & CCC_ERASE))
 		return -EOPNOTSUPP;
@@ -2023,6 +2057,18 @@ int mmc_erase(struct mmc_card *card, unsigned int from, unsigned int nr,
 
 	/* 'from' and 'to' are inclusive */
 	to -= 1;
+
+
+
+
+
+
+
+
+
+
+
+
 
 	return mmc_do_erase(card, from, to, arg);
 }
@@ -2760,7 +2806,15 @@ int mmc_resume_host(struct mmc_host *host)
 			pr_warning("%s: error %d during resume "
 					    "(card was removed?)\n",
 					    mmc_hostname(host), err);
-			err = 0;
+
+
+			if (!host->card || !mmc_card_sd(host->card)) {
+				err = 0;
+			}
+
+
+
+
 		}
 	}
 	host->pm_flags &= ~MMC_PM_KEEP_POWER;

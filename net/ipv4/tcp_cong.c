@@ -5,6 +5,10 @@
  *
  * Copyright (C) 2005 Stephen Hemminger <shemminger@osdl.org>
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #define pr_fmt(fmt) "TCP: " fmt
 
@@ -291,7 +295,8 @@ int tcp_is_cwnd_limited(const struct sock *sk, u32 in_flight)
 	left = tp->snd_cwnd - in_flight;
 	if (sk_can_gso(sk) &&
 	    left * sysctl_tcp_tso_win_divisor < tp->snd_cwnd &&
-	    left * tp->mss_cache < sk->sk_gso_max_size)
+	    left * tp->mss_cache < sk->sk_gso_max_size &&
+	    left < sk->sk_gso_max_segs)
 		return 1;
 	return left <= tcp_max_tso_deferred_mss(tp);
 }

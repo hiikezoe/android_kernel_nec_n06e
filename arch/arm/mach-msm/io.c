@@ -16,6 +16,19 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
+
+
+
+
+
+
+
+
 
 #include <linux/kernel.h>
 #include <linux/init.h>
@@ -56,8 +69,8 @@ static void __init msm_map_io(struct map_desc *io_desc, int size)
 	iotable_init(io_desc, size);
 }
 
-#if defined(CONFIG_ARCH_MSM7X01A) || defined(CONFIG_ARCH_MSM7X27) \
-	|| defined(CONFIG_ARCH_MSM7X25)
+#if defined(CONFIG_ARCH_MSM7X01A) || defined(CONFIG_ARCH_MSM7X27) 	|| defined(CONFIG_ARCH_MSM7X25)
+
 static struct map_desc msm_io_desc[] __initdata = {
 	MSM_CHIP_DEVICE(VIC, MSM7XXX),
 	MSM_CHIP_DEVICE(CSR, MSM7XXX),
@@ -67,8 +80,8 @@ static struct map_desc msm_io_desc[] __initdata = {
 	MSM_CHIP_DEVICE(CLK_CTL, MSM7XXX),
 	MSM_CHIP_DEVICE(AD5, MSM7XXX),
 	MSM_CHIP_DEVICE(MDC, MSM7XXX),
-#if defined(CONFIG_DEBUG_MSM_UART1) || defined(CONFIG_DEBUG_MSM_UART2) || \
-	defined(CONFIG_DEBUG_MSM_UART3)
+#if defined(CONFIG_DEBUG_MSM_UART1) || defined(CONFIG_DEBUG_MSM_UART2) || 	defined(CONFIG_DEBUG_MSM_UART3)
+
 	MSM_DEVICE(DEBUG_UART),
 #endif
 #ifdef CONFIG_CACHE_L2X0
@@ -115,8 +128,8 @@ static struct map_desc qsd8x50_io_desc[] __initdata = {
 	MSM_DEVICE(AD5),
 	MSM_DEVICE(MDC),
 	MSM_DEVICE(TCSR),
-#if defined(CONFIG_DEBUG_MSM_UART1) || defined(CONFIG_DEBUG_MSM_UART2) || \
-	defined(CONFIG_DEBUG_MSM_UART3)
+#if defined(CONFIG_DEBUG_MSM_UART1) || defined(CONFIG_DEBUG_MSM_UART2) || 	defined(CONFIG_DEBUG_MSM_UART3)
+
 	MSM_DEVICE(DEBUG_UART),
 #endif
 	{
@@ -286,6 +299,12 @@ static struct map_desc apq8064_io_desc[] __initdata = {
 #ifdef CONFIG_DEBUG_APQ8064_UART
 	MSM_DEVICE(DEBUG_UART),
 #endif
+
+  MSM_DEVICE(OEM_DVE021_DB_UINIT),
+
+
+
+
 };
 
 void __init msm_map_apq8064_io(void)
@@ -333,8 +352,8 @@ static struct map_desc msm7x30_io_desc[] __initdata = {
 	MSM_CHIP_DEVICE(SAW0, MSM7X30),
 	MSM_CHIP_DEVICE(APCS_GCC, MSM7X30),
 	MSM_CHIP_DEVICE(TCSR, MSM7X30),
-#if defined(CONFIG_DEBUG_MSM_UART1) || defined(CONFIG_DEBUG_MSM_UART2) || \
-	defined(CONFIG_DEBUG_MSM_UART3)
+#if defined(CONFIG_DEBUG_MSM_UART1) || defined(CONFIG_DEBUG_MSM_UART2) || 	defined(CONFIG_DEBUG_MSM_UART3)
+
 	MSM_DEVICE(DEBUG_UART),
 #endif
 	{
@@ -364,8 +383,8 @@ static struct map_desc fsm9xxx_io_desc[] __initdata = {
 	MSM_DEVICE(GRFC),
 	MSM_DEVICE(QFP_FUSE),
 	MSM_DEVICE(HH),
-#if defined(CONFIG_DEBUG_MSM_UART1) || defined(CONFIG_DEBUG_MSM_UART2) || \
-	defined(CONFIG_DEBUG_MSM_UART3)
+#if defined(CONFIG_DEBUG_MSM_UART1) || defined(CONFIG_DEBUG_MSM_UART2) || 	defined(CONFIG_DEBUG_MSM_UART3)
+
 	MSM_DEVICE(DEBUG_UART),
 #endif
 	{
@@ -428,8 +447,8 @@ static struct map_desc msm8625_io_desc[] __initdata = {
 	MSM_CHIP_DEVICE(SAW1, MSM8625),
 	MSM_CHIP_DEVICE(AD5, MSM7XXX),
 	MSM_CHIP_DEVICE(MDC, MSM7XXX),
-#if defined(CONFIG_DEBUG_MSM_UART1) || defined(CONFIG_DEBUG_MSM_UART2) || \
-	defined(CONFIG_DEBUG_MSM_UART3)
+#if defined(CONFIG_DEBUG_MSM_UART1) || defined(CONFIG_DEBUG_MSM_UART2) || 	defined(CONFIG_DEBUG_MSM_UART3)
+
 	MSM_DEVICE(DEBUG_UART),
 #endif
 #ifdef CONFIG_CACHE_L2X0

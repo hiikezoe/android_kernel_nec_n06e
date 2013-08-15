@@ -10,6 +10,28 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #include <linux/module.h>
 #include <linux/device.h>
@@ -82,6 +104,10 @@ static struct regulator *hsusb_vddcx;
 static struct regulator *vbus_otg;
 static struct regulator *mhl_usb_hs_switch;
 static struct power_supply *psy;
+
+
+static int bat_judg_flg;
+
 
 static bool aca_id_turned_on;
 static inline bool aca_enabled(void)
@@ -1549,6 +1575,10 @@ static void msm_otg_mhl_notify_online(int on)
 	if (on) {
 		set_bit(MHL, &motg->inputs);
 	} else {
+		
+		
+		set_bit(ID, &motg->inputs);
+		
 		clear_bit(MHL, &motg->inputs);
 		queue = true;
 	}
@@ -2064,6 +2094,56 @@ static void msm_ta_detect_work(struct work_struct *w)
 #define MSM_CHG_DCD_POLL_TIME		(50 * HZ/1000) /* 50 msec */
 #define MSM_CHG_PRIMARY_DET_TIME	(50 * HZ/1000) /* TVDPSRC_ON */
 #define MSM_CHG_SECONDARY_DET_TIME	(50 * HZ/1000) /* TVDMSRC_ON */
+
+#define MSM_BAT_JUDG_TIME_SDP		(10000 * HZ/1000) 
+#define MSM_BAT_JUDG_TIME_DCP		(30000 * HZ/1000) 
+static void msm_bat_judg_timer(struct work_struct *w)
+{
+	struct msm_otg *motg = container_of(w, struct msm_otg, bat_timer.work);
+	struct usb_otg *otg = motg->phy.otg;
+	dev_info(otg->phy->dev, "msm_bat_judg_timer %d\n",bat_judg_flg);
+	if(otg->phy->state == OTG_STATE_B_PERIPHERAL){
+		switch(bat_judg_flg) {
+		case 1:
+			msm_otg_notify_charger(motg, 500);
+			bat_judg_flg = 2;
+			queue_delayed_work(system_nrt_wq, &motg->bat_timer, MSM_BAT_JUDG_TIME_DCP);
+			break;
+		case 2:
+			msm_otg_notify_charger(motg, 1500);
+			bat_judg_flg = 0;
+			break;
+		default:
+			break;
+		}
+	}
+}
+
+static void msm_bat_cancel_work(struct work_struct *w)
+{
+	struct msm_otg *motg = container_of(w, struct msm_otg, bat_cancel_work);
+	struct usb_otg *otg = motg->phy.otg;
+	if(bat_judg_flg != 0){
+		cancel_delayed_work_sync(&motg->bat_timer);
+		dev_info(otg->phy->dev, "msm_otg_cancel_bat_timer \n");
+		bat_judg_flg = 0;
+	}
+}
+void msm_otg_start_bat_timer(void)
+{
+	struct msm_otg *motg = the_msm_otg;
+	struct usb_otg *otg = motg->phy.otg;
+	bat_judg_flg = 1;
+	queue_delayed_work(system_nrt_wq, &motg->bat_timer, MSM_BAT_JUDG_TIME_SDP);
+	dev_info(otg->phy->dev, "msm_otg_start_bat_timer \n");
+}
+
+void msm_otg_clr_bat_timer(void)
+{
+	struct msm_otg *motg = the_msm_otg;
+	queue_work(system_nrt_wq, &motg->bat_cancel_work);
+}
+
 static void msm_chg_detect_work(struct work_struct *w)
 {
 	struct msm_otg *motg = container_of(w, struct msm_otg, chg_work.work);
@@ -2099,7 +2179,17 @@ static void msm_chg_detect_work(struct work_struct *w)
 		if (msm_chg_mhl_detect(motg)) {
 			msm_chg_block_off(motg);
 			motg->chg_state = USB_CHG_STATE_DETECTED;
+
+
+
+
+
+
+
+
 			motg->chg_type = USB_INVALID_CHARGER;
+
+
 			queue_work(system_nrt_wq, &motg->sm_work);
 			return;
 		}
@@ -2294,8 +2384,13 @@ static void msm_otg_sm_work(struct work_struct *w)
 	case OTG_STATE_B_IDLE:
 		if (test_bit(MHL, &motg->inputs)) {
 			/* allow LPM */
+
+
+
+
 			pm_runtime_put_noidle(otg->phy->dev);
 			pm_runtime_suspend(otg->phy->dev);
+
 		} else if ((!test_bit(ID, &motg->inputs) ||
 				test_bit(ID_A, &motg->inputs)) && otg->host) {
 			pr_debug("!id || id_A\n");
@@ -2359,6 +2454,9 @@ static void msm_otg_sm_work(struct work_struct *w)
 					}
 					schedule_delayed_work(&motg->check_ta_work,
 						MSM_CHECK_TA_DELAY);
+
+					msm_otg_start_bat_timer();
+
 					break;
 				default:
 					break;
@@ -2379,6 +2477,9 @@ static void msm_otg_sm_work(struct work_struct *w)
 			break;
 		} else {
 			pr_debug("chg_work cancel");
+
+			msm_bat_cancel_work(&motg->bat_cancel_work);
+
 			clear_bit(A_BUS_REQ, &motg->inputs);
 			cancel_delayed_work_sync(&motg->chg_work);
 			cancel_delayed_work_sync(&motg->check_ta_work);
@@ -2840,6 +2941,27 @@ static void msm_otg_sm_work(struct work_struct *w)
 			msm_otg_notify_charger(motg, 0);
 		}
 		break;
+
+	case OTG_STATE_MHL_DETECTED:
+		cancel_delayed_work_sync(&motg->chg_work);
+		msm_chg_block_off(motg);
+		motg->chg_type = USB_INVALID_CHARGER;
+		motg->chg_state = USB_CHG_STATE_UNDEFINED;
+		otg->phy->state = OTG_STATE_MHL_CONNECTED;
+		
+	case OTG_STATE_MHL_CONNECTED:
+		
+		
+		if (!test_bit(MHL, &motg->inputs)) {
+			pm8921_regulate_input_voltage(4500);
+			clear_bit(B_SESS_VLD, &motg->inputs);
+			set_bit(ID, &motg->inputs);
+			msm_otg_notify_charger(motg, 0);
+			otg->phy->state = OTG_STATE_B_IDLE;
+			work = 1;
+		}
+		break;
+
 	default:
 		break;
 	}
@@ -2854,6 +2976,7 @@ static irqreturn_t msm_otg_irq(int irq, void *data)
 	u32 otgsc = 0, usbsts, pc;
 	bool work = 0;
 	irqreturn_t ret = IRQ_HANDLED;
+
 
 	if (atomic_read(&motg->in_lpm)) {
 		pr_debug("OTG IRQ: %d in LPM\n", irq);
@@ -3007,16 +3130,26 @@ static irqreturn_t msm_otg_irq(int irq, void *data)
 	return ret;
 }
 
+extern int mhl_has_unplugged;
+
 static void msm_otg_set_vbus_state(int online)
 {
 	static bool init;
 	struct msm_otg *motg = the_msm_otg;
 	struct usb_otg *otg = motg->phy.otg;
 
-	/* In A Host Mode, ignore received BSV interrupts */
-	if (otg->phy->state >= OTG_STATE_A_IDLE)
-		return;
 
+	/* In A Host Mode, ignore received BSV interrupts */
+
+
+
+
+
+
+
+	if (otg->phy->state >= OTG_STATE_A_IDLE && !mhl_has_unplugged) {
+		return;
+	}
 	if (online) {
 		pr_debug("PMIC: BSV set\n");
 		set_bit(B_SESS_VLD, &motg->inputs);
@@ -3032,8 +3165,8 @@ static void msm_otg_set_vbus_state(int online)
 		return;
 	}
 
-	if (test_bit(MHL, &motg->inputs) ||
-			mhl_det_in_progress) {
+	if (!mhl_has_unplugged && (test_bit(MHL, &motg->inputs) ||
+			mhl_det_in_progress)) {
 		pr_debug("PMIC: BSV interrupt ignored in MHL\n");
 		return;
 	}
@@ -3717,6 +3850,10 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 	INIT_DELAYED_WORK(&motg->chg_work, msm_chg_detect_work);
 	INIT_DELAYED_WORK(&motg->pmic_id_status_work, msm_pmic_id_status_w);
 	INIT_DELAYED_WORK(&motg->check_ta_work, msm_ta_detect_work);
+
+	INIT_WORK(&motg->bat_cancel_work, msm_bat_cancel_work);
+	INIT_DELAYED_WORK(&motg->bat_timer, msm_bat_judg_timer);
+
 	setup_timer(&motg->id_timer, msm_otg_id_timer_func,
 				(unsigned long) motg);
 	ret = request_irq(motg->irq, msm_otg_irq, IRQF_SHARED,
@@ -3877,6 +4014,10 @@ static int __devexit msm_otg_remove(struct platform_device *pdev)
 		pm8921_charger_unregister_vbus_sn(0);
 	msm_otg_mhl_register_callback(motg, NULL);
 	msm_otg_debugfs_cleanup();
+
+	msm_bat_cancel_work(&motg->bat_cancel_work);
+	cancel_work_sync(&motg->bat_cancel_work);
+
 	cancel_delayed_work_sync(&motg->chg_work);
 	cancel_delayed_work_sync(&motg->pmic_id_status_work);
 	cancel_delayed_work_sync(&motg->check_ta_work);

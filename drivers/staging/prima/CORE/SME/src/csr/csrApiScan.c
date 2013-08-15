@@ -29,6 +29,10 @@
   
     Copyright (C) 2006 Airgo Networks, Incorporated 
    ========================================================================== */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include "aniGlobal.h"
 
@@ -45,6 +49,10 @@
 
 #include "vos_nvitem.h"
 #include "wlan_qct_wda.h"
+
+
+#include "wlan_hdd_main.h"
+
                                                                      
 #define CSR_VALIDATE_LIST  //This portion of code need to be removed once the issue is resolved.
 
@@ -123,6 +131,10 @@ tANI_BOOLEAN csrRoamIsValidChannel( tpAniSirGlobal pMac, tANI_U8 channel );
 void csrPruneChannelListForMode( tpAniSirGlobal pMac, tCsrChannel *pChannelList );
 
 #define CSR_IS_SOCIAL_CHANNEL(channel) (((channel) == 1) || ((channel) == 6) || ((channel) == 11) )
+
+
+extern int is_send_counrtycode;
+extern char FCC_givenContryCode[];
 
 
 //pResult is invalid calling this function.
@@ -3534,6 +3546,8 @@ tANI_BOOLEAN csrLearnCountryInformation( tpAniSirGlobal pMac, tSirBssDescription
 
 static void csrSaveScanResults( tpAniSirGlobal pMac )
 {
+
+
     // initialize this to FALSE. profMoveInterimScanResultsToMainList() routine
     // will set this to the channel where an .11d beacon is seen
     pMac->scan.channelOf11dInfo = 0;
@@ -3548,15 +3562,41 @@ static void csrSaveScanResults( tpAniSirGlobal pMac )
 
     // Now check if we gathered any domain/country specific information
     // If so, we should update channel list and apply Tx power settings
-    if( csrIs11dSupported(pMac) )
+    
+
+
+
+
+
+
+
+
+
+
+
+    if(is_send_counrtycode == FALSE)
     {
-        csrApplyCountryInformation( pMac, FALSE );
-    }
-    else if( csrIs11hSupported(pMac) && !pMac->roam.configParam.fSupplicantCountryCodeHasPriority) 
-    {
-        // If llh is enabled, store the channel + power information gathered  in the cfg
-        csrApplyPower2Current( pMac );
-    }     
+        v_CONTEXT_t pVosContext = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
+        hdd_context_t *pHddCtx = vos_get_context(VOS_MODULE_ID_HDD, pVosContext);
+        char alpha2[3] = "FF"; 
+
+        eHalStatus halStatus;
+
+
+
+
+        halStatus = (int)sme_ChangeCountryCode(pHddCtx->hHal, NULL, alpha2, pMac->pAdapter, pHddCtx->pvosContext);
+        if( 0 != halStatus )
+        {
+            PELOG1(limLog(pMac, LOG1, FL( "%s: SME Change Country code fail status = %d \n"),__func__, halStatus);)
+        }
+
+
+
+
+        is_send_counrtycode = TRUE;
+     }
+    
 }
 
 
@@ -6576,7 +6616,10 @@ void csrSetCfgScanControlList( tpAniSirGlobal pMac, tANI_U8 *countryCode, tCsrCh
                     }
                     else  
                     {
-                        pControlList[j+1]  = eSIR_ACTIVE_SCAN;  
+                        
+                        
+                        pControlList[j+1]  = csrGetScanType(pMac, pControlList[j]);
+                        
                     }
 
                     found = FALSE;  // reset the flag

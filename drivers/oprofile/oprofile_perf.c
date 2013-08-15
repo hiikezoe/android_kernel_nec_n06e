@@ -3,6 +3,10 @@
  *
  * Perf-events backend for OProfile.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #include <linux/perf_event.h>
 #include <linux/platform_device.h>
 #include <linux/oprofile.h>
@@ -25,7 +29,7 @@ static int oprofile_perf_enabled;
 static DEFINE_MUTEX(oprofile_perf_mutex);
 
 static struct op_counter_config *counter_config;
-static struct perf_event **perf_events[nr_cpumask_bits];
+static struct perf_event **perf_events[NR_CPUS];
 static int num_counters;
 
 /*

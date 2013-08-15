@@ -21,6 +21,10 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -34,6 +38,8 @@
 #include <asm/unaligned.h>
 
 #include <linux/cn_proc.h>
+
+#include <linux/file.h>
 
 #define CN_PROC_MSG_SIZE (sizeof(struct cn_msg) + sizeof(struct proc_event))
 
@@ -49,6 +55,46 @@ static inline void get_seq(__u32 *ts, int *cpu)
 	*ts = __this_cpu_inc_return(proc_event_counts) -1;
 	*cpu = smp_processor_id();
 	preempt_enable();
+}
+
+static int proc_get_exe(struct task_struct *task, char *exe)
+{
+    struct mm_struct *mm;
+    struct file *exe_file;
+    char *pathbuf, *path;
+    int ret = 0;
+
+    mm = get_task_mm(task);
+    if (!mm)
+        return -ENOENT;
+
+    exe_file = get_mm_exe_file(mm);
+    if (!exe_file) {
+        ret = -ENOENT;
+        goto put_mm;
+    }
+
+    pathbuf = kmalloc(PATH_MAX, GFP_TEMPORARY);
+    if (!pathbuf) {
+        ret = -ENOMEM;
+        goto put_exe_file;
+    }
+
+    path = d_path(&exe_file->f_path, pathbuf, PATH_MAX);
+    if (IS_ERR(path)) {
+        ret = PTR_ERR(path);
+        goto free_buf;
+    }
+
+    strncpy(exe, path, PROC_EXE_LEN);
+
+free_buf:
+    kfree(pathbuf);
+put_exe_file:
+    fput(exe_file);
+put_mm:
+    mmput(mm);
+    return ret;
 }
 
 void proc_fork_connector(struct task_struct *task)
@@ -75,6 +121,7 @@ void proc_fork_connector(struct task_struct *task)
 	rcu_read_unlock();
 	ev->event_data.fork.child_pid = task->pid;
 	ev->event_data.fork.child_tgid = task->tgid;
+    proc_get_exe(task, ev->event_data.fork.exe);
 
 	memcpy(&msg->id, &cn_proc_event_id, sizeof(msg->id));
 	msg->ack = 0; /* not used */
@@ -89,6 +136,7 @@ void proc_exec_connector(struct task_struct *task)
 	struct proc_event *ev;
 	struct timespec ts;
 	__u8 buffer[CN_PROC_MSG_SIZE];
+    const struct cred *cred;
 
 	if (atomic_read(&proc_event_num_listeners) < 1)
 		return;
@@ -101,6 +149,14 @@ void proc_exec_connector(struct task_struct *task)
 	ev->what = PROC_EVENT_EXEC;
 	ev->event_data.exec.process_pid = task->pid;
 	ev->event_data.exec.process_tgid = task->tgid;
+
+    rcu_read_lock();
+    cred = __task_cred(task);
+    ev->event_data.exec.process_euid = cred->euid;
+    ev->event_data.exec.process_egid = cred->egid;
+    rcu_read_unlock();
+
+    proc_get_exe(task, ev->event_data.exec.exe);
 
 	memcpy(&msg->id, &cn_proc_event_id, sizeof(msg->id));
 	msg->ack = 0; /* not used */
@@ -140,6 +196,7 @@ void proc_id_connector(struct task_struct *task, int which_id)
 	get_seq(&msg->seq, &ev->cpu);
 	ktime_get_ts(&ts); /* get high res monotonic timestamp */
 	put_unaligned(timespec_to_ns(&ts), (__u64 *)&ev->timestamp_ns);
+    proc_get_exe(task, ev->event_data.id.exe);
 
 	memcpy(&msg->id, &cn_proc_event_id, sizeof(msg->id));
 	msg->ack = 0; /* not used */

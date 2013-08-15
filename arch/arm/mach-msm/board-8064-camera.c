@@ -10,6 +10,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/i2c.h>
 #include <linux/gpio.h>
@@ -30,25 +34,39 @@ static struct gpiomux_setting cam_settings[] = {
 	{
 		.func = GPIOMUX_FUNC_GPIO, /*suspend*/
 		.drv = GPIOMUX_DRV_2MA,
-		.pull = GPIOMUX_PULL_DOWN,
+
+        .pull = GPIOMUX_PULL_NONE,
+        .dir = GPIOMUX_OUT_LOW,
+
+
+
 	},
 
 	{
 		.func = GPIOMUX_FUNC_1, /*active 1*/
 		.drv = GPIOMUX_DRV_2MA,
 		.pull = GPIOMUX_PULL_NONE,
+
+        .dir = GPIOMUX_OUT_LOW,
+
 	},
 
 	{
 		.func = GPIOMUX_FUNC_GPIO, /*active 2*/
 		.drv = GPIOMUX_DRV_2MA,
 		.pull = GPIOMUX_PULL_NONE,
+
+        .dir = GPIOMUX_OUT_HIGH,
+
 	},
 
 	{
 		.func = GPIOMUX_FUNC_2, /*active 3*/
 		.drv = GPIOMUX_DRV_2MA,
 		.pull = GPIOMUX_PULL_NONE,
+
+        .dir = GPIOMUX_OUT_LOW,
+
 	},
 
 	{
@@ -102,42 +120,93 @@ static struct gpiomux_setting cam_settings[] = {
 		.pull = GPIOMUX_PULL_NONE,
 	},
 
+    {
+        .func = GPIOMUX_FUNC_9, 
+        .drv = GPIOMUX_DRV_2MA,
+        .pull = GPIOMUX_PULL_NONE,
+        .dir = GPIOMUX_IN,
+    },
+    {
+        .func = GPIOMUX_FUNC_A, 
+        .drv = GPIOMUX_DRV_2MA,
+        .pull = GPIOMUX_PULL_NONE,
+        .dir = GPIOMUX_IN,
+    },
+    {
+        .func = GPIOMUX_FUNC_GPIO, 
+        .drv = GPIOMUX_DRV_2MA,
+        .pull = GPIOMUX_PULL_NONE,
+        .dir = GPIOMUX_IN,
+    },
+    {
+        .func = GPIOMUX_FUNC_4, 
+        .drv = GPIOMUX_DRV_2MA,
+        .pull = GPIOMUX_PULL_DOWN,
+        .dir = GPIOMUX_IN,
+    },
+    {
+        .func = GPIOMUX_FUNC_1, 
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+        .dir = GPIOMUX_IN,
+    },
+
+
 };
 
 static struct msm_gpiomux_config apq8064_cam_common_configs[] = {
-	{
-		.gpio = 1,
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[2],
-			[GPIOMUX_SUSPENDED] = &cam_settings[0],
-		},
-	},
+
+
+
+
+
+
+
+
+
 	{
 		.gpio = 2,
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[12],
-			[GPIOMUX_SUSPENDED] = &cam_settings[0],
+
+            [GPIOMUX_ACTIVE]    = &cam_settings[12],
+            [GPIOMUX_SUSPENDED] = &cam_settings[16],
+
+
+
+
 		},
 	},
 	{
 		.gpio = 3,
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[2],
-			[GPIOMUX_SUSPENDED] = &cam_settings[0],
+
+            [GPIOMUX_ACTIVE]    = &cam_settings[0],
+            [GPIOMUX_SUSPENDED] = &cam_settings[0],
+
+
+
+
 		},
 	},
-	{
-		.gpio = 4,
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[3],
-			[GPIOMUX_SUSPENDED] = &cam_settings[0],
-		},
-	},
+
+
+
+
+
+
+
+
+
 	{
 		.gpio = 5,
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[1],
-			[GPIOMUX_SUSPENDED] = &cam_settings[0],
+
+            [GPIOMUX_ACTIVE]    = &cam_settings[1],
+            [GPIOMUX_SUSPENDED] = &cam_settings[17],
+
+
+
+
 		},
 	},
 	{
@@ -147,56 +216,110 @@ static struct msm_gpiomux_config apq8064_cam_common_configs[] = {
 			[GPIOMUX_SUSPENDED] = &cam_settings[0],
 		},
 	},
-	{
-		.gpio = 107,
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[2],
-			[GPIOMUX_SUSPENDED] = &cam_settings[0],
-		},
-	},
+
+
+
+
+
+
+
+
+
+
 	{
 		.gpio = 10,
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cam_settings[9],
-			[GPIOMUX_SUSPENDED] = &cam_settings[8],
+			[GPIOMUX_SUSPENDED] = &cam_settings[13],
 		},
 	},
+
+
 	{
 		.gpio = 11,
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cam_settings[10],
-			[GPIOMUX_SUSPENDED] = &cam_settings[8],
+			[GPIOMUX_SUSPENDED] = &cam_settings[14],
 		},
 	},
-	{
-		.gpio = 12,
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[11],
-			[GPIOMUX_SUSPENDED] = &cam_settings[8],
-		},
-	},
-	{
-		.gpio = 13,
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[11],
-			[GPIOMUX_SUSPENDED] = &cam_settings[8],
-		},
-	},
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 };
 
 
 #define VFE_CAMIF_TIMER1_GPIO 3
 #define VFE_CAMIF_TIMER2_GPIO 1
 
-static struct msm_camera_sensor_flash_src msm_flash_src = {
-	.flash_sr_type = MSM_CAMERA_FLASH_SRC_EXT,
-	._fsrc.ext_driver_src.led_en = VFE_CAMIF_TIMER1_GPIO,
-	._fsrc.ext_driver_src.led_flash_en = VFE_CAMIF_TIMER2_GPIO,
-	._fsrc.ext_driver_src.flash_id = MAM_CAMERA_EXT_LED_FLASH_SC628A,
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+static struct msm_gpiomux_config apq8064_cam_2d_configs_2[] = {
+    {
+        .gpio = 10,
+        .settings = {
+            [GPIOMUX_ACTIVE]    = &cam_settings[13],
+            [GPIOMUX_SUSPENDED] = &cam_settings[13],
+        },
+    },
+    {
+        .gpio = 11,
+        .settings = {
+            [GPIOMUX_ACTIVE]    = &cam_settings[14],
+            [GPIOMUX_SUSPENDED] = &cam_settings[14],
+        },
+    },
 };
 
-static struct msm_gpiomux_config apq8064_cam_2d_configs[] = {
-};
 
 static struct msm_bus_vectors cam_init_vectors[] = {
 	{
@@ -224,7 +347,8 @@ static struct msm_bus_vectors cam_preview_vectors[] = {
 		.src = MSM_BUS_MASTER_VFE,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
 		.ab  = 27648000,
-		.ib  = 2656000000UL,
+
+		.ib  = 2048000000,
 	},
 	{
 		.src = MSM_BUS_MASTER_VPE,
@@ -245,13 +369,15 @@ static struct msm_bus_vectors cam_video_vectors[] = {
 		.src = MSM_BUS_MASTER_VFE,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
 		.ab  = 600000000,
-		.ib  = 2656000000UL,
+
+		.ib  = 2048000000,
 	},
 	{
 		.src = MSM_BUS_MASTER_VPE,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
 		.ab  = 206807040,
-		.ib  = 488816640,
+
+		.ib  = 2048000000,
 	},
 	{
 		.src = MSM_BUS_MASTER_JPEG_ENC,
@@ -266,7 +392,8 @@ static struct msm_bus_vectors cam_snapshot_vectors[] = {
 		.src = MSM_BUS_MASTER_VFE,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
 		.ab  = 600000000,
-		.ib  = 2656000000UL,
+
+		.ib  = 2048000000,
 	},
 	{
 		.src = MSM_BUS_MASTER_VPE,
@@ -287,13 +414,15 @@ static struct msm_bus_vectors cam_zsl_vectors[] = {
 		.src = MSM_BUS_MASTER_VFE,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
 		.ab  = 600000000,
-		.ib  = 2656000000UL,
+
+		.ib  = 2048000000,
 	},
 	{
 		.src = MSM_BUS_MASTER_VPE,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
 		.ab  = 0,
-		.ib  = 0,
+
+		.ib  = 2048000000,
 	},
 	{
 		.src = MSM_BUS_MASTER_JPEG_ENC,
@@ -432,6 +561,7 @@ static struct msm_camera_device_platform_data msm_camera_csi_device_data[] = {
 	},
 };
 
+
 static struct camera_vreg_t apq_8064_cam_vreg[] = {
 	{"cam_vdig", REG_LDO, 1200000, 1200000, 105000},
 	{"cam_vio", REG_VS, 0, 0, 0},
@@ -439,14 +569,36 @@ static struct camera_vreg_t apq_8064_cam_vreg[] = {
 	{"cam_vaf", REG_LDO, 2800000, 2850000, 300000},
 };
 
+
 #define CAML_RSTN PM8921_GPIO_PM_TO_SYS(28)
 #define CAMR_RSTN 34
 
-static struct gpio apq8064_common_cam_gpio[] = {
+
+
+
+
+
+
+
+
+
+
+static struct gpio apq8064_common_cam_gpio_2[] = {
+	{5, GPIOF_DIR_OUT, "CAMIF_MCLK"},
 };
 
+
+
+static struct gpio apq8064_common_cam_gpio_3[] = {
+	{2, GPIOF_DIR_OUT, "CAM2_MCLK"},
+};
+
+
+
 static struct gpio apq8064_back_cam_gpio[] = {
-	{5, GPIOF_DIR_IN, "CAMIF_MCLK"},
+	{5, GPIOF_DIR_OUT, "CAMIF_MCLK"},
+	{10, GPIOF_DIR_IN, "CAMIF_I2C_DATA"},
+	{11, GPIOF_DIR_IN, "CAMIF_I2C_CLK"},
 	{CAML_RSTN, GPIOF_DIR_OUT, "CAM_RESET"},
 };
 
@@ -455,39 +607,71 @@ static struct msm_gpio_set_tbl apq8064_back_cam_gpio_set_tbl[] = {
 	{CAML_RSTN, GPIOF_OUT_INIT_HIGH, 10000},
 };
 
-static struct msm_camera_gpio_conf apq8064_back_cam_gpio_conf = {
-	.cam_gpiomux_conf_tbl = apq8064_cam_2d_configs,
-	.cam_gpiomux_conf_tbl_size = ARRAY_SIZE(apq8064_cam_2d_configs),
-	.cam_gpio_common_tbl = apq8064_common_cam_gpio,
-	.cam_gpio_common_tbl_size = ARRAY_SIZE(apq8064_common_cam_gpio),
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+static struct msm_camera_gpio_conf apq8064_back_cam_gpio_conf_2 = {
+	.cam_gpiomux_conf_tbl = apq8064_cam_2d_configs_2,
+	.cam_gpiomux_conf_tbl_size = ARRAY_SIZE(apq8064_cam_2d_configs_2),
+	.cam_gpio_common_tbl = apq8064_common_cam_gpio_2,
+	.cam_gpio_common_tbl_size = ARRAY_SIZE(apq8064_common_cam_gpio_2),
 	.cam_gpio_req_tbl = apq8064_back_cam_gpio,
-	.cam_gpio_req_tbl_size = ARRAY_SIZE(apq8064_back_cam_gpio),
+	.cam_gpio_req_tbl_size = 0,
 	.cam_gpio_set_tbl = apq8064_back_cam_gpio_set_tbl,
-	.cam_gpio_set_tbl_size = ARRAY_SIZE(apq8064_back_cam_gpio_set_tbl),
+	.cam_gpio_set_tbl_size = 0,
 };
 
-static struct gpio apq8064_front_cam_gpio[] = {
-	{4, GPIOF_DIR_IN, "CAMIF_MCLK"},
-	{12, GPIOF_DIR_IN, "CAMIF_I2C_DATA"},
-	{13, GPIOF_DIR_IN, "CAMIF_I2C_CLK"},
-	{CAMR_RSTN, GPIOF_DIR_OUT, "CAM_RESET"},
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+static struct msm_camera_gpio_conf apq8064_front_cam_gpio_conf_2 = {
+	.cam_gpiomux_conf_tbl = apq8064_cam_2d_configs_2,
+	.cam_gpiomux_conf_tbl_size = ARRAY_SIZE(apq8064_cam_2d_configs_2),
+	.cam_gpio_common_tbl = apq8064_common_cam_gpio_3,
+	.cam_gpio_common_tbl_size = ARRAY_SIZE(apq8064_common_cam_gpio_3),
+
+
+
+
 };
 
-static struct msm_gpio_set_tbl apq8064_front_cam_gpio_set_tbl[] = {
-	{CAMR_RSTN, GPIOF_OUT_INIT_LOW, 10000},
-	{CAMR_RSTN, GPIOF_OUT_INIT_HIGH, 10000},
-};
 
-static struct msm_camera_gpio_conf apq8064_front_cam_gpio_conf = {
-	.cam_gpiomux_conf_tbl = apq8064_cam_2d_configs,
-	.cam_gpiomux_conf_tbl_size = ARRAY_SIZE(apq8064_cam_2d_configs),
-	.cam_gpio_common_tbl = apq8064_common_cam_gpio,
-	.cam_gpio_common_tbl_size = ARRAY_SIZE(apq8064_common_cam_gpio),
-	.cam_gpio_req_tbl = apq8064_front_cam_gpio,
-	.cam_gpio_req_tbl_size = ARRAY_SIZE(apq8064_front_cam_gpio),
-	.cam_gpio_set_tbl = apq8064_front_cam_gpio_set_tbl,
-	.cam_gpio_set_tbl_size = ARRAY_SIZE(apq8064_front_cam_gpio_set_tbl),
-};
 
 static struct msm_camera_i2c_conf apq8064_back_cam_i2c_conf = {
 	.use_i2c_mux = 1,
@@ -495,29 +679,68 @@ static struct msm_camera_i2c_conf apq8064_back_cam_i2c_conf = {
 	.i2c_mux_mode = MODE_L,
 };
 
-static struct i2c_board_info msm_act_main_cam_i2c_info = {
-	I2C_BOARD_INFO("msm_actuator", 0x11),
-};
 
-static struct msm_actuator_info msm_act_main_cam_0_info = {
-	.board_info     = &msm_act_main_cam_i2c_info,
-	.cam_name   = MSM_ACTUATOR_MAIN_CAM_0,
-	.bus_id         = APQ_8064_GSBI4_QUP_I2C_BUS_ID,
-	.vcm_pwd        = 0,
-	.vcm_enable     = 0,
-};
 
-static struct i2c_board_info msm_act_main_cam1_i2c_info = {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+static struct i2c_board_info msm_act_main_cam2_imx135_i2c_info = {
 	I2C_BOARD_INFO("msm_actuator", 0x18),
 };
 
-static struct msm_actuator_info msm_act_main_cam_1_info = {
-	.board_info     = &msm_act_main_cam1_i2c_info,
+static struct msm_actuator_info msm_act_main_cam_imx135_2_info = {
+	.board_info     = &msm_act_main_cam2_imx135_i2c_info,
+
+
 	.cam_name       = MSM_ACTUATOR_MAIN_CAM_1,
+
 	.bus_id         = APQ_8064_GSBI4_QUP_I2C_BUS_ID,
 	.vcm_pwd        = 0,
 	.vcm_enable     = 0,
 };
+
 
 
 static struct msm_camera_i2c_conf apq8064_front_cam_i2c_conf = {
@@ -525,6 +748,9 @@ static struct msm_camera_i2c_conf apq8064_front_cam_i2c_conf = {
 	.mux_dev = &msm8960_device_i2c_mux_gsbi4,
 	.i2c_mux_mode = MODE_L,
 };
+
+
+
 
 static struct msm_camera_sensor_flash_data flash_imx135 = {
 	.flash_type = MSM_CAMERA_FLASH_NONE,
@@ -539,10 +765,22 @@ static struct msm_camera_sensor_platform_info sensor_board_info_imx135 = {
 	.mount_angle    = 90,
 	.cam_vreg = apq_8064_cam_vreg,
 	.num_vreg = ARRAY_SIZE(apq_8064_cam_vreg),
-	.gpio_conf = &apq8064_back_cam_gpio_conf,
+	.gpio_conf = &apq8064_back_cam_gpio_conf_2,
+
 	.i2c_conf = &apq8064_back_cam_i2c_conf,
 	.csi_lane_params = &imx135_csi_lane_params,
 };
+
+
+static struct i2c_board_info imx135_eeprom_i2c_info = {
+	I2C_BOARD_INFO("imx135_eeprom", 0x20 <<1),
+};
+
+static struct msm_eeprom_info imx135_eeprom_info = {
+	.board_info     = &imx135_eeprom_i2c_info,
+	.bus_id         = APQ_8064_GSBI4_QUP_I2C_BUS_ID,
+};
+
 
 static struct msm_camera_sensor_info msm_camera_sensor_imx135_data = {
 	.sensor_name    = "imx135",
@@ -552,171 +790,274 @@ static struct msm_camera_sensor_info msm_camera_sensor_imx135_data = {
 	.csi_if = 1,
 	.camera_type = BACK_CAMERA_2D,
 	.sensor_type = BAYER_SENSOR,
-	.actuator_info = &msm_act_main_cam_1_info,
+
+
+	.actuator_info = &msm_act_main_cam_imx135_2_info,
+
+
+	.eeprom_info = &imx135_eeprom_info,
+
 };
 
-static struct msm_camera_sensor_flash_data flash_imx074 = {
-	.flash_type	= MSM_CAMERA_FLASH_LED,
-	.flash_src	= &msm_flash_src
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+static struct camera_vreg_t apq_8064_mt9m113_vreg[] = {
+
+
+
+
 };
 
-static struct msm_camera_csi_lane_params imx074_csi_lane_params = {
-	.csi_lane_assign = 0xE4,
-	.csi_lane_mask = 0xF,
-};
-
-static struct msm_camera_sensor_platform_info sensor_board_info_imx074 = {
-	.mount_angle	= 90,
-	.cam_vreg = apq_8064_cam_vreg,
-	.num_vreg = ARRAY_SIZE(apq_8064_cam_vreg),
-	.gpio_conf = &apq8064_back_cam_gpio_conf,
-	.i2c_conf = &apq8064_back_cam_i2c_conf,
-	.csi_lane_params = &imx074_csi_lane_params,
-};
-
-static struct i2c_board_info imx074_eeprom_i2c_info = {
-	I2C_BOARD_INFO("imx074_eeprom", 0x34 << 1),
-};
-
-static struct msm_eeprom_info imx074_eeprom_info = {
-	.board_info     = &imx074_eeprom_i2c_info,
-	.bus_id         = APQ_8064_GSBI4_QUP_I2C_BUS_ID,
-};
-
-static struct msm_camera_sensor_info msm_camera_sensor_imx074_data = {
-	.sensor_name	= "imx074",
-	.pdata	= &msm_camera_csi_device_data[0],
-	.flash_data	= &flash_imx074,
-	.sensor_platform_info = &sensor_board_info_imx074,
-	.csi_if	= 1,
-	.camera_type = BACK_CAMERA_2D,
-	.sensor_type = BAYER_SENSOR,
-	.actuator_info = &msm_act_main_cam_0_info,
-	.eeprom_info = &imx074_eeprom_info,
-};
-
-static struct msm_camera_csi_lane_params imx091_csi_lane_params = {
-	.csi_lane_assign = 0xE4,
-	.csi_lane_mask = 0xF,
-};
-
-static struct msm_camera_sensor_flash_data flash_imx091 = {
-	.flash_type	= MSM_CAMERA_FLASH_NONE,
-};
-
-static struct msm_camera_sensor_platform_info sensor_board_info_imx091 = {
-	.mount_angle	= 0,
-	.cam_vreg = apq_8064_cam_vreg,
-	.num_vreg = ARRAY_SIZE(apq_8064_cam_vreg),
-	.gpio_conf = &apq8064_back_cam_gpio_conf,
-	.i2c_conf = &apq8064_back_cam_i2c_conf,
-	.csi_lane_params = &imx091_csi_lane_params,
-};
-
-static struct i2c_board_info imx091_eeprom_i2c_info = {
-	I2C_BOARD_INFO("imx091_eeprom", 0x21),
-};
-
-static struct msm_eeprom_info imx091_eeprom_info = {
-	.board_info     = &imx091_eeprom_i2c_info,
-	.bus_id         = APQ_8064_GSBI4_QUP_I2C_BUS_ID,
-};
-
-static struct msm_camera_sensor_info msm_camera_sensor_imx091_data = {
-	.sensor_name	= "imx091",
-	.pdata	= &msm_camera_csi_device_data[0],
-	.flash_data	= &flash_imx091,
-	.sensor_platform_info = &sensor_board_info_imx091,
-	.csi_if	= 1,
-	.camera_type = BACK_CAMERA_2D,
-	.sensor_type = BAYER_SENSOR,
-	.actuator_info = &msm_act_main_cam_1_info,
-	.eeprom_info = &imx091_eeprom_info,
-};
-
-static struct msm_camera_sensor_flash_data flash_s5k3l1yx = {
-	.flash_type	= MSM_CAMERA_FLASH_NONE,
-};
-
-static struct msm_camera_csi_lane_params s5k3l1yx_csi_lane_params = {
-	.csi_lane_assign = 0xE4,
-	.csi_lane_mask = 0xF,
-};
-
-static struct msm_camera_sensor_platform_info sensor_board_info_s5k3l1yx = {
-	.mount_angle	= 90,
-	.cam_vreg = apq_8064_cam_vreg,
-	.num_vreg = ARRAY_SIZE(apq_8064_cam_vreg),
-	.gpio_conf = &apq8064_back_cam_gpio_conf,
-	.i2c_conf = &apq8064_back_cam_i2c_conf,
-	.csi_lane_params = &s5k3l1yx_csi_lane_params,
-};
-
-static struct msm_camera_sensor_info msm_camera_sensor_s5k3l1yx_data = {
-	.sensor_name	= "s5k3l1yx",
-	.pdata	= &msm_camera_csi_device_data[0],
-	.flash_data	= &flash_s5k3l1yx,
-	.sensor_platform_info = &sensor_board_info_s5k3l1yx,
-	.csi_if	= 1,
-	.camera_type = BACK_CAMERA_2D,
-	.sensor_type = BAYER_SENSOR,
-};
-
-static struct msm_camera_sensor_flash_data flash_mt9m114 = {
+static struct msm_camera_sensor_flash_data flash_mt9m113 = {
 	.flash_type = MSM_CAMERA_FLASH_NONE
 };
 
-static struct msm_camera_csi_lane_params mt9m114_csi_lane_params = {
+static struct msm_camera_csi_lane_params mt9m113_csi_lane_params = {
 	.csi_lane_assign = 0xE4,
 	.csi_lane_mask = 0x1,
 };
 
-static struct msm_camera_sensor_platform_info sensor_board_info_mt9m114 = {
-	.mount_angle = 90,
-	.cam_vreg = apq_8064_cam_vreg,
-	.num_vreg = ARRAY_SIZE(apq_8064_cam_vreg),
-	.gpio_conf = &apq8064_front_cam_gpio_conf,
+static struct msm_camera_sensor_platform_info sensor_board_info_mt9m113 = {
+	.mount_angle = 270,
+	.cam_vreg = apq_8064_mt9m113_vreg,
+	.num_vreg = ARRAY_SIZE(apq_8064_mt9m113_vreg),
+	.gpio_conf = &apq8064_front_cam_gpio_conf_2,
 	.i2c_conf = &apq8064_front_cam_i2c_conf,
-	.csi_lane_params = &mt9m114_csi_lane_params,
+	.csi_lane_params = &mt9m113_csi_lane_params,
 };
 
-static struct msm_camera_sensor_info msm_camera_sensor_mt9m114_data = {
-	.sensor_name = "mt9m114",
+static struct msm_camera_sensor_info msm_camera_sensor_mt9m113_data = {
+	.sensor_name = "mt9m113",
 	.pdata = &msm_camera_csi_device_data[1],
-	.flash_data = &flash_mt9m114,
-	.sensor_platform_info = &sensor_board_info_mt9m114,
+	.flash_data = &flash_mt9m113,
+	.sensor_platform_info = &sensor_board_info_mt9m113,
 	.csi_if = 1,
 	.camera_type = FRONT_CAMERA_2D,
 	.sensor_type = YUV_SENSOR,
 };
 
-static struct msm_camera_sensor_flash_data flash_ov2720 = {
-	.flash_type	= MSM_CAMERA_FLASH_NONE,
-};
-
-static struct msm_camera_csi_lane_params ov2720_csi_lane_params = {
-	.csi_lane_assign = 0xE4,
-	.csi_lane_mask = 0x3,
-};
-
-static struct msm_camera_sensor_platform_info sensor_board_info_ov2720 = {
-	.mount_angle	= 0,
-	.cam_vreg = apq_8064_cam_vreg,
-	.num_vreg = ARRAY_SIZE(apq_8064_cam_vreg),
-	.gpio_conf = &apq8064_front_cam_gpio_conf,
-	.i2c_conf = &apq8064_front_cam_i2c_conf,
-	.csi_lane_params = &ov2720_csi_lane_params,
-};
-
-static struct msm_camera_sensor_info msm_camera_sensor_ov2720_data = {
-	.sensor_name	= "ov2720",
-	.pdata	= &msm_camera_csi_device_data[1],
-	.flash_data	= &flash_ov2720,
-	.sensor_platform_info = &sensor_board_info_ov2720,
-	.csi_if	= 1,
-	.camera_type = FRONT_CAMERA_2D,
-	.sensor_type = BAYER_SENSOR,
-};
 
 static struct platform_device msm_camera_server = {
 	.name = "msm_cam_server",
@@ -733,10 +1074,18 @@ void __init apq8064_init_cam(void)
 	}
 
 	if (machine_is_apq8064_cdp()) {
-		sensor_board_info_imx074.mount_angle = 0;
-		sensor_board_info_mt9m114.mount_angle = 0;
+
+
+
+
+
+
 	} else if (machine_is_apq8064_liquid())
-		sensor_board_info_imx074.mount_angle = 180;
+	{
+
+
+
+    }
 
 	platform_device_register(&msm_camera_server);
 	if (socinfo_get_platform_subtype() != PLATFORM_SUBTYPE_SGLTE2)
@@ -752,33 +1101,61 @@ void __init apq8064_init_cam(void)
 
 #ifdef CONFIG_I2C
 static struct i2c_board_info apq8064_camera_i2c_boardinfo[] = {
-	{
-	I2C_BOARD_INFO("imx074", 0x1A),
-	.platform_data = &msm_camera_sensor_imx074_data,
-	},
-	{
-	I2C_BOARD_INFO("imx135", 0x10),
+
+
+
+
+
+
+
+
+ 	{
+
+	I2C_BOARD_INFO("imx135", 0x10), 
 	.platform_data = &msm_camera_sensor_imx135_data,
 	},
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	{
-	I2C_BOARD_INFO("mt9m114", 0x48),
-	.platform_data = &msm_camera_sensor_mt9m114_data,
+	I2C_BOARD_INFO("mt9m113", 0x3D), 
+	.platform_data = &msm_camera_sensor_mt9m113_data,
 	},
-	{
-	I2C_BOARD_INFO("ov2720", 0x6C),
-	.platform_data = &msm_camera_sensor_ov2720_data,
-	},
-	{
-	I2C_BOARD_INFO("sc628a", 0x6E),
-	},
-	{
-	I2C_BOARD_INFO("imx091", 0x34),
-	.platform_data = &msm_camera_sensor_imx091_data,
-	},
-	{
-	I2C_BOARD_INFO("s5k3l1yx", 0x20),
-	.platform_data = &msm_camera_sensor_s5k3l1yx_data,
-	},
+
 };
 
 struct msm_camera_board_info apq8064_camera_board_info = {

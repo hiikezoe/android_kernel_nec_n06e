@@ -15,6 +15,10 @@
  * along with this program; if not, write the Free Software Foundation,
  * Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #include "xfs.h"
 #include "xfs_types.h"
 #include "xfs_inum.h"
@@ -194,6 +198,9 @@ xfs_fs_fh_to_parent(struct super_block *sb, struct fid *fid,
 {
 	struct xfs_fid64	*fid64 = (struct xfs_fid64 *)fid;
 	struct inode		*inode = NULL;
+
+	if (fh_len < xfs_fileid_length(fileid_type))
+		return NULL;
 
 	switch (fileid_type) {
 	case FILEID_INO32_GEN_PARENT:

@@ -23,6 +23,10 @@
    COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS
    SOFTWARE IS DISCLAIMED.
 */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 /* Bluetooth L2CAP core. */
 
@@ -5751,6 +5755,12 @@ static inline int l2cap_conn_param_update_req(struct l2cap_conn *conn,
 		max = __le16_to_cpu(req->max);
 		latency = __le16_to_cpu(req->latency);
 		timeout = __le16_to_cpu(req->to_multiplier);
+		
+		BT_DBG("timeout :: %d",timeout);
+		if(timeout <= 1600) {
+			timeout = 1600;
+		}
+		
 
 		err = l2cap_check_conn_param(min, max, latency, timeout);
 		if (!err) {
@@ -7892,8 +7902,8 @@ static void l2cap_queue_smp_data(struct work_struct *worker)
 	}
 
 err:
-	//If sock state is not connected after 40 attepmts
-	//respond to the remote saying SMP_UNSPECIFIED
+	
+	
 	hcon = smp_chn_params.conn->hcon;
 	reason = SMP_UNSPECIFIED;
 	BT_ERR("SMP_CMD_PAIRING_FAIL: %d", reason);

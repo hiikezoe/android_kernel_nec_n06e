@@ -18,6 +18,10 @@
  *
  *  For licencing details see kernel-base/COPYING
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 #ifndef _LINUX_KTIME_H
 #define _LINUX_KTIME_H
 
@@ -57,13 +61,6 @@ union ktime {
 };
 
 typedef union ktime ktime_t;		/* Kill this */
-
-#define KTIME_MAX			((s64)~((u64)1 << 63))
-#if (BITS_PER_LONG == 64)
-# define KTIME_SEC_MAX			(KTIME_MAX / NSEC_PER_SEC)
-#else
-# define KTIME_SEC_MAX			LONG_MAX
-#endif
 
 /*
  * ktime_t definitions when using the 64-bit scalar representation:

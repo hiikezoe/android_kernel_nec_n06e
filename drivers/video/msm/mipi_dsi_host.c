@@ -11,6 +11,10 @@
  * GNU General Public License for more details.
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -40,6 +44,12 @@
 #include "mipi_dsi.h"
 #include "mdp.h"
 #include "mdp4.h"
+
+
+#if defined (LCD_DEVICE_S6E8AA0X01)
+#define DSI_DATA_FORCE_HS
+#endif
+
 
 static struct completion dsi_dma_comp;
 static struct completion dsi_mdp_comp;
@@ -903,7 +913,13 @@ void mipi_dsi_host_init(struct mipi_panel_info *pinfo)
 
 	/* from frame buffer, low power mode */
 	/* DSI_COMMAND_MODE_DMA_CTRL */
+
+#if defined (DSI_DATA_FORCE_HS)
+	MIPI_OUTP(MIPI_DSI_BASE + 0x38, 0x10000000); 
+#else
 	MIPI_OUTP(MIPI_DSI_BASE + 0x38, 0x14000000);
+#endif
+
 
 	data = 0;
 	if (pinfo->te_sel)
@@ -1148,6 +1164,96 @@ int mipi_dsi_cmd_reg_tx(uint32 data)
 	return 4;
 }
 
+
+#if defined (LCD_DEVICE_S6E8AA0X01)
+
+
+static boolean mipi_dsi_cmd_lock = FALSE;
+
+
+
+static char esd_trial_cnt = 0;
+
+
+void mipi_dsi_cmds_tx_lp_mode(struct msm_fb_data_type *mfd)
+{
+	uint32 dsi_ctrl, ctrl;
+	int video_mode;
+	unsigned long flag;
+	uint32 dsi_lane_ctrl, dsi_video_mode_ctrl;
+
+	
+	char dummy_reg[2] = {0xF1, 0x00};
+	struct dsi_cmd_desc mipi_dummy_cmd = {DTYPE_DCS_WRITE, 1, 0, 0, 0, sizeof(dummy_reg), dummy_reg};
+
+
+	if (esd_trial_cnt >= 30) {
+		
+		esd_trial_cnt = 0;
+	} else {
+		esd_trial_cnt++;
+		return;
+	}
+
+
+
+	if (mipi_dsi_cmd_lock)
+		return;
+
+	mipi_dsi_cmd_lock = TRUE;
+
+
+	
+	dsi_lane_ctrl = MIPI_INP(MIPI_DSI_BASE + 0x0A8);
+	dsi_video_mode_ctrl = MIPI_INP(MIPI_DSI_BASE + 0x00C);
+
+	
+
+
+
+
+	dsi_ctrl = MIPI_INP(MIPI_DSI_BASE + 0x0000);
+	video_mode = dsi_ctrl & 0x02; 
+	if (video_mode) {
+		ctrl = dsi_ctrl | 0x04; 
+		MIPI_OUTP(MIPI_DSI_BASE + 0x0000, ctrl);
+	}
+
+	spin_lock_irqsave(&dsi_mdp_lock, flag);
+	mipi_dsi_enable_irq(DSI_CMD_TERM);
+	dsi_mdp_busy = TRUE;
+	spin_unlock_irqrestore(&dsi_mdp_lock, flag);
+
+	mipi_dsi_buf_init(&dsi_tx_buf);
+	mipi_dsi_cmd_dma_add(&dsi_tx_buf, &mipi_dummy_cmd);
+	mipi_dsi_cmd_dma_tx(&dsi_tx_buf);
+
+	spin_lock_irqsave(&dsi_mdp_lock, flag);
+	dsi_mdp_busy = FALSE;
+
+	complete(&dsi_mdp_comp);
+	spin_unlock_irqrestore(&dsi_mdp_lock, flag);
+
+	
+	MIPI_OUTP( MIPI_DSI_BASE + 0x000C, dsi_video_mode_ctrl | 0x11110000 );
+	MIPI_OUTP( MIPI_DSI_BASE + 0x00A8, dsi_lane_ctrl & 0x0FFFFFFF );
+	wmb();
+	MIPI_OUTP( MIPI_DSI_BASE + 0x00A8, dsi_lane_ctrl );
+	MIPI_OUTP( MIPI_DSI_BASE + 0x000C, dsi_video_mode_ctrl  );
+	wmb();
+
+	if (video_mode)
+		MIPI_OUTP(MIPI_DSI_BASE + 0x0000, dsi_ctrl);
+
+
+	mipi_dsi_cmd_lock = FALSE;
+
+
+	return;
+}
+#endif
+
+
 /*
  * mipi_dsi_cmds_tx:
  * thread context only
@@ -1157,6 +1263,17 @@ int mipi_dsi_cmds_tx(struct dsi_buf *tp, struct dsi_cmd_desc *cmds, int cnt)
 	struct dsi_cmd_desc *cm;
 	uint32 dsi_ctrl, ctrl;
 	int i, video_mode;
+
+
+#if defined (LCD_DEVICE_S6E8AA0X01)
+	if (mipi_dsi_cmd_lock) {
+		return -EBUSY;
+	}
+	mipi_dsi_cmd_lock = TRUE;
+#endif
+
+
+
 
 	/* turn on cmd mode
 	* for video mode, do not send cmds more than
@@ -1184,6 +1301,12 @@ int mipi_dsi_cmds_tx(struct dsi_buf *tp, struct dsi_cmd_desc *cmds, int cnt)
 
 	if (video_mode)
 		MIPI_OUTP(MIPI_DSI_BASE + 0x0000, dsi_ctrl); /* restore */
+
+
+#if defined (LCD_DEVICE_S6E8AA0X01)
+	mipi_dsi_cmd_lock = FALSE;
+#endif
+
 
 	return cnt;
 }
@@ -1488,6 +1611,9 @@ int mipi_dsi_cmds_rx_new(struct dsi_buf *tp, struct dsi_buf *rp,
 int mipi_dsi_cmd_dma_tx(struct dsi_buf *tp)
 {
 	unsigned long flags;
+#if defined (LCD_DEVICE_S6E8AA0X01)
+	unsigned long result;
+#endif
 
 #ifdef DSI_HOST_DEBUG
 	int i;
@@ -1524,12 +1650,30 @@ int mipi_dsi_cmd_dma_tx(struct dsi_buf *tp)
 	wmb();
 	spin_unlock_irqrestore(&dsi_mdp_lock, flags);
 
+#if defined (LCD_DEVICE_S6E8AA0X01)
+	result = wait_for_completion_timeout(&dsi_dma_comp, msecs_to_jiffies(30));
+	if (!result) {
+		printk(KERN_INFO "%s. There's no interrupt!!\n", __func__);
+
+		mipi_dsi_mdp_stat_inc(STAT_DSI_CMD);
+		spin_lock(&dsi_mdp_lock);
+		complete(&dsi_dma_comp);
+		dsi_ctrl_lock = FALSE;
+		mipi_dsi_disable_irq_nosync(DSI_CMD_TERM);
+		spin_unlock(&dsi_mdp_lock);
+
+	}
+#else
 	if (!wait_for_completion_timeout(&dsi_dma_comp,
 					msecs_to_jiffies(200))) {
 		pr_err("%s: dma timeout error\n", __func__);
 	}
+#endif
 
-	dma_unmap_single(&dsi_dev, tp->dmap, tp->len, DMA_TO_DEVICE);
+
+	if(tp->dmap != 0)
+
+		dma_unmap_single(&dsi_dev, tp->dmap, tp->len, DMA_TO_DEVICE);
 	tp->dmap = 0;
 	return tp->len;
 }

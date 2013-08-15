@@ -20,6 +20,10 @@
    COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS, RELATING TO USE OF THIS
    SOFTWARE IS DISCLAIMED.
 */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 /* Bluetooth HCI Management interface */
 
@@ -33,6 +37,10 @@
 #include <net/bluetooth/l2cap.h>
 #include <net/bluetooth/mgmt.h>
 #include <net/bluetooth/smp.h>
+
+
+#include <linux/pm_obs_api.h>
+
 
 #define MGMT_VERSION	0
 #define MGMT_REVISION	1
@@ -54,6 +62,10 @@ struct mgmt_pending_free_work {
 	struct work_struct work;
 	struct sock *sk;
 };
+
+
+static u8 g_bt_pm_power_watch_flg = 0x00;	
+
 
 LIST_HEAD(cmd_list);
 
@@ -2382,8 +2394,12 @@ static int start_discovery(struct sock *sk, u16 index)
 		le_cp.type = 0x01;		/* Active scanning */
 		/* The recommended value for scan interval and window is
 		 * 11.25 msec. It is calculated by: time = n * 0.625 msec */
-		le_cp.interval = cpu_to_le16(0x0012);
-		le_cp.window = cpu_to_le16(0x0012);
+
+
+
+        le_cp.interval = cpu_to_le16(0x1000);
+        le_cp.window = cpu_to_le16(0x0070);
+
 		le_cp.own_bdaddr_type = 0;	/* Public address */
 		le_cp.filter = 0;		/* Accept all adv packets */
 
@@ -2821,12 +2837,30 @@ int mgmt_powered(u16 index, u8 powered)
 
 	BT_DBG("hci%u %d", index, powered);
 
+	
+	if(powered == 0x01) {
+
+		if(g_bt_pm_power_watch_flg == 0x00) {
+			pm_obs_a_bluetooth(PM_OBS_BT_MODE, TRUE);
+			g_bt_pm_power_watch_flg = 0x01;		
+		}
+	} else {
+
+		if(g_bt_pm_power_watch_flg == 0x01) {
+			pm_obs_a_bluetooth(PM_OBS_BT_MODE, FALSE);
+			g_bt_pm_power_watch_flg = 0x00;		
+		}
+	}
+	
+
 	mgmt_pending_foreach(MGMT_OP_SET_POWERED, index, mode_rsp, &match);
 
-	if (!powered) {
-		u8 status = ENETDOWN;
-		mgmt_pending_foreach(0, index, cmd_status_rsp, &status);
-	}
+
+
+
+
+
+
 
 	ev.val = powered;
 

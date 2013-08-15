@@ -1,3 +1,8 @@
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
+
 #ifndef _SCSI_SCSI_HOST_H
 #define _SCSI_SCSI_HOST_H
 
@@ -731,6 +736,9 @@ struct Scsi_Host {
 	 * Needed just in case we have virtual hosts.
 	 */
 	struct device *dma_dev;
+
+	unsigned int  by_usb;
+
 
 	/*
 	 * We should ensure that this is aligned, both for better performance

@@ -21,6 +21,10 @@
  * to store the journal within a filesystem-specified area for ext2
  * journaling (ext2 can use a reserved inode for storing the log).
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/module.h>
 #include <linux/time.h>
@@ -62,9 +66,9 @@ EXPORT_SYMBOL(jbd2_journal_set_triggers);
 EXPORT_SYMBOL(jbd2_journal_dirty_metadata);
 EXPORT_SYMBOL(jbd2_journal_release_buffer);
 EXPORT_SYMBOL(jbd2_journal_forget);
-#if 0
-EXPORT_SYMBOL(journal_sync_buffer);
-#endif
+
+
+
 EXPORT_SYMBOL(jbd2_journal_flush);
 EXPORT_SYMBOL(jbd2_journal_revoke);
 
@@ -1314,9 +1318,16 @@ void jbd2_journal_update_sb_log_tail(journal_t *journal, tid_t tail_tid,
 static void jbd2_mark_journal_empty(journal_t *journal)
 {
 	journal_superblock_t *sb = journal->j_superblock;
+	__be32		new_tail_sequence;
 
 	BUG_ON(!mutex_is_locked(&journal->j_checkpoint_mutex));
 	read_lock(&journal->j_state_lock);
+	new_tail_sequence = cpu_to_be32(journal->j_tail_sequence);
+	
+	if (sb->s_start == 0 && sb->s_sequence == new_tail_sequence) {
+ 		read_unlock(&journal->j_state_lock);
+ 		return;
+ 	}
 	jbd_debug(1, "JBD2: Marking journal as empty (seq %d)\n",
 		  journal->j_tail_sequence);
 
@@ -1340,7 +1351,7 @@ static void jbd2_mark_journal_empty(journal_t *journal)
  * Update a journal's errno.  Write updated superblock to disk waiting for IO
  * to complete.
  */
-static void jbd2_journal_update_sb_errno(journal_t *journal)
+void jbd2_journal_update_sb_errno(journal_t *journal)
 {
 	journal_superblock_t *sb = journal->j_superblock;
 
@@ -1352,6 +1363,7 @@ static void jbd2_journal_update_sb_errno(journal_t *journal)
 
 	jbd2_write_superblock(journal, WRITE_SYNC);
 }
+EXPORT_SYMBOL(jbd2_journal_update_sb_errno);
 
 /*
  * Read the superblock for a given journal, performing initial

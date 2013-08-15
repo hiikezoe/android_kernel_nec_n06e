@@ -18,6 +18,10 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 /*
  * Airgo Networks, Inc proprietary. All rights reserved.
@@ -45,6 +49,10 @@
 #include "rrmApi.h"
 #endif
 
+
+#include "wlan_hdd_main.h"
+int is_send_counrtycode = FALSE;
+extern char FCC_givenContryCode[];
 
 
 ////////////////////////////////////////////////////////////////////////
@@ -226,12 +234,12 @@ PopulateDot11fCapabilities(tpAniSirGlobal         pMac,
         return nSirStatus;
     }
 
-#if 0
-    if ( sirIsPropCapabilityEnabled( pMac, SIR_MAC_PROP_CAPABILITY_11EQOS ) )
-    {
-        SIR_MAC_CLEAR_CAPABILITY( cfg, QOS );
-    }
-#endif
+
+
+
+
+
+
     swapBitField16( cfg, ( tANI_U16* )pDot11f );
 
     return eSIR_SUCCESS;
@@ -357,9 +365,9 @@ PopulateDot11fDSParams(tpAniSirGlobal     pMac,
     if ( WNI_CFG_PHY_MODE_11A != nPhyMode )
     {
         // .11b/g mode PHY => Include the DS Parameter Set IE:
-        #if 0
-        CFG_GET_INT( nSirStatus, pMac, WNI_CFG_CURRENT_CHANNEL, cfg );
-        #endif //TO SUPPORT BT-AMP
+
+
+
         pDot11f->curr_channel = channel;
         pDot11f->present = 1;
     }
@@ -977,9 +985,9 @@ PopulateDot11fHTInfo(tpAniSirGlobal   pMac,
     tpPESession         psessionEntry = &pMac->lim.gpSession[0];  //TBD-RAJESH HOW TO GET sessionEntry?????
 #endif
 
-    #if 0
-    CFG_GET_INT( nSirStatus, pMac, WNI_CFG_CURRENT_CHANNEL, nCfgValue );
-    #endif // TO SUPPORT BT-AMP
+
+
+
 
     pDot11f->primaryChannel = psessionEntry->currentOperChannel;
 
@@ -1440,10 +1448,10 @@ PopulateDot11fSuppRates(tpAniSirGlobal      pMac,
    */
     if(POPULATE_DOT11F_RATES_OPERATIONAL == nChannelNum )
     {
-        #if 0
-        CFG_GET_STR( nSirStatus, pMac, WNI_CFG_OPERATIONAL_RATE_SET,
-                     rates, nRates, SIR_MAC_MAX_NUMBER_OF_RATES );
-        #endif //TO SUPPORT BT-AMP
+
+
+
+
         if(psessionEntry != NULL)
         {
             nRates = psessionEntry->rateSet.numRates;
@@ -1763,24 +1771,24 @@ tSirRetStatus PopulateDot11fWPAOpaque( tpAniSirGlobal      pMac,
 tSirRetStatus
 sirGetCfgPropCaps(tpAniSirGlobal pMac, tANI_U16 *caps)
 {
-#if 0
-    tANI_U32 val;
 
-    *caps = 0;
-    if (wlan_cfgGetInt(pMac, WNI_CFG_PROPRIETARY_ANI_FEATURES_ENABLED, &val)
-        != eSIR_SUCCESS)
-    {
-        limLog(pMac, LOGP, FL("could not retrieve PropFeature enabled flag\n"));
-        return eSIR_FAILURE;
-    }
-    if (wlan_cfgGetInt(pMac, WNI_CFG_PROP_CAPABILITY, &val) != eSIR_SUCCESS)
-    {
-        limLog(pMac, LOGP, FL("could not retrieve PROP_CAPABLITY flag\n"));
-        return eSIR_FAILURE;
-    }
 
-    *caps = (tANI_U16) val;
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     return eSIR_SUCCESS;
 }
 
@@ -2981,6 +2989,47 @@ sirConvertBeaconFrame2Struct(tpAniSirGlobal       pMac,
         pBeaconStruct->countryInfoPresent = 1;
         ConvertCountry( pMac, &pBeaconStruct->countryInfoParam, &pBeacon->Country );
     }
+
+
+    if(is_send_counrtycode == FALSE)
+    {
+
+
+
+        {
+            
+            char alpha2[3] ="ZZ";
+            int ret;
+            eHalStatus halStatus;
+            v_CONTEXT_t pVosContext = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
+            hdd_context_t *pHddCtx = vos_get_context(VOS_MODULE_ID_HDD, pVosContext);
+
+
+
+            if(pBeaconStruct->countryInfoPresent == 1)
+            {
+               alpha2[0] = pBeaconStruct->countryInfoParam.countryString[0];
+               alpha2[1] = pBeaconStruct->countryInfoParam.countryString[1];
+            }
+
+            halStatus = (int)sme_ChangeCountryCode(pHddCtx->hHal,
+                                        NULL,
+                                        alpha2,
+                                        pMac->pAdapter,
+                                        pHddCtx->pvosContext);
+            if( 0 != halStatus )
+            {
+                PELOG1(limLog(pMac, LOG1, FL( "%s: SME Change Country code fail status = %d \n"),__func__, halStatus);)
+            }
+            ret = 0;
+
+
+
+            is_send_counrtycode = TRUE;
+            PELOG1(limLog(pMac, LOG1, FL("regulatory_hint_fcc country code =%s , ret = %d \n"),__func__, alpha2, ret);)
+        }
+    }
+    
 
     // QOS Capabilities:
     if ( pBeacon->QOSCapsAp.present )

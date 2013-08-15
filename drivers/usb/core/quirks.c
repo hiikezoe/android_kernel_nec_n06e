@@ -10,6 +10,10 @@
  *
  *
  */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include <linux/usb.h>
 #include <linux/usb/quirks.h>
@@ -96,6 +100,10 @@ static const struct usb_device_id usb_quirk_list[] = {
 	{ USB_DEVICE(0x04b4, 0x0526), .driver_info =
 			USB_QUIRK_CONFIG_INTF_STRINGS },
 
+	
+	{ USB_DEVICE(0x04d8, 0x000c), .driver_info =
+			USB_QUIRK_CONFIG_INTF_STRINGS },
+
 	/* Samsung Android phone modem - ID conflict with SPH-I500 */
 	{ USB_DEVICE(0x04e8, 0x6601), .driver_info =
 			USB_QUIRK_CONFIG_INTF_STRINGS },
@@ -122,6 +130,9 @@ static const struct usb_device_id usb_quirk_list[] = {
 
 	/* Guillemot Webcam Hercules Dualpix Exchange*/
 	{ USB_DEVICE(0x06f8, 0x3005), .driver_info = USB_QUIRK_RESET_RESUME },
+
+	
+	{ USB_DEVICE(0x0763, 0x0192), .driver_info = USB_QUIRK_RESET_RESUME },
 
 	/* M-Systems Flash Disk Pioneers */
 	{ USB_DEVICE(0x08ec, 0x1000), .driver_info = USB_QUIRK_RESET_RESUME },
@@ -183,17 +194,17 @@ void usb_detect_quirks(struct usb_device *udev)
 				udev->quirks);
 
 	/* For the present, all devices default to USB-PERSIST enabled */
-#if 0		/* was: #ifdef CONFIG_PM */
-	/* Hubs are automatically enabled for USB-PERSIST */
-	if (udev->descriptor.bDeviceClass == USB_CLASS_HUB)
-		udev->persist_enabled = 1;
 
-#else
+
+
+
+
+
 	/* In the absence of PM, we can safely enable USB-PERSIST
 	 * for all devices.  It will affect things like hub resets
 	 * and EMF-related port disables.
 	 */
 	if (!(udev->quirks & USB_QUIRK_RESET_MORPHS))
 		udev->persist_enabled = 1;
-#endif	/* CONFIG_PM */
+
 }

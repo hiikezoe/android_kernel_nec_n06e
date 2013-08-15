@@ -5,6 +5,10 @@
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
 */
+/***********************************************************************/
+/* Modified by                                                         */
+/* (C) NEC CASIO Mobile Communications, Ltd. 2013                      */
+/***********************************************************************/
 
 #include "fuse_i.h"
 
@@ -1580,6 +1584,7 @@ static int fuse_retrieve(struct fuse_conn *fc, struct inode *inode,
 		req->pages[req->num_pages] = page;
 		req->num_pages++;
 
+		offset = 0;
 		num -= this_num;
 		total_len += this_num;
 		index++;
